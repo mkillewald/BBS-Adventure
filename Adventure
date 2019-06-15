@@ -23,14 +23,14 @@ flashlight=3  /* 0=disabled, 1=small, 2=medium, 3=large */
 
 /* flashlight defaults (keep even numbers) */
 SELECT
-	WHEN flashlight==1 THEN flash_width=10  /* small flashlight */
-	WHEN flashlight==2 THEN flash_width=14  /* medium flashlight */
-	WHEN flashlight==3 THEN flash_width=18  /* large flashlight */
+  WHEN flashlight==1 THEN flash_width=10  /* small flashlight */
+  WHEN flashlight==2 THEN flash_width=14  /* medium flashlight */
+  WHEN flashlight==3 THEN flash_width=18  /* large flashlight */
 END
 flash_height=flash_width/2
 flash_dx=(flash_width-2)/2
 flash_dy=(flash_height-1)/2
-	
+
 /* default options */
 difficulty=1  /* 1 = easy, 2 = normal, 3 = hard */
 attack=0  /* 0 = dragons delay before attack, 1 = dragons attack instantly */
@@ -98,27 +98,27 @@ MAIN_MENU:
     gc
     d=C2D(result) 
     SELECT
-			WHEN d==81 THEN signal QUIT                /* Q */
-			WHEN d==79 THEN signal OPTIONS             /* O */
-			WHEN ckey~=1 & d==67 THEN signal CONTROLS  /* C */
-			WHEN ckey~=1 & d==66 THEN signal ABOUT     /* B */
-			WHEN d==71 THEN signal START               /* G */
-			WHEN d==32 | d==13 THEN DO                 /* Space or Enter */
-				IF game_running==0 THEN call MAIN_SELECT
-				ELSE call IN_GAME_SELECT
-			END
-			WHEN d==91 THEN ckey=1                     /* [ (used to detect cursor key) */ 
-			WHEN (ckey~=1 & d==65) | (ckey==1 & d==68) THEN call PREV_TAB /* A or <-- */
-			WHEN (ckey~=1 & d==68) | (ckey==1 & d==67) THEN call NEXT_TAB /* D or --> */
-			WHEN (ckey~=1 & d==87) | (ckey==1 & d==65) THEN DO  /* W or up arrow */
-			  IF item.cur==4 THEN indicator=indicator.f         
-				call PREV_ITEM
-			END
-			WHEN (ckey~=1 & d==83) | (ckey==1 & d==66) THEN DO  /* S or down arrow */
-			  IF item.cur==3 THEN indicator=indicator.b
-				call NEXT_ITEM
-			END
-			OTHERWISE ckey=0
+      WHEN d==81 THEN signal QUIT                /* Q */
+      WHEN d==79 THEN signal OPTIONS             /* O */
+      WHEN ckey~=1 & d==67 THEN signal CONTROLS  /* C */
+      WHEN ckey~=1 & d==66 THEN signal ABOUT     /* B */
+      WHEN d==71 THEN signal START               /* G */
+      WHEN d==32 | d==13 THEN DO                 /* Space or Enter */
+        IF game_running==0 THEN call MAIN_SELECT
+        ELSE call IN_GAME_SELECT
+      END
+      WHEN d==91 THEN ckey=1                     /* [ (used to detect cursor key) */ 
+      WHEN (ckey~=1 & d==65) | (ckey==1 & d==68) THEN call PREV_TAB /* A or <-- */
+      WHEN (ckey~=1 & d==68) | (ckey==1 & d==67) THEN call NEXT_TAB /* D or --> */
+      WHEN (ckey~=1 & d==87) | (ckey==1 & d==65) THEN DO  /* W or up arrow */
+        IF item.cur==4 THEN indicator=indicator.f         
+        call PREV_ITEM
+      END
+      WHEN (ckey~=1 & d==83) | (ckey==1 & d==66) THEN DO  /* S or down arrow */
+        IF item.cur==3 THEN indicator=indicator.b
+        call NEXT_ITEM
+      END
+      OTHERWISE ckey=0
     END
   
     call CHECK
@@ -135,12 +135,12 @@ return
 
 MAIN_SELECT:
   SELECT
-		WHEN item.cur==0 THEN signal START
-		WHEN item.cur==1 THEN signal OPTIONS
-		WHEN item.cur==2 THEN signal CONTROLS
-		WHEN item.cur==3 THEN signal ABOUT
-		WHEN item.cur==4 THEN signal QUIT
-		OTHERWISE NOP
+    WHEN item.cur==0 THEN signal START
+    WHEN item.cur==1 THEN signal OPTIONS
+    WHEN item.cur==2 THEN signal CONTROLS
+    WHEN item.cur==3 THEN signal ABOUT
+    WHEN item.cur==4 THEN signal QUIT
+    OTHERWISE NOP
   END
 return
 
@@ -154,15 +154,15 @@ return
 
 IN_GAME_SELECT:
   SELECT
-		WHEN item.cur==0 THEN DO
-			call REFRESH
-			signal RESUME
-		END
-		WHEN item.cur==1 THEN signal OPTIONS
-		WHEN item.cur==2 THEN signal CONTROLS
-		WHEN item.cur==3 THEN call REINCARNATE
-		WHEN item.cur==4 THEN signal QUIT
-		OTHERWISE NOP
+    WHEN item.cur==0 THEN DO
+      call REFRESH
+      signal RESUME
+    END
+    WHEN item.cur==1 THEN signal OPTIONS
+    WHEN item.cur==2 THEN signal CONTROLS
+    WHEN item.cur==3 THEN call REINCARNATE
+    WHEN item.cur==4 THEN signal QUIT
+    OTHERWISE NOP
   END
 return
 
@@ -170,11 +170,11 @@ OPTIONS:
   tab.cur=1
   mpos.x=27; mpos.y=7  /* menu top left corner */
   IF game_running==0 THEN DO
-		item.x=mpos.x+4; item.y=mpos.y+2; /* current item position */
-		item.cur=0; item.tot=4  /* current item, total items */
+    item.x=mpos.x+4; item.y=mpos.y+2; /* current item position */
+    item.cur=0; item.tot=4  /* current item, total items */
   END
   ELSE DO
-		item.cur=3;
+    item.cur=3;
   END
   indicator.f = ">"  /* forward indicator */
   indicator.b = "<"  /* back indicator */
@@ -196,7 +196,7 @@ OPTIONS:
   ELSE se "[" || mpos.y + 9|| ";" || mpos.x || "H[1;40;30mÛ   "||item.hc||indicator.b||mitem.3||"  [1;30mÛ"
   se "[" || mpos.y + 10|| ";" || mpos.x || "H[1;40;30mÛÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜÛ"
   if game_running==0 THEN DO 
-  	call DIFFQUIP
+    call DIFFQUIP
   END
   call DIFFBAR
   se park
@@ -207,34 +207,34 @@ OPTIONS:
     gc
     d=C2D(result) 
     SELECT
-			WHEN d==81 THEN signal MAIN_MENU  /* Q (Quit to main) */
-			WHEN game_running==0 & d==73 THEN call SHORTCUT_OPTIONS_SELECT(0,2)  /* I (Difficulty)   */
-			WHEN game_running==0 & d==75 THEN call SHORTCUT_OPTIONS_SELECT(1,3)  /* K (Attack)       */
-			WHEN game_running==0 & d==70 THEN call SHORTCUT_OPTIONS_SELECT(2,4)  /* F (Sword Fear)   */
-			WHEN d==32 | d==13 THEN call OPTIONS_SELECT  /* Space or Enter */
-			WHEN d==91 THEN ckey=1  /* [ (detect cursor key) */
-			WHEN (ckey~=1 & d==65) | (ckey==1 & d==68) THEN call PREV_TAB  /* A or <-- */
-			WHEN (ckey~=1 & d==68) | (ckey==1 & d==67) THEN call NEXT_TAB  /* D or --> */
-			WHEN game_running==0 & ((ckey~=1 & d==87) | (ckey==1 & d==65)) THEN DO  /* W or up arrow */
-				indicator=indicator.f
-				IF item.cur==3 THEN DO
-					menu_yadv=5
-				END  
-				call OPTIONS_ITEMS
-				call PREV_ITEM
-				call QUIP_SELECT
-			END
-			WHEN game_running==0 & ((ckey~=1 & d==83) | (ckey==1 & d==66)) THEN DO  /* S or down arrow */
-			  IF item.cur==2 THEN DO
-			  	menu_yadv=5
-			  	indicator=indicator.b
-			  END
-			  ELSE indicator=indicator.f
-			  call OPTIONS_ITEMS
-				call NEXT_ITEM
-				call QUIP_SELECT
-			END
-			OTHERWISE ckey=0
+      WHEN d==81 THEN signal MAIN_MENU  /* Q (Quit to main) */
+      WHEN game_running==0 & d==73 THEN call SHORTCUT_OPTIONS_SELECT(0,2)  /* I (Difficulty)   */
+      WHEN game_running==0 & d==75 THEN call SHORTCUT_OPTIONS_SELECT(1,3)  /* K (Attack)       */
+      WHEN game_running==0 & d==70 THEN call SHORTCUT_OPTIONS_SELECT(2,4)  /* F (Sword Fear)   */
+      WHEN d==32 | d==13 THEN call OPTIONS_SELECT  /* Space or Enter */
+      WHEN d==91 THEN ckey=1  /* [ (detect cursor key) */
+      WHEN (ckey~=1 & d==65) | (ckey==1 & d==68) THEN call PREV_TAB  /* A or <-- */
+      WHEN (ckey~=1 & d==68) | (ckey==1 & d==67) THEN call NEXT_TAB  /* D or --> */
+      WHEN game_running==0 & ((ckey~=1 & d==87) | (ckey==1 & d==65)) THEN DO  /* W or up arrow */
+        indicator=indicator.f
+        IF item.cur==3 THEN DO
+          menu_yadv=5
+        END  
+        call OPTIONS_ITEMS
+        call PREV_ITEM
+        call QUIP_SELECT
+      END
+      WHEN game_running==0 & ((ckey~=1 & d==83) | (ckey==1 & d==66)) THEN DO  /* S or down arrow */
+        IF item.cur==2 THEN DO
+          menu_yadv=5
+          indicator=indicator.b
+        END
+        ELSE indicator=indicator.f
+        call OPTIONS_ITEMS
+        call NEXT_ITEM
+        call QUIP_SELECT
+      END
+      OTHERWISE ckey=0
     END 
     call CHECK
   END
@@ -242,122 +242,122 @@ return
 
 OPTIONS_ITEMS:
   IF game_running==0 THEN DO
-	  mitem.0=" [37mD[32mi[37mfficulty:   [36m" || difficulty || "   "
-	  mitem.1=" [37mAttac[32mk[37m: [36m" || attack_items.attack || "   "
-	  mitem.2=" [37mSword [32mF[37mear: [36m" || fear_items.fear || "   "
-	  mitem.3=" [32mQ[37muit to Main Menu  "
-	END
-	ELSE DO
-		mitem.0=" [37mDifficulty:   [36m" || difficulty || "   "
-	  mitem.1=" [37mAttack: [36m" || attack_items.attack || "   "
-	  mitem.2=" [37mSword Fear: [36m" || fear_items.fear || "   "
-	  mitem.3=" [32mQ[37muit to Main Menu  "
-	END
+    mitem.0=" [37mD[32mi[37mfficulty:   [36m" || difficulty || "   "
+    mitem.1=" [37mAttac[32mk[37m: [36m" || attack_items.attack || "   "
+    mitem.2=" [37mSword [32mF[37mear: [36m" || fear_items.fear || "   "
+    mitem.3=" [32mQ[37muit to Main Menu  "
+  END
+  ELSE DO
+    mitem.0=" [37mDifficulty:   [36m" || difficulty || "   "
+    mitem.1=" [37mAttack: [36m" || attack_items.attack || "   "
+    mitem.2=" [37mSword Fear: [36m" || fear_items.fear || "   "
+    mitem.3=" [32mQ[37muit to Main Menu  "
+  END
 return
 
 SHORTCUT_OPTIONS_SELECT:
   ARG item_to_activate, item_y_pos
-	i=item.cur
-	se "["||item.y||";"||item.x||"H"||item.nc||mitem.i
-	item.cur=item_to_activate; item.x=mpos.x+4; item.y=mpos.y+item_y_pos;
-	i = item.cur; indicator=indicator.f
+  i=item.cur
+  se "["||item.y||";"||item.x||"H"||item.nc||mitem.i
+  item.cur=item_to_activate; item.x=mpos.x+4; item.y=mpos.y+item_y_pos;
+  i = item.cur; indicator=indicator.f
   se "["||item.y||";"||item.x||"H"||item.hc||indicator||mitem.i
-	call OPTIONS_SELECT
+  call OPTIONS_SELECT
 return
 
 OPTIONS_SELECT:
   SELECT
-		WHEN item.cur==0 THEN call OPTIONS0
-		WHEN item.cur==1 THEN call OPTIONS1
-		WHEN item.cur==2 THEN call OPTIONS2
-		WHEN item.cur==3 THEN signal MAIN_MENU
-		OTHERWISE NOP
+    WHEN item.cur==0 THEN call OPTIONS0
+    WHEN item.cur==1 THEN call OPTIONS1
+    WHEN item.cur==2 THEN call OPTIONS2
+    WHEN item.cur==3 THEN signal MAIN_MENU
+    OTHERWISE NOP
   END
 return
 
 DIFFBAR:
   difftotal=0
-	SELECT
-		WHEN difficulty==1 THEN difftotal=difftotal+2
-		WHEN difficulty==2 THEN difftotal=difftotal+6
-		WHEN difficulty==3 THEN difftotal=difftotal+10
+  SELECT
+    WHEN difficulty==1 THEN difftotal=difftotal+2
+    WHEN difficulty==2 THEN difftotal=difftotal+6
+    WHEN difficulty==3 THEN difftotal=difftotal+10
   END
   IF attack==1 THEN difftotal=difftotal+4
   IF fear==1 THEN difftotal=difftotal+4
-	SELECT
-		WHEN difftotal<=2 THEN diffbar="[0;32mþþ[1;30m                "
-		WHEN difftotal>2 & difftotal<=4 THEN diffbar="[0;32mþþþþ[1;30m              "
-		WHEN difftotal>4 & difftotal<=6 THEN diffbar="[1;32mþþþþþþ[30m            "
-		WHEN difftotal>6 & difftotal<=8 THEN diffbar="[1;32mþþþþþþþþ[30m          "
-		WHEN difftotal>8 & difftotal<=10 THEN diffbar="[1;33mþþþþþþþþþþ[30m        "
-		WHEN difftotal>10 & difftotal<=12 THEN diffbar="[1;33mþþþþþþþþþþþþ[30m      "
-		WHEN difftotal>12 & difftotal<=14 THEN diffbar="[1;31mþþþþþþþþþþþþþþ[30m    "
-		WHEN difftotal>14 & difftotal<=16 THEN diffbar="[1;31mþþþþþþþþþþþþþþþþ[1;30m  "
-		WHEN difftotal>16 & difftotal<=18 THEN diffbar="[1;31mþþþþþþþþþþþþþþþþþþ"
-		OTHERWISE NOP
-	END
-	IF game_running=0 THEN row=8
+  SELECT
+    WHEN difftotal<=2 THEN diffbar="[0;32mþþ[1;30m                "
+    WHEN difftotal>2 & difftotal<=4 THEN diffbar="[0;32mþþþþ[1;30m              "
+    WHEN difftotal>4 & difftotal<=6 THEN diffbar="[1;32mþþþþþþ[30m            "
+    WHEN difftotal>6 & difftotal<=8 THEN diffbar="[1;32mþþþþþþþþ[30m          "
+    WHEN difftotal>8 & difftotal<=10 THEN diffbar="[1;33mþþþþþþþþþþ[30m        "
+    WHEN difftotal>10 & difftotal<=12 THEN diffbar="[1;33mþþþþþþþþþþþþ[30m      "
+    WHEN difftotal>12 & difftotal<=14 THEN diffbar="[1;31mþþþþþþþþþþþþþþ[30m    "
+    WHEN difftotal>14 & difftotal<=16 THEN diffbar="[1;31mþþþþþþþþþþþþþþþþ[1;30m  "
+    WHEN difftotal>16 & difftotal<=18 THEN diffbar="[1;31mþþþþþþþþþþþþþþþþþþ"
+    OTHERWISE NOP
+  END
+  IF game_running=0 THEN row=8
   ELSE row=7
-	se "[" || mpos.y + row || ";" || mpos.x + 4 || "H[1;40;30m[" || diffbar || "[1;30m]"
+  se "[" || mpos.y + row || ";" || mpos.x + 4 || "H[1;40;30m[" || diffbar || "[1;30m]"
 return
 
 QUIP_SELECT:
-	SELECT
-		WHEN item.cur==0 THEN call DIFFQUIP
-		WHEN item.cur==1 THEN call ATTACKQUIP
-		WHEN item.cur==2 THEN call FEARQUIP
-		OTHERWISE call CLEARQUIP
+  SELECT
+    WHEN item.cur==0 THEN call DIFFQUIP
+    WHEN item.cur==1 THEN call ATTACKQUIP
+    WHEN item.cur==2 THEN call FEARQUIP
+    OTHERWISE call CLEARQUIP
   END
 return
 
 CLEARQUIP:
   se "[" || mpos.y + 6 || ";" || mpos.x + 4 || "H" || "                    "
-	se "[" || mpos.y + 7 || ";" || mpos.x + 4 || "H" || "                    "
-	se park
+  se "[" || mpos.y + 7 || ";" || mpos.x + 4 || "H" || "                    "
+  se park
 return
 
 DIFFQUIP:
-	diffquip.1="2 castles, 2 dragons"
-	diffquip.2="small kingdom       "
-	diffquip.3="3 castles, 3 dragons"
-	diffquip.4="full kingdom        "
-	diffquip.5="3 castles, 3 dragons"
-	diffquip.6="objects randomized  "
-	
-	i= difficulty + (difficulty-1)
-	j= i+1
-	se "[0;36m"
-	se "[" || mpos.y + 6 || ";" || mpos.x + 4 || "H" || diffquip.i
-	se "[" || mpos.y + 7 || ";" || mpos.x + 4 || "H" || diffquip.j
-	se park
+  diffquip.1="2 castles, 2 dragons"
+  diffquip.2="small kingdom       "
+  diffquip.3="3 castles, 3 dragons"
+  diffquip.4="full kingdom        "
+  diffquip.5="3 castles, 3 dragons"
+  diffquip.6="objects randomized  "
+  
+  i= difficulty + (difficulty-1)
+  j= i+1
+  se "[0;36m"
+  se "[" || mpos.y + 6 || ";" || mpos.x + 4 || "H" || diffquip.i
+  se "[" || mpos.y + 7 || ";" || mpos.x + 4 || "H" || diffquip.j
+  se park
 return
 
-ATTACKQUIP:	
-	attackquip.0="dragons wait a bit  "
-	attackquip.1="before attacking    "
-	attackquip.2="dragons attack      "
-	attackquip.3="instantly           "
-	
-	i=attack*2
-	j=i+1
-	se "[0;36m"
+ATTACKQUIP:  
+  attackquip.0="dragons wait a bit  "
+  attackquip.1="before attacking    "
+  attackquip.2="dragons attack      "
+  attackquip.3="instantly           "
+  
+  i=attack*2
+  j=i+1
+  se "[0;36m"
   se "[" || mpos.y + 6 || ";" || mpos.x + 4 || "H" || attackquip.i
-	se "[" || mpos.y + 7 || ";" || mpos.x + 4 || "H" || attackquip.j
-	se park
+  se "[" || mpos.y + 7 || ";" || mpos.x + 4 || "H" || attackquip.j
+  se park
 return
 
-FEARQUIP:	
-	fearquip.0="dragons do not fear "
-	fearquip.1="the sword           "
-	fearquip.2="dragons run from the"
-	fearquip.3="sword               "
-	
+FEARQUIP:  
+  fearquip.0="dragons do not fear "
+  fearquip.1="the sword           "
+  fearquip.2="dragons run from the"
+  fearquip.3="sword               "
+  
   i=fear*2
-	j=i+1
-	se "[0;36m"
-	se "[" || mpos.y + 6 || ";" || mpos.x + 4 || "H" || fearquip.i
-	se "[" || mpos.y + 7 || ";" || mpos.x + 4 || "H" || fearquip.j
-	se park
+  j=i+1
+  se "[0;36m"
+  se "[" || mpos.y + 6 || ";" || mpos.x + 4 || "H" || fearquip.i
+  se "[" || mpos.y + 7 || ";" || mpos.x + 4 || "H" || fearquip.j
+  se park
 return
 
 OPTIONS0:  /* difficulty */
@@ -365,7 +365,7 @@ OPTIONS0:  /* difficulty */
   IF difficulty==3 THEN difficulty=1 
   ELSE difficulty=difficulty+1
   IF item.cur==0 THEN intensity=1
-  ELSE intensity=0  	
+  ELSE intensity=0    
   se "[" || mpos.y + 2 || ";" || mpos.x + 20 || "H[" || intensity || ";36m" || difficulty
   call DIFFQUIP
   call DIFFBAR
@@ -389,7 +389,7 @@ OPTIONS2:  /* sword fear */
   IF fear==1 THEN fear=0
   ELSE fear=fear+1
   IF item.cur==2 THEN intensity=1
-  ELSE intensity=0  	
+  ELSE intensity=0    
   se "[" || mpos.y + 4 || ";" || mpos.x + 18 || "H[" || intensity || ";36m" || fear_items.fear
   call FEARQUIP
   call DIFFBAR
@@ -420,14 +420,14 @@ CONTROLS:
     gc
     d=C2D(result) 
     SELECT
-			WHEN d==81 THEN signal MAIN_MENU  /* Quit to Main Menu */
-			WHEN d==32 | d==13 THEN call CONTROLS_SELECT  /* Space or Enter */
-			WHEN d==91 THEN ckey=1  /* [ (detect cursor key) */ 
-			WHEN (ckey~=1 & d==65) | (ckey==1 & d==68) THEN call PREV_TAB  /* A or <-- */
-			WHEN (ckey~=1 & d==68) | (ckey==1 & d==67) THEN call NEXT_TAB  /* D or --> */
-			WHEN (ckey~=1 & d==87) | (ckey==1 & d==65) THEN call PREV_ITEM  /* W or up arrow */
-			WHEN (ckey~=1 & d==83) | (ckey==1 & d==66) THEN call NEXT_ITEM  /* S or down arrow */
-			OTHERWISE ckey=0
+      WHEN d==81 THEN signal MAIN_MENU  /* Quit to Main Menu */
+      WHEN d==32 | d==13 THEN call CONTROLS_SELECT  /* Space or Enter */
+      WHEN d==91 THEN ckey=1  /* [ (detect cursor key) */ 
+      WHEN (ckey~=1 & d==65) | (ckey==1 & d==68) THEN call PREV_TAB  /* A or <-- */
+      WHEN (ckey~=1 & d==68) | (ckey==1 & d==67) THEN call NEXT_TAB  /* D or --> */
+      WHEN (ckey~=1 & d==87) | (ckey==1 & d==65) THEN call PREV_ITEM  /* W or up arrow */
+      WHEN (ckey~=1 & d==83) | (ckey==1 & d==66) THEN call NEXT_ITEM  /* S or down arrow */
+      OTHERWISE ckey=0
     END
   
     call CHECK
@@ -436,8 +436,8 @@ return
 
 CONTROLS_SELECT:
   SELECT
-		WHEN item.cur==0 THEN signal MAIN_MENU
-		OTHERWISE NOP
+    WHEN item.cur==0 THEN signal MAIN_MENU
+    OTHERWISE NOP
   END
 return
 
@@ -464,14 +464,14 @@ ABOUT:
     gc
     d=C2D(result) 
     SELECT
-			WHEN d==81 THEN signal MAIN_MENU  /* Quit to Main Menu */
-			WHEN d==32 | d==13 THEN call ABOUT_SELECT  /* Space or Enter */ 
-			WHEN d==91 THEN ckey=1  /* [ (detect cursor key) */
-			WHEN (ckey~=1 & d==65) | (ckey==1 & d==68) THEN call PREV_TAB  /* A or <-- */
-			WHEN (ckey~=1 & d==68) | (ckey==1 & d==67) THEN call NEXT_TAB  /* D or --> */
-			WHEN (ckey~=1 & d==87) | (ckey==1 & d==65) THEN call PREV_ITEM  /* W or up arrow */
-			WHEN (ckey~=1 & d==83) | (ckey==1 & d==66) THEN call NEXT_ITEM  /* S or down arrow */
-			OTHERWISE ckey=0
+      WHEN d==81 THEN signal MAIN_MENU  /* Quit to Main Menu */
+      WHEN d==32 | d==13 THEN call ABOUT_SELECT  /* Space or Enter */ 
+      WHEN d==91 THEN ckey=1  /* [ (detect cursor key) */
+      WHEN (ckey~=1 & d==65) | (ckey==1 & d==68) THEN call PREV_TAB  /* A or <-- */
+      WHEN (ckey~=1 & d==68) | (ckey==1 & d==67) THEN call NEXT_TAB  /* D or --> */
+      WHEN (ckey~=1 & d==87) | (ckey==1 & d==65) THEN call PREV_ITEM  /* W or up arrow */
+      WHEN (ckey~=1 & d==83) | (ckey==1 & d==66) THEN call NEXT_ITEM  /* S or down arrow */
+      OTHERWISE ckey=0
     END 
     call CHECK
   END
@@ -479,7 +479,7 @@ return
 
 ABOUT_SELECT:
   SELECT
-  	WHEN item.cur==0 THEN signal MAIN_MENU
+    WHEN item.cur==0 THEN signal MAIN_MENU
     OTHERWISE NOP
   END
 return
@@ -487,7 +487,7 @@ return
 NEXT_ITEM:
   ckey=0
   IF item.cur == item.tot - 1 THEN return  
-  i = item.cur	
+  i = item.cur  
   se "["||item.y||";"||item.x||"H"||item.nc||mitem.i
   item.cur = item.cur + 1
   item.y = item.y + menu_yadv
@@ -500,7 +500,7 @@ return
 PREV_ITEM:
   ckey=0
   IF item.cur==0 THEN return  
-  i = item.cur	
+  i = item.cur  
   se "["||item.y||";"||item.x||"H"||item.nc||mitem.i
   item.cur = item.cur - 1
   item.y = item.y - menu_yadv
@@ -524,11 +524,11 @@ return
 
 TAB_JUMP:
   SELECT
-		WHEN tab.cur==0 THEN signal MAIN_MENU
-		WHEN tab.cur==1 THEN signal OPTIONS
-		WHEN tab.cur==2 THEN signal CONTROLS
-		WHEN tab.cur==3 THEN signal ABOUT
-		OTHERWISE NOP
+    WHEN tab.cur==0 THEN signal MAIN_MENU
+    WHEN tab.cur==1 THEN signal OPTIONS
+    WHEN tab.cur==2 THEN signal CONTROLS
+    WHEN tab.cur==3 THEN signal ABOUT
+    OTHERWISE NOP
   END
 return
 
@@ -550,18 +550,18 @@ START:
     gc
     d=C2D(result)
     SELECT
-			WHEN d==81 | d==77 THEN call MAIN_MENU          /* Q or M */
-			WHEN d==32 | d==13 THEN call DROPITEM   /* Space or Enter */
-			WHEN d==91 THEN ckey=1                  /* [ (detect cursor keys) */
-			WHEN (ckey~=1 & d==87) | (ckey==1 & d==65) THEN call MV_U2  /* W or up arrow */
-			WHEN (ckey~=1 & d==83) | (ckey==1 & d==66) THEN call MV_D2  /* S or down arrow */
-			WHEN (ckey~=1 & d==68) | (ckey==1 & d==67) THEN call MV_R2  /* D or --> */
-			WHEN (ckey~=1 & d==65) | (ckey==1 & d==68) THEN call MV_L2  /* A or <-- */
-			WHEN d==71 THEN  /* G */
-			  IF room.gate==1 THEN call GATE_CL
-			  ELSE IF room.gate==0 THEN call GATE_OP
-			WHEN d==82 THEN call REFRESH /* R */
-			OTHERWISE ckey=0 
+      WHEN d==81 | d==77 THEN call MAIN_MENU          /* Q or M */
+      WHEN d==32 | d==13 THEN call DROPITEM   /* Space or Enter */
+      WHEN d==91 THEN ckey=1                  /* [ (detect cursor keys) */
+      WHEN (ckey~=1 & d==87) | (ckey==1 & d==65) THEN call MV_U2  /* W or up arrow */
+      WHEN (ckey~=1 & d==83) | (ckey==1 & d==66) THEN call MV_D2  /* S or down arrow */
+      WHEN (ckey~=1 & d==68) | (ckey==1 & d==67) THEN call MV_R2  /* D or --> */
+      WHEN (ckey~=1 & d==65) | (ckey==1 & d==68) THEN call MV_L2  /* A or <-- */
+      WHEN d==71 THEN  /* G */
+        IF room.gate==1 THEN call GATE_CL
+        ELSE IF room.gate==0 THEN call GATE_OP
+      WHEN d==82 THEN call REFRESH /* R */
+      OTHERWISE ckey=0 
     END
     call CHECK
   END
@@ -592,48 +592,48 @@ return
 
 DRAW_PL:  /* draw player */
   IF room.cur==0 THEN return
-  IF debug==1 THEN call DEBUG_PL 	
+  IF debug==1 THEN call DEBUG_PL   
   IF flashlight>0 & dark==1 THEN DO
-  	light.x=pl_pos.x-flash_dx; light.y=pl_pos.y-flash_dy; light.w=flash_width; light.h=flash_height
+    light.x=pl_pos.x-flash_dx; light.y=pl_pos.y-flash_dy; light.w=flash_width; light.h=flash_height
 
-  	/* handle left edge */
-  	IF light.x<mincol THEN DO
-  		light.x=mincol
-  		light.w=light.w-(flash_dx-(pl_pos.x-light.x))
+    /* handle left edge */
+    IF light.x<mincol THEN DO
+      light.x=mincol
+      light.w=light.w-(flash_dx-(pl_pos.x-light.x))
     END
     
     /* handle top edge */
-  	IF light.y<1 THEN DO 
-  		light.y=1
-  		light.h=light.h-(flash_dy-(pl_pos.y-light.y))
-  	END
-  	
-  	/* handle right edge */
-  	IF light.x+light.w-1>maxcol THEN light.w=light.w-((light.x+light.w-1)-maxcol)
+    IF light.y<1 THEN DO 
+      light.y=1
+      light.h=light.h-(flash_dy-(pl_pos.y-light.y))
+    END
+    
+    /* handle right edge */
+    IF light.x+light.w-1>maxcol THEN light.w=light.w-((light.x+light.w-1)-maxcol)
     
     /* handle bottom edge */
-  	IF light.y+light.h-1>maxline THEN light.h=light.h-((light.y+light.h-1)-maxline)
-  		
+    IF light.y+light.h-1>maxline THEN light.h=light.h-((light.y+light.h-1)-maxline)
+      
     row=0
     DO i=light.y to light.y+light.h-1
-  		se "[" || light.y + row || ";" || light.x || "H[43m" || SUBSTR(map.i, light.x-1, light.w)
-  		row = row + 1
-  	END 
+      se "[" || light.y + row || ";" || light.x || "H[43m" || SUBSTR(map.i, light.x-1, light.w)
+      row = row + 1
+    END 
   END
-   	 	
+        
   se "["||pl_pos.y||";"||pl_pos.x||"H"||room.fc||"ÛÛ"
   se park
 return
 
 ERASE_PL:
   IF room.cur==0 THEN return
-  	
+    
   IF flashlight>0 & dark==1 THEN DO
-  	row=0
-  	DO i=light.y to light.y+light.h-1
-  		se "[" || light.y + row || ";" || light.x || "H[47m" || SUBSTR(map.i, light.x-1, light.w)
-  		row= row + 1
-  	END
+    row=0
+    DO i=light.y to light.y+light.h-1
+      se "[" || light.y + row || ";" || light.x || "H[47m" || SUBSTR(map.i, light.x-1, light.w)
+      row= row + 1
+    END
   END
   
   se "["||pl_pos.y||";"||pl_pos.x||"H"||room.bc||"  "
@@ -683,10 +683,10 @@ return
 GATE_CL:  /* close gate */
   IF room.gate~=1 THEN return 
   SELECT 
-		WHEN room.cur==15 THEN gate.w=0
-		WHEN room.cur==16 THEN gate.b=0
-		WHEN room.cur==17 THEN gate.y=0
-		OTHERWISE NOP
+    WHEN room.cur==15 THEN gate.w=0
+    WHEN room.cur==16 THEN gate.b=0
+    WHEN room.cur==17 THEN gate.y=0
+    OTHERWISE NOP
   END
  
   room.gate=0
@@ -717,13 +717,13 @@ return
 GATE_OP:  /* open gate */
   IF room.gate~=0 THEN return  
   SELECT 
-		WHEN room.cur==15 THEN gate.w=1
-		WHEN room.cur==16 THEN gate.b=1
-		WHEN room.cur==17 THEN gate.y=1
-		OTHERWISE NOP
+    WHEN room.cur==15 THEN gate.w=1
+    WHEN room.cur==16 THEN gate.b=1
+    WHEN room.cur==17 THEN gate.y=1
+    OTHERWISE NOP
   END
   room.gate=1
-  IF debug==1 THEN call DEBUG 	
+  IF debug==1 THEN call DEBUG   
   step_delay=5
   se "[0;30;47m[18;38H      [17;38H ÎÎÎÎ "
   se park
@@ -748,8 +748,8 @@ MV_U:
   j=pl_pos.y-1 /* y pos we want to move to */
   check=RIGHT(LEFT(map.j,i),2)
   IF check ~="  " THEN DO
-  	bufferflush
-  	return
+    bufferflush
+    return
   END
    
   /* ok to move player */
@@ -766,7 +766,7 @@ return
 MV_U2:
   ckey=0
   IF pl_pos.y==minline THEN signal TOP_EXIT
-  IF room.gate==1 & pl_pos.x > 37 & pl_pos.x < 43 & pl_pos.y==16 THEN signal CASTLE_ENTRANCE  	
+  IF room.gate==1 & pl_pos.x > 37 & pl_pos.x < 43 & pl_pos.y==16 THEN signal CASTLE_ENTRANCE    
 
   /* do gate collision detect */
   IF room.gate==0 & pl_pos.x > 37 & pl_pos.x < 43 & pl_pos.y==19 THEN return
@@ -776,8 +776,8 @@ MV_U2:
   j=pl_pos.y-1 /* y pos we want to move to */
   check=RIGHT(LEFT(map.j,i),2)
   IF check ~="  " THEN DO
-  	bufferflush
-  	return
+    bufferflush
+    return
   END
    
   /* ok to move player */
@@ -795,8 +795,8 @@ MV_D:
   j=pl_pos.y+1 /* y pos we want to move to */
   check=RIGHT(LEFT(map.j,i),2)
   IF check ~="  " THEN DO
-  	bufferflush
-  	return
+    bufferflush
+    return
   END
 
   /* ok to move player */
@@ -813,7 +813,7 @@ return
 MV_D2:
   ckey=0
   IF pl_pos.y==maxline THEN DO
-  	IF exit.co==0 THEN signal BOTTOM_EXIT
+    IF exit.co==0 THEN signal BOTTOM_EXIT
     ELSE signal CASTLE_EXIT 
   END
 
@@ -822,9 +822,9 @@ MV_D2:
   j=pl_pos.y+1 /* y pos we want to move to */
   check=RIGHT(LEFT(map.j,i),2)
   IF check ~="  " THEN DO
-  	bufferflush
-  	move_player=0
-  	return
+    bufferflush
+    move_player=0
+    return
   END
 
   /* ok to move player */
@@ -841,8 +841,8 @@ MV_R:
   j=pl_pos.y   /* pl y pos won't change */ 
   check=RIGHT(LEFT(map.j,i),1)
   IF check~=" " THEN DO
-  	bufferflush
-  	return
+    bufferflush
+    return
   END
 
   /* ok to move player 1 char to right */
@@ -883,8 +883,8 @@ MV_L:
   j=pl_pos.y   /* pl y pos won't change */
   check=RIGHT(LEFT(map.j,i),1)
   IF check~=" " THEN DO
-  	bufferflush
-  	return
+    bufferflush
+    return
   END
 
   /* ok to move player to left */
@@ -952,7 +952,7 @@ CASTLE_ENTRANCE:
 return
 
 CASTLE_EXIT:
-  IF room.co==0 THEN return  		
+  IF room.co==0 THEN return      
   pl_pos.x=40; pl_pos.y=16
   exit=exit.co
   call EXIT
@@ -960,38 +960,38 @@ return
 
 EXIT:
   SELECT
-		WHEN exit=="0" THEN return
-		WHEN exit=="1" THEN call ROOM1
-		WHEN exit=="2" THEN call ROOM2
-		WHEN exit=="3" THEN call ROOM3
-		WHEN exit=="4" THEN call ROOM4
-		WHEN exit=="5" THEN call ROOM5
-		WHEN exit=="6" THEN call ROOM6
-		WHEN exit=="7" THEN call ROOM7
-		WHEN exit=="8" THEN call ROOM8
-		WHEN exit=="9" THEN call ROOM9
-		WHEN exit=="10" THEN call ROOM10
-		WHEN exit=="11" THEN call ROOM11
-		WHEN exit=="12" THEN call ROOM12
-		WHEN exit=="13" THEN call ROOM13
-		WHEN exit=="14" THEN call ROOM14
-		WHEN exit=="15" THEN call ROOM15
-		WHEN exit=="16" THEN call ROOM16
-		WHEN exit=="17" THEN call ROOM17
-		WHEN exit=="18" THEN call ROOM18
-		WHEN exit=="19" THEN call ROOM19
-		WHEN exit=="20" THEN call ROOM20
-		WHEN exit=="21" THEN call ROOM21
-		WHEN exit=="22" THEN call ROOM22
-		WHEN exit=="23" THEN call ROOM23
-		WHEN exit=="24" THEN call ROOM24
-		WHEN exit=="25" THEN call ROOM25
-		WHEN exit=="26" THEN call ROOM26
-		WHEN exit=="27" THEN call ROOM27
-		WHEN exit=="28" THEN call ROOM28
-		WHEN exit=="29" THEN call ROOM29
-		WHEN exit=="30" THEN call ROOM30
-		OTHERWISE NOP
+    WHEN exit=="0" THEN return
+    WHEN exit=="1" THEN call ROOM1
+    WHEN exit=="2" THEN call ROOM2
+    WHEN exit=="3" THEN call ROOM3
+    WHEN exit=="4" THEN call ROOM4
+    WHEN exit=="5" THEN call ROOM5
+    WHEN exit=="6" THEN call ROOM6
+    WHEN exit=="7" THEN call ROOM7
+    WHEN exit=="8" THEN call ROOM8
+    WHEN exit=="9" THEN call ROOM9
+    WHEN exit=="10" THEN call ROOM10
+    WHEN exit=="11" THEN call ROOM11
+    WHEN exit=="12" THEN call ROOM12
+    WHEN exit=="13" THEN call ROOM13
+    WHEN exit=="14" THEN call ROOM14
+    WHEN exit=="15" THEN call ROOM15
+    WHEN exit=="16" THEN call ROOM16
+    WHEN exit=="17" THEN call ROOM17
+    WHEN exit=="18" THEN call ROOM18
+    WHEN exit=="19" THEN call ROOM19
+    WHEN exit=="20" THEN call ROOM20
+    WHEN exit=="21" THEN call ROOM21
+    WHEN exit=="22" THEN call ROOM22
+    WHEN exit=="23" THEN call ROOM23
+    WHEN exit=="24" THEN call ROOM24
+    WHEN exit=="25" THEN call ROOM25
+    WHEN exit=="26" THEN call ROOM26
+    WHEN exit=="27" THEN call ROOM27
+    WHEN exit=="28" THEN call ROOM28
+    WHEN exit=="29" THEN call ROOM29
+    WHEN exit=="30" THEN call ROOM30
+    OTHERWISE NOP
   END
   call DRAW_BG
   call DRAW_PL
@@ -1213,7 +1213,7 @@ ROOM27:  /* black castle foyer */
   room.c="[0;47;31m"; room.fc="[0;31m"; room.bc="[47m"
   exit.t=28; exit.r=28; exit.b=28; exit.l=28; exit.ci=0; exit.co=16
   IF difficulty > 1 THEN DO
-  	exit.t=22; exit.r=22; exit.b=22; exit.l=22
+    exit.t=22; exit.r=22; exit.b=22; exit.l=22
   END
   call MIDDLE_MAP
 return

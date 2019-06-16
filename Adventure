@@ -19,26 +19,30 @@ changewhere "BBS Adventure "||ver
 **                                                                        **
 \**************************************************************************/
 debug=0  /* 0 = disabled, 1 = enabled */
-flashlight=3  /* 0=disabled, 1=small, 2=medium, 3=large */
+flashlight=0  /* 0=disabled, 1=small, 2=medium, 3=large */
 
 /* flashlight defaults (keep even numbers) */
 SELECT
   WHEN flashlight==1 THEN flash_width=10  /* small flashlight */
   WHEN flashlight==2 THEN flash_width=14  /* medium flashlight */
   WHEN flashlight==3 THEN flash_width=18  /* large flashlight */
+  OTHERWISE NOP
 END
-flash_height=flash_width/2
-flash_dx=(flash_width-2)/2
-flash_dy=(flash_height-1)/2
+
+IF flashlight ~= 0 THEN DO
+  flash_height=flash_width/2
+  flash_dx=(flash_width-2)/2
+  flash_dy=(flash_height-1)/2
+END
 
 /* default options */
 difficulty=1  /* 1 = easy, 2 = normal, 3 = hard */
 attack=0  /* 0 = dragons delay before attack, 1 = dragons attack instantly */
 fear=0  /* 0 = dragons do not fear sword, 1 = dragons fear sword */ 
 
-/* used for calulations only! */
-/* changing these values will */ 
-/* not change the display     */
+/* used for calulations only!     */
+/* changing these values will not */ 
+/* adapt the users display        */
 minline=1; maxline=24; mincol=2; maxcol=79
 
 clear_scr="[40mf1@4" /* black background, clear screen, disable more */
@@ -538,9 +542,15 @@ START:
   call ROOM17   
   call DRAW_BG
   
+  /* init objects */
+  call OBJECTS
+  
   /* init player */
-  pl_pos.x=40; pl_pos.y=20  /* player position */
+  pl.x=40; pl.y=20  /* player position */
+  pl.w=1; pl.h=0
+  pl.room=room.cur
   call DRAW_PL
+  call DRAW_OB
   
   /* main loop */
   RESUME:
@@ -550,7 +560,7 @@ START:
     gc
     d=C2D(result)
     SELECT
-      WHEN d==81 | d==77 THEN call MAIN_MENU          /* Q or M */
+      WHEN d==81 | d==77 THEN call MAIN_MENU  /* Q or M */
       WHEN d==32 | d==13 THEN call DROPITEM   /* Space or Enter */
       WHEN d==91 THEN ckey=1                  /* [ (detect cursor keys) */
       WHEN (ckey~=1 & d==87) | (ckey==1 & d==65) THEN call MV_U2  /* W or up arrow */
@@ -576,7 +586,7 @@ DEBUG:
 return
 
 DEBUG_PL:
-  se "[3;2HPL.X:" || pl_pos.x || " PL.Y:" || pl_pos.y || "  "
+  se "[3;2HPL.X:" || pl.x || " PL.Y:" || pl.y || "  "
   se "[43m[4;2HFlash X:"|| light.x || " Y:" || light.y || " W:" || light.w || " H:" || light.h
 return
 
@@ -586,42 +596,42 @@ return
 
 REFRESH:  /* redraw entire screen */
   call DRAW_BG
-  call DRAW_OB
   call DRAW_PL
+  call DRAW_OB
 return
 
 DRAW_PL:  /* draw player */
   IF room.cur==0 THEN return
   IF debug==1 THEN call DEBUG_PL   
   IF flashlight>0 & dark==1 THEN DO
-    light.x=pl_pos.x-flash_dx; light.y=pl_pos.y-flash_dy; light.w=flash_width; light.h=flash_height
+    light.x=pl.x-flash_dx; light.y=pl.y-flash_dy; light.w=flash_width; light.h=flash_height
 
-    /* handle left edge */
+    /* handle left screen edge */
     IF light.x<mincol THEN DO
       light.x=mincol
-      light.w=light.w-(flash_dx-(pl_pos.x-light.x))
+      light.w=light.w-(flash_dx-(pl.x-light.x))
     END
     
-    /* handle top edge */
+    /* handle top screen edge */
     IF light.y<1 THEN DO 
       light.y=1
-      light.h=light.h-(flash_dy-(pl_pos.y-light.y))
+      light.h=light.h-(flash_dy-(pl.y-light.y))
     END
     
-    /* handle right edge */
+    /* handle right screen edge */
     IF light.x+light.w-1>maxcol THEN light.w=light.w-((light.x+light.w-1)-maxcol)
     
-    /* handle bottom edge */
+    /* handle bottom screen edge */
     IF light.y+light.h-1>maxline THEN light.h=light.h-((light.y+light.h-1)-maxline)
       
     row=0
-    DO i=light.y to light.y+light.h-1
+    DO i=light.y TO light.y+light.h-1
       se "[" || light.y + row || ";" || light.x || "H[43m" || SUBSTR(map.i, light.x-1, light.w)
       row = row + 1
     END 
   END
         
-  se "["||pl_pos.y||";"||pl_pos.x||"H"||room.fc||"лл"
+  se "["||pl.y||";"||pl.x||"H"||room.fc||"лл"
   se park
 return
 
@@ -630,17 +640,23 @@ ERASE_PL:
     
   IF flashlight>0 & dark==1 THEN DO
     row=0
-    DO i=light.y to light.y+light.h-1
+    DO i=light.y TO light.y+light.h-1
       se "[" || light.y + row || ";" || light.x || "H[47m" || SUBSTR(map.i, light.x-1, light.w)
       row= row + 1
     END
   END
   
-  se "["||pl_pos.y||";"||pl_pos.x||"H"||room.bc||"  "
+  se "["||pl.y||";"||pl.x||"H"||room.bc||"  "
 return
 
 /* disabled in main loop*/
 DRAW_OB:  /* draw objects (in main loop) */
+  DO i=0 TO maxitem
+    o=item.i  
+    IF obj.o.room==pl.room THEN DO
+      se "["||obj.o.y||";"||obj.o.x||"H"||room.bc||obj.o.col||obj.o.spr||room.fc
+    END
+  END
   se park  
 return
 
@@ -651,7 +667,7 @@ return
   
 DRAW_ROOM:
   se clear_scr
-  DO i=1 to maxline
+  DO i=1 TO maxline
     line="[40m "room.c||map.i
     m_index = index(line,"M")
     IF m_index ~=0 THEN DO
@@ -693,22 +709,22 @@ GATE_CL:  /* close gate */
   IF debug==1 THEN call DEBUG 
   step_delay=5 
   se "[0;30;47m[15;38H зззз [16;38H ЮЮЮЮ "
-  IF pl_pos.x > 35 & pl_pos.x < 43 & pl_pos.y == 16 THEN DO
-    pl_pos.y=17
+  IF pl.x > 35 & pl.x < 43 & pl.y == 16 THEN DO
+    pl.y=17
     call DRAW_PL
   END 
   se park
   call delay(step_delay)
   se "[0;30;47m[16;38H зззз [17;38H ЮЮЮЮ "
-  IF pl_pos.x > 35 & pl_pos.x < 43 & pl_pos.y == 17 THEN DO
-    pl_pos.y=18
+  IF pl.x > 35 & pl.x < 43 & pl.y == 17 THEN DO
+    pl.y=18
     call DRAW_PL
   END 
   se park
   call delay(step_delay)
   se "[0;30;47m[17;38H зззз [18;38H ЮЮЮЮ "
-  IF pl_pos.x > 35 & pl_pos.x < 43 & pl_pos.y == 18 THEN DO 
-    pl_pos.y=19
+  IF pl.x > 35 & pl.x < 43 & pl.y == 18 THEN DO 
+    pl.y=19
     call DRAW_PL
   END
   se park
@@ -737,15 +753,15 @@ return
 
 MV_U:
   ckey=0
-  IF pl_pos.y==minline THEN signal TOP_EXIT
-  IF room.gate==1 & pl_pos.x > 37 & pl_pos.x < 43 & pl_pos.y==16 THEN signal CASTLE_ENTRANCE
+  IF pl.y==minline THEN signal TOP_EXIT
+  IF room.gate==1 & pl.x > 37 & pl.x < 43 & pl.y==16 THEN signal CASTLE_ENTRANCE
 
   /* do gate collision detect */
-  IF room.gate==0 & pl_pos.x > 37 & pl_pos.x < 43 & pl_pos.y==19 THEN return
+  IF room.gate==0 & pl.x > 37 & pl.x < 43 & pl.y==19 THEN return
 
   /* do map collision detect */
-  i=pl_pos.x   /* +1 pl is 2 char wide, -1 map shift */
-  j=pl_pos.y-1 /* y pos we want to move to */
+  i=pl.x   /* +1 pl is 2 char wide, -1 map shift */
+  j=pl.y-1 /* y pos we want to move to */
   check=RIGHT(LEFT(map.j,i),2)
   IF check ~="  " THEN DO
     bufferflush
@@ -758,41 +774,51 @@ MV_U:
     return
   END
   call ERASE_PL
-  pl_pos.y=pl_pos.y-1
+  pl.y=pl.y-1
   call DRAW_PL
   up_flag=0
 return
 
 MV_U2:
   ckey=0
-  IF pl_pos.y==minline THEN signal TOP_EXIT
-  IF room.gate==1 & pl_pos.x > 37 & pl_pos.x < 43 & pl_pos.y==16 THEN signal CASTLE_ENTRANCE    
+  IF pl.y==minline THEN signal TOP_EXIT
+  IF room.gate==1 & pl.x > 37 & pl.x < 43 & pl.y==16 THEN signal CASTLE_ENTRANCE    
 
   /* do gate collision detect */
-  IF room.gate==0 & pl_pos.x > 37 & pl_pos.x < 43 & pl_pos.y==19 THEN return
+  IF room.gate==0 & pl.x > 37 & pl.x < 43 & pl.y==19 THEN return
 
   /* do map collision detect */
-  i=pl_pos.x   /* +1 pl is 2 char wide, -1 for map shift  */
-  j=pl_pos.y-1 /* y pos we want to move to */
+  i=pl.x   /* +1 pl is 2 char wide, -1 for map shift  */
+  j=pl.y-1 /* y pos we want to move to */
   check=RIGHT(LEFT(map.j,i),2)
   IF check ~="  " THEN DO
     bufferflush
     return
   END
-   
+
+  /* do item collision detect */
+  DO i=0 TO maxitem
+  	o=item.i
+  	IF pl.room==obj.o.room & pl.y-1==obj.o.y+obj.o.h &,
+  		 pl.x+pl.w>=obj.o.x & pl.x<=obj.o.x+obj.o.w THEN do
+  		se item.i
+  		return
+  	END 
+  END
+    
   /* ok to move player */
   call ERASE_PL
-  pl_pos.y=pl_pos.y-1
+  pl.y=pl.y-1
   call DRAW_PL
 return
 
 MV_D:
   ckey=0
-  IF pl_pos.y==maxline THEN signal BOTTOM_EXIT
+  IF pl.y==maxline THEN signal BOTTOM_EXIT
 
   /* do map collision detect */
-  i=pl_pos.x   /* +1 pl is 2 char wide, -1 map shift */
-  j=pl_pos.y+1 /* y pos we want to move to */
+  i=pl.x   /* +1 pl is 2 char wide, -1 map shift */
+  j=pl.y+1 /* y pos we want to move to */
   check=RIGHT(LEFT(map.j,i),2)
   IF check ~="  " THEN DO
     bufferflush
@@ -805,70 +831,91 @@ MV_D:
     return
   END  
   call ERASE_PL
-  pl_pos.y=pl_pos.y+1
+  pl.y=pl.y+1
   call DRAW_PL
   dn_flag=0
 return
 
 MV_D2:
   ckey=0
-  IF pl_pos.y==maxline THEN DO
+  IF pl.y==maxline THEN DO
     IF exit.co==0 THEN signal BOTTOM_EXIT
     ELSE signal CASTLE_EXIT 
   END
 
   /* do map collision detect */
-  i=pl_pos.x   /* +1 pl is 2 char wide, -1 for map shift */
-  j=pl_pos.y+1 /* y pos we want to move to */
+  i=pl.x   /* +1 pl is 2 char wide, -1 for map shift */
+  j=pl.y+1 /* y pos we want to move to */
   check=RIGHT(LEFT(map.j,i),2)
   IF check ~="  " THEN DO
     bufferflush
     move_player=0
     return
   END
+  
+  /* do item collision detect */
+  DO i=0 TO maxitem
+  	o=item.i
+  	IF pl.room==obj.o.room & pl.y+1==obj.o.y+obj.o.h &,
+  		 pl.x+pl.w>=obj.o.x & pl.x<=obj.o.x+obj.o.w THEN do
+  		se item.i
+  		return
+  	END 
+  END
 
   /* ok to move player */
   call ERASE_PL
-  pl_pos.y=pl_pos.y+1
+  pl.y=pl.y+1
   call DRAW_PL
 return
 
 MV_R:
-  IF pl_pos.x==maxcol-1 THEN signal RIGHT_EXIT
+  IF pl.x==maxcol-1 THEN signal RIGHT_EXIT
   
   /* do map collision detect */
-  i=pl_pos.x+1 /* x pos we want to move to. +2 pl is 2 char wide, -1 map shift */
-  j=pl_pos.y   /* pl y pos won't change */ 
+  i=pl.x+1 /* x pos we want to move to. +2 pl is 2 char wide, -1 map shift */
+  j=pl.y   /* pl y pos won't change */ 
   check=RIGHT(LEFT(map.j,i),1)
   IF check~=" " THEN DO
     bufferflush
     return
   END
-
+  
   /* ok to move player 1 char to right */
   call ERASE_PL
-  pl_pos.x=pl_pos.x+1
+  pl.x=pl.x+1
   call DRAW_PL
 return
 
 MV_R2:
   ckey=0
-  IF pl_pos.x==maxcol-1 THEN signal RIGHT_EXIT
+  IF pl.x==maxcol-1 THEN signal RIGHT_EXIT
   
   /* do map collision detect */
-  i=pl_pos.x+2 /* x pos we want to move to. +3 pl is 2 char wide, -1 map shift  */
-  j=pl_pos.y   /* pl y pos won't change */
+  i=pl.x+2 /* x pos we want to move to. +3 pl is 2 char wide, -1 map shift  */
+  j=pl.y   /* pl y pos won't change */
   check=RIGHT(LEFT(map.j,i),2)
-  IF pl_pos.x<77 & check=="  " THEN DO
+  
+  /* do item collision detect */
+  DO i=0 TO maxitem
+  	o=item.i
+  	IF pl.room==obj.o.room & pl.y>=obj.o.y & pl.y<=obj.o.y+obj.o.h &,
+  		(pl.x+pl.w+1==obj.o.x | pl.x+pl.w+2==obj.o.x) THEN do
+  		se item.i
+  		return
+  	END 
+  END
+
+  IF pl.x<77 & check=="  " THEN DO
     /* ok to move player 2 chars to right */
     call ERASE_PL
-    pl_pos.x=pl_pos.x+2
+    pl.x=pl.x+2
     call DRAW_PL
   END
   ELSE IF LEFT(check,1)==" " THEN DO
     /* ok to move player 1 char to right */
     call ERASE_PL
-    pl_pos.x=pl_pos.x+1
+    pl.x=pl.x+1
     call DRAW_PL
   END
   ELSE bufferflush
@@ -876,11 +923,11 @@ return
 
 MV_L:
   ckey=0
-  IF pl_pos.x==2 THEN signal LEFT_EXIT
+  IF pl.x==2 THEN signal LEFT_EXIT
 
   /* do map collision detect */
-  i=pl_pos.x-2 /* x pos we want to move to. -1 pl is 2 char wide, -1 map shift */
-  j=pl_pos.y   /* pl y pos won't change */
+  i=pl.x-2 /* x pos we want to move to. -1 pl is 2 char wide, -1 map shift */
+  j=pl.y   /* pl y pos won't change */
   check=RIGHT(LEFT(map.j,i),1)
   IF check~=" " THEN DO
     bufferflush
@@ -889,28 +936,39 @@ MV_L:
 
   /* ok to move player to left */
   call ERASE_PL
-  pl_pos.x=pl_pos.x-1
+  pl.x=pl.x-1
   call DRAW_PL
 return
 
 MV_L2:
   ckey=0
-  IF pl_pos.x==2 THEN signal LEFT_EXIT
+  IF pl.x==2 THEN signal LEFT_EXIT
 
   /* do map collision detect */
-  i=pl_pos.x-2 /* x pos we want to move to. -1 pl is 2 char wide, -1 map shift */
-  j=pl_pos.y   /* pl y pos won't change */
+  i=pl.x-2 /* x pos we want to move to. -1 pl is 2 char wide, -1 map shift */
+  j=pl.y   /* pl y pos won't change */
   check=RIGHT(LEFT(map.j,i),2)
-  IF pl_pos.x>3 & check=="  " THEN DO
+  
+  /* do item collision detect */
+  DO i=0 TO maxitem
+  	o=item.i
+  	IF pl.room==obj.o.room & pl.y>=obj.o.y & pl.y<=obj.o.y+obj.o.h &,
+  		(pl.x-1==obj.o.x+obj.o.w | pl.x-2==obj.o.x+obj.o.w) THEN do
+  		se item.i
+  		return
+  	END 
+  END
+  
+  IF pl.x>3 & check=="  " THEN DO
     /* ok to move player 2 chars to left */
     call ERASE_PL
-    pl_pos.x=pl_pos.x-2
+    pl.x=pl.x-2
     call DRAW_PL
     END
   ELSE IF RIGHT(check,1)==" " THEN DO  
     /* ok to move player 1 char to left */
     call ERASE_PL
-    pl_pos.x=pl_pos.x-1
+    pl.x=pl.x-1
     call DRAW_PL
   END
   ELSE bufferflush
@@ -918,42 +976,42 @@ return
 
 TOP_EXIT:
   IF exit.t==0 THEN return  
-  pl_pos.y=24
+  pl.y=24
   exit=exit.t
   call EXIT
 return
 
 BOTTOM_EXIT:
   IF room.b==0 THEN return  
-  pl_pos.y=1
+  pl.y=1
   exit=exit.b
   call EXIT
 return
 
 LEFT_EXIT:
   IF room.l==0 THEN return  
-  pl_pos.x=78
+  pl.x=78
   exit=exit.l
   call EXIT
 return
 
 RIGHT_EXIT:
   IF room.r==0 THEN return
-  pl_pos.x=2
+  pl.x=2
   exit=exit.r
   call EXIT
 return
 
 CASTLE_ENTRANCE:
   IF room.ci==0 THEN return 
-  pl_pos.y=24
+  pl.y=24
   exit=exit.ci
   call EXIT
 return
 
 CASTLE_EXIT:
   IF room.co==0 THEN return      
-  pl_pos.x=40; pl_pos.y=16
+  pl.x=40; pl.y=16
   exit=exit.co
   call EXIT
 return
@@ -993,8 +1051,10 @@ EXIT:
     WHEN exit=="30" THEN call ROOM30
     OTHERWISE NOP
   END
+  pl.room=room.cur
   call DRAW_BG
   call DRAW_PL
+  call DRAW_OB
 return
 
 /** DATA ******************************************************************/
@@ -1941,6 +2001,83 @@ WCMAZE3_MAP:
   map.22="         лллл                                                    лллл         "
   map.23="ллллллллллллллллллллллллллллллл                ллллллллллллллллллллллллллллллл"
   map.24="ллллллллллллллллллллллллллллллл                ллллллллллллллллллллллллллллллл"
+return
+
+OBJECTS:
+  _key="вФo"
+  _sword="<--"
+  
+  _magnet=""
+  _bridge=""
+  _chalice=""
+  
+  _dot="."
+  
+  maxitem=3
+  item.0="YKEY"
+  item.1="BKEY"
+  item.2="WKEY"
+  item.3="SWORD"
+  
+  obj.ykey.room=17
+  obj.ykey.x=17
+  obj.ykey.y=11
+  obj.ykey.w=2
+  obj.ykey.h=0
+  obj.ykey.col="[1;33m"
+  obj.ykey.spr=_key
+  
+  obj.bkey.room=29
+  obj.bkey.x=17
+  obj.bkey.y=11
+  obj.bkey.w=2
+  obj.bkey.h=0
+  obj.bkey.col="[2;30m"
+  obj.bkey.spr=_key
+  
+  obj.wkey.room=14
+  obj.wkey.x=17
+  obj.wkey.y=11
+  obj.wkey.w=2
+  obj.wkey.h=0
+  obj.wkey.col="[1;37m"
+  obj.wkey.spr=_key
+  
+  obj.sword.room=18
+  obj.sword.x=17
+  obj.sword.y=11
+  obj.sword.w=2
+  obj.sword.h=0
+  obj.sword.col="[1;33m"
+  obj.sword.spr=_sword
+  
+  obj.bridge.room=4
+  obj.bridge.x=1 /* fix */
+  obj.bridge.y=1 /* fix */
+  obj.bridge.col="[2;35m"
+  obj.bridge.spr=_bridge
+  
+  obj.chalice.room=28
+  obj.chalice.x=1 /* fix */
+  obj.chalice.y=1 /* fix */
+  obj.chalice.col="[2;35m" /* fix */
+  obj.chalice.spr=_chalice
+  
+  obj.magnet.room=27
+  obj.magnet.x=1 /* fix */
+  obj.magnet.y=1 /* fix */
+  obj.magnet.col="[2;30m"
+  obj.magnet.spr=_magnet
+  
+  IF difficulty==2 THEN DO
+    obj.ykey.room=9
+    obj.bkey.room=25
+    obj.wkey.room=6
+    obj.sword.room=17
+    obj.bridge.room=11
+    obj.chalice.room=20
+    obj.magnet.room=14
+  END
 return
 
 /** ERROR CHECKING *******************************************************/

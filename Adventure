@@ -19,21 +19,8 @@ changewhere "BBS Adventure "||ver
 **                                                                        **
 \**************************************************************************/
 debug=0  /* 0 = disabled, 1 = enabled */
+transparent_items=1 /* 0 = disaled, 1 = enabled */
 flashlight=0  /* 0=disabled, 1=small, 2=medium, 3=large */
-
-/* flashlight defaults (keep even numbers) */
-SELECT
-  WHEN flashlight==1 THEN flash_width=10  /* small flashlight */
-  WHEN flashlight==2 THEN flash_width=14  /* medium flashlight */
-  WHEN flashlight==3 THEN flash_width=18  /* large flashlight */
-  OTHERWISE NOP
-END
-
-IF flashlight ~= 0 THEN DO
-  flash_height=flash_width/2
-  flash_dx=(flash_width-2)/2
-  flash_dy=(flash_height-1)/2
-END
 
 /* default options */
 difficulty=1  /* 1 = easy, 2 = normal, 3 = hard */
@@ -48,14 +35,7 @@ minline=1; maxline=24; mincol=2; maxcol=79
 clear_scr="[40mf1@4" /* black background, clear screen, disable more */
 park="f0" /* returns cursor to home position without clearing screen */
 
-half_step=0 /* to replace up_flag and dn_flag */
-up_flag=1; dn_flag=1 /* depreciated: still used by MV_U and MV_D  */
 menu_yadv=1  /* menu y advance */
-
-/* init kingdom */
-gate.y=0  /* 0=close, 1=open */
-gate.b=0  /* 0=close, 1=open */
-gate.w=0  /* 0=close, 1=open */
 
 call ROOM0  /* splash screen */
 call DRAW_BG
@@ -65,6 +45,7 @@ attack_items.0="delayed"
 attack_items.1="instant"
 fear_items.0="off"
 fear_items.1=" on"
+
 game_running=0;
 difftotal=0 
  
@@ -164,7 +145,7 @@ IN_GAME_SELECT:
     END
     WHEN item.cur==1 THEN signal OPTIONS
     WHEN item.cur==2 THEN signal CONTROLS
-    WHEN item.cur==3 THEN call REINCARNATE
+    WHEN item.cur==3 THEN signal REINCARNATE
     WHEN item.cur==4 THEN signal QUIT
     OTHERWISE NOP
   END
@@ -321,12 +302,12 @@ CLEARQUIP:
 return
 
 DIFFQUIP:
-  diffquip.1="2 castles, 2 dragons"
-  diffquip.2="small kingdom       "
-  diffquip.3="3 castles, 3 dragons"
-  diffquip.4="full kingdom        "
-  diffquip.5="3 castles, 3 dragons"
-  diffquip.6="objects randomized  "
+  diffquip.1="2 castles, 2 dragons,"
+  diffquip.2="no bat, small kingdom"
+  diffquip.3="3 castles, 3 dragons,"
+  diffquip.4="1 bat, full kingdom  " 
+  diffquip.5="3 castles, 3 dragons,"
+  diffquip.6="1 bat, random objects"
   
   i= difficulty + (difficulty-1)
   j= i+1
@@ -337,10 +318,10 @@ DIFFQUIP:
 return
 
 ATTACKQUIP:  
-  attackquip.0="dragons wait a bit  "
-  attackquip.1="before attacking    "
-  attackquip.2="dragons attack      "
-  attackquip.3="instantly           "
+  attackquip.0="dragons wait a bit   "
+  attackquip.1="before attacking     "
+  attackquip.2="dragons attack       "
+  attackquip.3="instantly            "
   
   i=attack*2
   j=i+1
@@ -351,10 +332,10 @@ ATTACKQUIP:
 return
 
 FEARQUIP:  
-  fearquip.0="dragons do not fear "
-  fearquip.1="the sword           "
-  fearquip.2="dragons run from the"
-  fearquip.3="sword               "
+  fearquip.0="dragons do not fear  "
+  fearquip.1="the sword            "
+  fearquip.2="dragons run from the "
+  fearquip.3="sword                "
   
   i=fear*2
   j=i+1
@@ -539,16 +520,36 @@ return
 /** GAME START **/
 START:
   game_running=1
+  
+  /* init castle gates */
+  gate.y=0  /* 0=close, 1=open */
+  gate.b=0  /* 0=close, 1=open */
+  gate.w=0  /* 0=close, 1=open */
+  
+  /* init flashlight (keep even numbers here) */
+  SELECT
+    WHEN flashlight==1 THEN flash_width=10  /* small flashlight */
+    WHEN flashlight==2 THEN flash_width=14  /* medium flashlight */
+    WHEN flashlight==3 THEN flash_width=18  /* large flashlight */
+    OTHERWISE NOP
+  END
+  
+  IF flashlight ~= 0 THEN DO
+    flash_height=flash_width/2
+    flash_dx=(flash_width-2)/2
+    flash_dy=(flash_height-1)/2
+  END
+
+  call INIT_OBJECTS  /* init objects */
+
+  REINCARNATE:
+  call INIT_PLAYER  /* init player */
+  
+  half_step=0 /* to replace up_flag and dn_flag */
+  up_flag=1; dn_flag=1 /* depreciated: still used by MV_U and MV_D  */
+  
   call ROOM17   
   call DRAW_BG
-  
-  /* init objects */
-  call OBJECTS
-  
-  /* init player */
-  pl.x=40; pl.y=20  /* player position */
-  pl.w=1; pl.h=0
-  pl.room=room.cur
   call DRAW_PL
   call DRAW_OB
   
@@ -561,7 +562,7 @@ START:
     d=C2D(result)
     SELECT
       WHEN d==81 | d==77 THEN call MAIN_MENU  /* Q or M */
-      WHEN d==32 | d==13 THEN call DROPITEM   /* Space or Enter */
+      WHEN d==32 | d==13 THEN call DROP       /* Space or Enter */
       WHEN d==91 THEN ckey=1                  /* [ (detect cursor keys) */
       WHEN (ckey~=1 & d==87) | (ckey==1 & d==65) THEN call MV_U2  /* W or up arrow */
       WHEN (ckey~=1 & d==83) | (ckey==1 & d==66) THEN call MV_D2  /* S or down arrow */
@@ -581,17 +582,15 @@ QUIT:
   exit
   
 DEBUG:
-  se "[1;2HRoom:"|| room.cur || "Gates R:" || room.gate || " W:" || gate.w || " B:" || gate.b || " Y:" || gate.y
-  se "[2;2HExits T:" || exit.t || " R:" || exit.r || " B:" || exit.b || " L:" || exit.l || " CI:" || exit.ci || " CO:" || exit.co
+  IF game_running~=1 THEN return
+  se "[1;2HRoom:"|| room.cur || " Gates R:" || room.gate || " W:" || gate.w || " B:" || gate.b || " Y:" || gate.y
+  se "[2;2HExits T:" || te || " R:" || re || " B:" || be || " L:" || le || " CI:" || ci || " CO:" || co
 return
 
 DEBUG_PL:
+  IF game_running~=1 THEN return
   se "[3;2HPL.X:" || pl.x || " PL.Y:" || pl.y || "  "
-  se "[43m[4;2HFlash X:"|| light.x || " Y:" || light.y || " W:" || light.w || " H:" || light.h
-return
-
-REINCARNATE:
-  call START
+  IF flashlight>0 THEN se "[43m[4;2HFlash X:"|| light.x || " Y:" || light.y || " W:" || light.w || " H:" || light.h
 return
 
 REFRESH:  /* redraw entire screen */
@@ -630,6 +629,8 @@ DRAW_PL:  /* draw player */
       row = row + 1
     END 
   END
+  
+  call EQUIP
         
   se "["||pl.y||";"||pl.x||"H"||room.fc||"лл"
   se park
@@ -646,18 +647,113 @@ ERASE_PL:
     END
   END
   
+  /* erase equipped object */
+  IF pl.equip > -1 THEN DO
+    i = pl.equip
+    o = item.i
+    IF obj.o.x<mincol | obj.o.x+obj.o.w>maxcol | obj.o.y<minline | obj.o.y+obj.o.h>maxline |, 
+       (room.gate==1 & pl.x > 37 & pl.x < 43 & pl.y==16 & obj.o.offset.y==-1) |,
+       (room.gate==0 & pl.y==19 & obj.o.offset.y==-1 & obj.o.x+obj.o.w>38 & obj.o.x<43) THEN NOP
+    ELSE DO
+      row=0
+      DO i=obj.o.y TO obj.o.y+obj.o.h
+        str=SUBSTR(map.i, obj.o.x-1, obj.o.w+1)
+        m_index = index(str,"M")
+        IF m_index ~=0 THEN DO
+          newstr = LEFT(str,m_index-1) || "[22;30;47mл" || room.c || RIGHT(str,length(str)-m_index)
+          str = newstr
+        END
+        se "["||obj.o.y + row||";"||obj.o.x||"H"||room.c||str
+      END
+    END
+  END
+  
+  /* erase player */
   se "["||pl.y||";"||pl.x||"H"||room.bc||"  "
 return
 
-/* disabled in main loop*/
-DRAW_OB:  /* draw objects (in main loop) */
+/* taken out of main loop*/
+DRAW_OB:  /* draw objects */
   DO i=0 TO maxitem
     o=item.i  
-    IF obj.o.room==pl.room THEN DO
-      se "["||obj.o.y||";"||obj.o.x||"H"||room.bc||obj.o.col||obj.o.spr||room.fc
+    IF obj.o.room==pl.room & pl.equip~=i THEN DO
+      IF obj.o.x<mincol | obj.o.x+obj.o.w>maxcol | obj.o.y<minline | obj.o.y+obj.o.h>maxline THEN NOP
+      ELSE se "["||obj.o.y||";"||obj.o.x||"H"||room.bc||obj.o.col||obj.o.spr||room.fc
     END
   END
   se park  
+return
+
+DRAW_ITEM: /* TODO: fix item interactions */
+  ARG i
+  o=item.i
+  IF obj.o.x<mincol | obj.o.x+obj.o.w>maxcol | obj.o.y<minline | obj.o.y+obj.o.h>maxline |,
+     (room.gate==1 & pl.x > 37 & pl.x < 43 & pl.y==16 & obj.o.offset.y==-1) |, 
+     (room.gate==0 & pl.y==19 & obj.o.offset.y==-1 & obj.o.x+obj.o.w>38 & obj.o.x<43) THEN return
+  IF obj.o.room==pl.room THEN DO
+    IF transparent_items==1 & obj.o.w==2 THEN DO
+      /* get map data underneath item */
+      l=obj.o.y
+      map_str=SUBSTR(map.l, obj.o.x-1, obj.o.w+1)
+      
+      /* insert background colors based on map data */
+      SELECT
+        WHEN map_str=="л  " THEN DO
+          sbc1=room.bc2; sbc2=room.bc; sbc3=room.bc
+          call INSERT_BC
+        END
+        WHEN map_str=="лл " THEN DO
+          sbc1=room.bc2; sbc2=room.bc2; sbc3=room.bc
+          call INSERT_BC
+        END
+        WHEN map_str=="ллл" THEN DO 
+          sbc1=room.bc2; sbc2=room.bc2; sbc3=room.bc2
+          call INSERT_BC
+        END
+        WHEN map_str==" лл" THEN DO
+          sbc1=room.bc; sbc2=room.bc2; sbc3=room.bc2
+          call INSERT_BC
+        END
+        WHEN map_str=="  л" THEN DO
+          sbc1=room.bc; sbc2=room.bc; sbc3=room.bc2
+          call INSERT_BC
+        END       
+        WHEN map_str=="M  " THEN DO
+          sbc1="[40m"; sbc2=room.bc; sbc3=room.bc
+          call INSERT_BC
+        END
+        WHEN map_str==" M " THEN DO
+          sbc1=room.bc; sbc2="[40m"; sbc3=room.bc
+          call INSERT_BC
+        END
+        WHEN map_str=="  M" THEN DO 
+          sbc1=room.bc; sbc2=room.bc; sbc3="[40m"
+          call INSERT_BC
+        END
+        WHEN map_str=="Mлл" THEN DO
+          sbc1="[40m"; sbc2=room.bc2; sbc3=room.bc2
+          call INSERT_BC
+        END
+        WHEN map_str=="лMл" THEN DO 
+          sbc1=room.bc2; sbc2="[40m"; sbc3=room.bc2
+          call INSERT_BC
+        END
+        WHEN map_str=="ллM" THEN DO
+          sbc1=room.bc2; sbc2=room.bc2; sbc3="[40m"
+          call INSERT_BC
+        END      
+        OTHERWISE sprite=obj.o.spr
+      END
+      se "["||obj.o.y||";"||obj.o.x||"H"||obj.o.col||sprite||room.fc
+    END
+    ELSE se "["||obj.o.y||";"||obj.o.x||"H"||obj.o.col||obj.o.spr||room.fc
+  END
+return
+
+INSERT_BC:
+  sprite = INSERT(sbc3,obj.o.spr,2)
+  sprite = INSERT(sbc2,sprite,1)
+  sprite = INSERT(sbc1,sprite,0)
 return
 
 DRAW_BG:  /* draw background (not in main loop) */
@@ -669,7 +765,7 @@ DRAW_ROOM:
   se clear_scr
   DO i=1 TO maxline
     line="[40m "room.c||map.i
-    m_index = index(line,"M")
+    m_index = INDEX(line,"M")
     IF m_index ~=0 THEN DO
       newline = LEFT(line,m_index-1) || "[0;30;47mл"room.c || RIGHT(line,length(line)-m_index)
       line = newline
@@ -751,7 +847,7 @@ GATE_OP:  /* open gate */
   se park
 return 
 
-MV_U:
+MV_U: /* depreciated */
   ckey=0
   IF pl.y==minline THEN signal TOP_EXIT
   IF room.gate==1 & pl.x > 37 & pl.x < 43 & pl.y==16 THEN signal CASTLE_ENTRANCE
@@ -786,7 +882,14 @@ MV_U2:
 
   /* do gate collision detect */
   IF room.gate==0 & pl.x > 37 & pl.x < 43 & pl.y==19 THEN return
-
+  IF (pl.equip==0 & pl.room==17 & gate.y==0) |,
+     (pl.equip==1 & pl.room==16 & gate.b==0) |,
+     (pl.equip==2 & pl.room==15 & gate.w==0) THEN DO
+    i=pl.equip
+    o=item.i
+    IF obj.o.y==19 & obj.o.x>36 & obj.o.x<43 THEN call GATE_OP
+  END
+  
   /* do map collision detect */
   i=pl.x   /* +1 pl is 2 char wide, -1 for map shift  */
   j=pl.y-1 /* y pos we want to move to */
@@ -798,21 +901,21 @@ MV_U2:
 
   /* do item collision detect */
   DO i=0 TO maxitem
-  	o=item.i
-  	IF pl.room==obj.o.room & pl.y-1==obj.o.y+obj.o.h &,
-  		 pl.x+pl.w>=obj.o.x & pl.x<=obj.o.x+obj.o.w THEN do
-  		se item.i
-  		return
-  	END 
+    o=item.i
+    IF pl.room==obj.o.room & pl.y-1==obj.o.y+obj.o.h &,
+       pl.x+pl.w>=obj.o.x & pl.x<=obj.o.x+obj.o.w THEN do
+      call grab(i, "U")
+    END 
   END
     
   /* ok to move player */
   call ERASE_PL
   pl.y=pl.y-1
+  
   call DRAW_PL
 return
 
-MV_D:
+MV_D:  /* depreciated */
   ckey=0
   IF pl.y==maxline THEN signal BOTTOM_EXIT
 
@@ -839,7 +942,7 @@ return
 MV_D2:
   ckey=0
   IF pl.y==maxline THEN DO
-    IF exit.co==0 THEN signal BOTTOM_EXIT
+    IF co==0 THEN signal BOTTOM_EXIT
     ELSE signal CASTLE_EXIT 
   END
 
@@ -849,27 +952,26 @@ MV_D2:
   check=RIGHT(LEFT(map.j,i),2)
   IF check ~="  " THEN DO
     bufferflush
-    move_player=0
     return
   END
   
   /* do item collision detect */
   DO i=0 TO maxitem
-  	o=item.i
-  	IF pl.room==obj.o.room & pl.y+1==obj.o.y+obj.o.h &,
-  		 pl.x+pl.w>=obj.o.x & pl.x<=obj.o.x+obj.o.w THEN do
-  		se item.i
-  		return
-  	END 
+    o=item.i
+    IF pl.room==obj.o.room & pl.y+1==obj.o.y+obj.o.h &,
+       pl.x+pl.w>=obj.o.x & pl.x<=obj.o.x+obj.o.w THEN do
+      call grab(i, "D")
+    END 
   END
 
   /* ok to move player */
   call ERASE_PL
   pl.y=pl.y+1
+  
   call DRAW_PL
 return
 
-MV_R:
+MV_R: /* depreciated */
   IF pl.x==maxcol-1 THEN signal RIGHT_EXIT
   
   /* do map collision detect */
@@ -898,12 +1000,11 @@ MV_R2:
   
   /* do item collision detect */
   DO i=0 TO maxitem
-  	o=item.i
-  	IF pl.room==obj.o.room & pl.y>=obj.o.y & pl.y<=obj.o.y+obj.o.h &,
-  		(pl.x+pl.w+1==obj.o.x | pl.x+pl.w+2==obj.o.x) THEN do
-  		se item.i
-  		return
-  	END 
+    o=item.i
+    IF pl.room==obj.o.room & pl.y>=obj.o.y & pl.y<=obj.o.y+obj.o.h &,
+      (pl.x+pl.w+1==obj.o.x | pl.x+pl.w+2==obj.o.x) THEN do
+      call grab(i, "R")
+    END 
   END
 
   IF pl.x<77 & check=="  " THEN DO
@@ -921,7 +1022,7 @@ MV_R2:
   ELSE bufferflush
 return
 
-MV_L:
+MV_L: /* depreciated */
   ckey=0
   IF pl.x==2 THEN signal LEFT_EXIT
 
@@ -951,12 +1052,11 @@ MV_L2:
   
   /* do item collision detect */
   DO i=0 TO maxitem
-  	o=item.i
-  	IF pl.room==obj.o.room & pl.y>=obj.o.y & pl.y<=obj.o.y+obj.o.h &,
-  		(pl.x-1==obj.o.x+obj.o.w | pl.x-2==obj.o.x+obj.o.w) THEN do
-  		se item.i
-  		return
-  	END 
+    o=item.i
+    IF pl.room==obj.o.room & pl.y>=obj.o.y & pl.y<=obj.o.y+obj.o.h &,
+      (pl.x-1==obj.o.x+obj.o.w | pl.x-2==obj.o.x+obj.o.w) THEN do
+      call grab(i, "L")
+    END 
   END
   
   IF pl.x>3 & check=="  " THEN DO
@@ -968,336 +1068,377 @@ MV_L2:
   ELSE IF RIGHT(check,1)==" " THEN DO  
     /* ok to move player 1 char to left */
     call ERASE_PL
-    pl.x=pl.x-1
+    pl.x=pl.x-1    
     call DRAW_PL
   END
   ELSE bufferflush
 return
 
+GRAB:  /* TODO: fix grab at edge of screen on entrance bug */
+  ARG i, dir
+  IF pl.equip==i THEN return
+  pl.equip=i
+  o=item.i
+  se "b1" /* BEEP! */
+  SELECT
+    WHEN dir=="U" THEN DO
+      obj.o.offset.x=obj.o.x-pl.x
+      obj.o.offset.y=-1
+    END
+    WHEN dir=="D" THEN DO
+      obj.o.offset.x=obj.o.x-pl.x
+      obj.o.offset.y=1
+    END
+    WHEN dir=="L" THEN DO
+      obj.o.offset.x=-3
+      obj.o.offset.y=obj.o.y-pl.y
+    END
+    WHEN dir=="R" THEN DO
+      obj.o.offset.x=2
+      obj.o.offset.y=obj.o.y-pl.y
+    END
+    OTHERWISE return
+  END
+return
+
+DROP:
+  IF pl.equip==-1 THEN return
+  i = pl.equip
+  o=item.i
+  IF obj.o.x<mincol | obj.o.x+obj.o.w>maxcol | obj.o.y<minline | obj.o.y+obj.o.h>maxline THEN return
+  obj.o.offset.x=0
+  obj.o.offset.y=0
+  pl.equip=-1
+  se "b1" /* BEEP! */
+return
+
+EQUIP:
+  IF pl.equip==-1 THEN return
+  i=pl.equip
+  o=item.i
+  obj.o.room=pl.room
+  obj.o.x=pl.x+obj.o.offset.x
+  obj.o.y=pl.y+obj.o.offset.y
+  call DRAW_ITEM(i)
+return
+
 TOP_EXIT:
-  IF exit.t==0 THEN return  
+  IF te==0 THEN return  
   pl.y=24
-  exit=exit.t
-  call EXIT
+  next_room=te
+  call NEXTROOM
 return
 
 BOTTOM_EXIT:
-  IF room.b==0 THEN return  
+  IF be==0 THEN return  
   pl.y=1
-  exit=exit.b
-  call EXIT
+  next_room=be
+  call NEXTROOM
 return
 
 LEFT_EXIT:
-  IF room.l==0 THEN return  
+  IF le==0 THEN return  
   pl.x=78
-  exit=exit.l
-  call EXIT
+  next_room=le
+  call NEXTROOM
 return
 
 RIGHT_EXIT:
-  IF room.r==0 THEN return
+  IF re==0 THEN return
   pl.x=2
-  exit=exit.r
-  call EXIT
+  next_room=re
+  call NEXTROOM
 return
 
 CASTLE_ENTRANCE:
-  IF room.ci==0 THEN return 
+  IF ci==0 THEN return 
   pl.y=24
-  exit=exit.ci
-  call EXIT
+  next_room=ci
+  call NEXTROOM
 return
 
 CASTLE_EXIT:
-  IF room.co==0 THEN return      
+  IF co==0 THEN return      
   pl.x=40; pl.y=16
-  exit=exit.co
-  call EXIT
+  next_room=co
+  call NEXTROOM
 return
 
-EXIT:
+NEXTROOM:
+  bufferflush
   SELECT
-    WHEN exit=="0" THEN return
-    WHEN exit=="1" THEN call ROOM1
-    WHEN exit=="2" THEN call ROOM2
-    WHEN exit=="3" THEN call ROOM3
-    WHEN exit=="4" THEN call ROOM4
-    WHEN exit=="5" THEN call ROOM5
-    WHEN exit=="6" THEN call ROOM6
-    WHEN exit=="7" THEN call ROOM7
-    WHEN exit=="8" THEN call ROOM8
-    WHEN exit=="9" THEN call ROOM9
-    WHEN exit=="10" THEN call ROOM10
-    WHEN exit=="11" THEN call ROOM11
-    WHEN exit=="12" THEN call ROOM12
-    WHEN exit=="13" THEN call ROOM13
-    WHEN exit=="14" THEN call ROOM14
-    WHEN exit=="15" THEN call ROOM15
-    WHEN exit=="16" THEN call ROOM16
-    WHEN exit=="17" THEN call ROOM17
-    WHEN exit=="18" THEN call ROOM18
-    WHEN exit=="19" THEN call ROOM19
-    WHEN exit=="20" THEN call ROOM20
-    WHEN exit=="21" THEN call ROOM21
-    WHEN exit=="22" THEN call ROOM22
-    WHEN exit=="23" THEN call ROOM23
-    WHEN exit=="24" THEN call ROOM24
-    WHEN exit=="25" THEN call ROOM25
-    WHEN exit=="26" THEN call ROOM26
-    WHEN exit=="27" THEN call ROOM27
-    WHEN exit=="28" THEN call ROOM28
-    WHEN exit=="29" THEN call ROOM29
-    WHEN exit=="30" THEN call ROOM30
-    OTHERWISE NOP
+    WHEN next_room=="0" THEN return
+    WHEN next_room=="1" THEN call ROOM1
+    WHEN next_room=="2" THEN call ROOM2
+    WHEN next_room=="3" THEN call ROOM3
+    WHEN next_room=="4" THEN call ROOM4
+    WHEN next_room=="5" THEN call ROOM5
+    WHEN next_room=="6" THEN call ROOM6
+    WHEN next_room=="7" THEN call ROOM7
+    WHEN next_room=="8" THEN call ROOM8
+    WHEN next_room=="9" THEN call ROOM9
+    WHEN next_room=="10" THEN call ROOM10
+    WHEN next_room=="11" THEN call ROOM11
+    WHEN next_room=="12" THEN call ROOM12
+    WHEN next_room=="13" THEN call ROOM13
+    WHEN next_room=="14" THEN call ROOM14
+    WHEN next_room=="15" THEN call ROOM15
+    WHEN next_room=="16" THEN call ROOM16
+    WHEN next_room=="17" THEN call ROOM17
+    WHEN next_room=="18" THEN call ROOM18
+    WHEN next_room=="19" THEN call ROOM19
+    WHEN next_room=="20" THEN call ROOM20
+    WHEN next_room=="21" THEN call ROOM21
+    WHEN next_room=="22" THEN call ROOM22
+    WHEN next_room=="23" THEN call ROOM23
+    WHEN next_room=="24" THEN call ROOM24
+    WHEN next_room=="25" THEN call ROOM25
+    WHEN next_room=="26" THEN call ROOM26
+    WHEN next_room=="27" THEN call ROOM27
+    WHEN next_room=="28" THEN call ROOM28
+    WHEN next_room=="29" THEN call ROOM29
+    WHEN next_room=="30" THEN call ROOM30
+    OTHERWISE SE "EXIT: " || next_room ||" NOT FOUND!!"
   END
   pl.room=room.cur
+  bufferflush
   call DRAW_BG
   call DRAW_PL
   call DRAW_OB
+  bufferflush
 return
 
 /** DATA ******************************************************************/
-
-/* background colors *** foreground colors */
-/*     black=40      ***     black=30      */ 
-/*       red=41      ***       red=31      */
-/*     green=42      ***     green=32      */
-/*    yellow=43      ***    yellow=33      */
-/*      blue=44      ***      blue=34      */
-/*   magenta=45      ***   magenta=35      */
-/*      cyan=46      ***      cyan=36      */
-/*     white=47      ***     white=37      */
  
 ROOM0:  /* splash screen */
   room.cur=0; room.gate=-1; dark=0
-  room.c="[47;33;1m"; room.fc="[33;1m"; room.bc="[47m"
-  exit.t=0; exit.r=0; exit.b=0; exit.l=0; exit.ci=0; exit.co=0
+  room.c="[1;47;33m"; room.fc="[1;33m"; room.bc="[47m"; room.bc2="[43m"
+  te=0; re=0; be=0; le=0; ci=0; co=0
   call SPLASH_MAP
 return
 
 ROOM1:  /* light green hall below blue maze */
   room.cur=1; room.gate=-1; dark=0
-  room.c="[47;32;1m"; room.fc="[32;1m"; room.bc="[47m"
-   exit.t=8; exit.r=2; exit.b=16; exit.l=3; exit.ci=0; exit.co=0
-   IF difficulty > 1 THEN exit.b=15
+  room.c="[1;47;32m"; room.fc="[1;32m"; room.bc="[47m"; room.bc2="[42m"
+   te=8; re=2; be=16; le=3; ci=0; co=0
+   IF difficulty > 1 THEN be=15
   call BOTTOM_LFT_MAP
 return
 
 ROOM2:  /* dark green hall below yellow castle */
   room.cur=2; room.gate=-1; dark=0
-  room.c="[0;47;32m"; room.fc="[0;32m"; room.bc="[47m"
-  exit.t=17; exit.r=3; exit.b=5; exit.l=1; exit.ci=0; exit.co=0
-  IF difficulty > 1 THEN exit.b=17
+  room.c="[22;47;32m"; room.fc="[22;32m"; room.bc="[47m"; room.bc2="[42m"
+  te=17; re=3; be=5; le=1; ci=0; co=0
+  IF difficulty > 1 THEN be=17
   call BOTTOM_MID_MAP
 return
 
 ROOM3:  /* dark orange hall above invisible maze */
   room.cur=3; room.gate=-1; dark=0
-  room.c="[0;47;33m"; room.fc="[0;33m"; room.bc="[47m"
-  exit.t=6; exit.r=1; exit.b=29; exit.l=2; exit.ci=0; exit.co=0
-  IF difficulty > 1 THEN exit.b=10
+  room.c="[22;47;33m"; room.fc="[22;33m"; room.bc="[47m"; room.bc2="[43m"
+  te=6; re=1; be=29; le=2; ci=0; co=0
+  IF difficulty > 1 THEN be=10
   call TOP_RHT_MAP
 return
 
 ROOM4:  /* blue maze top center */
   room.cur=4; room.gate=-1; dark=0
-  room.c="[47;34;1m"; room.fc="[34;1m"; room.bc="[47m"
-  exit.t=16; exit.r=5; exit.b=7; exit.l=6; exit.ci=0; exit.co=0
+  room.c="[1;47;34m"; room.fc="[1;34m"; room.bc="[47m"; room.bc2="[44m"
+  te=16; re=5; be=7; le=6; ci=0; co=0
   call BMAZE0_MAP
 return
 
 ROOM5:  /* blue maze left side */
   room.cur=5; room.gate=-1; dark=0
-  room.c="[47;34;1m"; room.fc="[34;1m"; room.bc="[47m"
-  exit.t=29; exit.r=6; exit.b=8; exit.l=4; exit.ci=0; exit.co=0
+  room.c="[1;47;34m"; room.fc="[1;34m"; room.bc="[47m"; room.bc2="[44m"
+  te=29; re=6; be=8; le=4; ci=0; co=0
   call BMAZE3_MAP
 return
 
 ROOM6:  /* blue maze bottom center */
   room.cur=6; room.gate=-1; dark=0
-  room.c="[47;34;1m"; room.fc="[34;1m"; room.bc="[47m"
-  exit.t=7; exit.r=4; exit.b=3; exit.l=5; exit.ci=0; exit.co=0
+  room.c="[1;47;34m"; room.fc="[1;34m"; room.bc="[47m"; room.bc2="[44m"
+  te=7; re=4; be=3; le=5; ci=0; co=0
   call BMAZE2_MAP
 return
 
 ROOM7:  /* blue maze center */
   room.cur=7; room.gate=-1; dark=0
-  room.c="[47;34;1m"; room.fc="[34;1m"; room.bc="[47m"
-  exit.t=4; exit.r=8; exit.b=6; exit.l=8; exit.ci=0; exit.co=0
+  room.c="[1;47;34m"; room.fc="[1;34m"; room.bc="[47m"; room.bc2="[44m"
+  te=4; re=8; be=6; le=8; ci=0; co=0
   call BMAZE1_MAP
 return
 
 ROOM8:  /* entrance to blue maze */
   room.cur=8; room.gate=-1; dark=0
-  room.c="[47;34;1m"; room.fc="[34;1m"; room.bc="[47m"
-  exit.t=5; exit.r=7; exit.b=1; exit.l=7; exit.ci=0; exit.co=0
+  room.c="[1;47;34m"; room.fc="[1;34m"; room.bc="[47m"; room.bc2="[44m"
+  te=5; re=7; be=1; le=7; ci=0; co=0
   call BMAZE4_MAP
 return
 
 ROOM9:  /* invisible maze center */
   room.cur=9; room.gate=-1; dark=1
-  room.c="[0;47;37m"; room.fc="[0;37m"; room.bc="[47m"
-  IF flashlight==0 THEN room.fc="[0;33m"
-  exit.t=10; exit.r=10; exit.b=11; exit.l=10; exit.ci=0; exit.co=0
+  room.c="[22;47;37m"; room.fc="[22;37m"; room.bc="[47m"; room.bc2="[47m"
+  IF flashlight==0 THEN room.fc="[22;33m"
+  te=10; re=10; be=11; le=10; ci=0; co=0
   call IMAZE1_MAP
 return
 
 ROOM10:  /* entrance to invisible maze */
   room.cur=10; room.gate=-1; dark=1
-  room.c="[0;47;37m"; room.fc="[0;37m"; room.bc="[47m"
-  IF flashlight==0 THEN room.fc="[0;33m"
-  exit.t=3; exit.r=9; exit.b=9; exit.l=9; exit.ci=0; exit.co=0
+  room.c="[22;47;37m"; room.fc="[22;37m"; room.bc="[47m"; room.bc2="[47m"
+  IF flashlight==0 THEN room.fc="[22;33m"
+  te=3; re=9; be=9; le=9; ci=0; co=0
   call IMAZE0_MAP
 return
 
 ROOM11:  /* invisible maze bottom */
   room.cur=11; room.gate=-1; dark=1
-  room.c="[0;47;37m"; room.fc="[0;37m"; room.bc="[47m"
-  IF flashlight==0 THEN room.fc="[0;33m"
-  exit.t=9; exit.r=12; exit.b=28; exit.l=13; exit.ci=0; exit.co=0
+  room.c="[22;47;37m"; room.fc="[22;37m"; room.bc="[47m"; room.bc2="[47m"
+  IF flashlight==0 THEN room.fc="[22;33m"
+  te=9; re=12; be=28; le=13; ci=0; co=0
   call IMAZE2_MAP
 return
 
 ROOM12:  /* wyatt, your kitchen is blue */
   room.cur=12; room.gate=-1; dark=0
-  room.c="[47;34;1m"; room.fc="[34;1m"; room.bc="[47m"
-  exit.t=28; exit.r=13; exit.b=29; exit.l=11; exit.ci=0; exit.co=0
+  room.c="[1;47;34m"; room.fc="[1;34m"; room.bc="[47m"; room.bc2="[44m"
+  te=28; re=13; be=29; le=11; ci=0; co=0
   call MIDDLE_RHT_MAP
 return
 
 ROOM13:  /* side hall below white castle */
   room.cur=13; room.gate=-1; dark=0
-  room.c="[47;32;1m"; room.fc="[32;1m"; room.bc="[47m"
-  exit.t=15; exit.r=11; exit.b=14; exit.l=12; exit.ci=0; exit.co=0
+  room.c="[1;47;32m"; room.fc="[1;32m"; room.bc="[47m"; room.bc2="[42m"
+  te=15; re=11; be=14; le=12; ci=0; co=0
   call MIDDLE_LFT_MAP
 return
 
 ROOM14:  /* dark green top entry room */
   room.cur=14; room.gate=-1; dark=0
-  room.c="[0;47;32m"; room.fc="[0;32m"; room.bc="[47m"
-  exit.t=13; exit.r=16; exit.b=15; exit.l=16; exit.ci=0; exit.co=0
+  room.c="[22;47;32m"; room.fc="[22;32m"; room.bc="[47m"; room.bc2="[42m"
+  te=13; re=16; be=15; le=16; ci=0; co=0
   call BOTTOM_MAP
 return
 
 ROOM15:  /* send me a crave case! */
   room.cur=15; room.gate=gate.w; dark=0
-  room.c="[47;37;1m"; room.fc="[37;1m"; room.bc="[47m"
-  exit.t=14; exit.r=15; exit.b=13; exit.l=15; exit.ci=26; exit.co=0
+  room.c="[1;47;37m"; room.fc="[1;37m"; room.bc="[47m"; room.bc2="[47m"
+  te=14; re=15; be=13; le=15; ci=26; co=0
   call CASTLE_MAP
 return
 
 ROOM16:  /* black castle */
   room.cur=16; room.gate=gate.b; dark=0
-  room.c="[0;47;30m"; room.fc="[0;30m"; room.bc="[47m"
-  exit.t=1; exit.r=28; exit.b=4; exit.l=28; exit.ci=27; exit.co=0
+  room.c="[22;47;30m"; room.fc="[22;30m"; room.bc="[47m"; room.bc2="[40m"
+  te=1; re=28; be=4; le=28; ci=27; co=0
   call CASTLE_MAP
 return
 
 ROOM17:  /* yellow castle */
   room.cur=17; room.gate=gate.y; dark=0
-  room.c="[47;33;1m"; room.fc="[33;1m"; room.bc="[47m"
-  exit.t=6; exit.r=3; exit.b=2; exit.l=1; exit.ci=18; exit.co=0
+  room.c="[1;47;33m"; room.fc="[1;33m"; room.bc="[47m"; room.bc2="[43m"
+  te=6; re=3; be=2; le=1; ci=18; co=0
   call CASTLE_MAP
 return
 
 ROOM18:  /* yellow castle interior */
   room.cur=18; room.gate=-1; dark=0
-  room.c="[1;47;33m"; room.fc="[1;33m"; room.bc="[47m"
-  exit.t=18; exit.r=18; exit.b=18; exit.l=18; exit.ci=0; exit.co=17
+  room.c="[1;47;33m"; room.fc="[1;33m"; room.bc="[47m"; room.bc2="[43m"
+  te=18; re=18; be=18; le=18; ci=0; co=17
   call TOP_MAP
 return
 
 ROOM19:  /* black castle maze top left */
   room.cur=19; room.gate=-1; dark=1
-  IF flashlight==0 THEN room.fc="[0;33m"
-  room.c="[0;47;37m"; room.fc="[0;37m"; room.bc="[47m"
-  exit.t=21; exit.r=20; exit.b=21; exit.l=22; exit.ci=0; exit.co=0
+  room.c="[22;47;37m"; room.fc="[22;37m"; room.bc="[47m"; room.bc2="[43m"
+  IF flashlight==0 THEN room.fc="[22;33m"
+  te=21; re=20; be=21; le=22; ci=0; co=0
   call BCMAZE0_MAP
 return
 
 ROOM20:  /* black castle maze top right */
   room.cur=20; room.gate=-1; dark=1
-  room.c="[0;47;37m"; room.fc="[0;37m"; room.bc="[47m"
-  IF flashlight==0 THEN room.fc="[0;33m"
-  exit.t=22; exit.r=21; exit.b=22; exit.l=19; exit.ci=0; exit.co=0
+  room.c="[22;47;37m"; room.fc="[22;37m"; room.bc="[47m"; room.bc2="[47m"
+  IF flashlight==0 THEN room.fc="[22;33m"
+  te=22; re=21; be=22; le=19; ci=0; co=0
   call BCMAZE1_MAP
 return
 
 ROOM21:  /* black castle maze bottom left*/
   room.cur=21; room.gate=-1; dark=1
-  room.c="[0;47;37m"; room.fc="[0;37m"; room.bc="[47m"
-  IF flashlight==0 THEN room.fc="[0;33m"
-  exit.t=19; exit.r=22; exit.b=19; exit.l=20; exit.ci=0; exit.co=0
+  room.c="[22;47;37m"; room.fc="[22;37m"; room.bc="[47m"; room.bc2="[47m"
+  IF flashlight==0 THEN room.fc="[22;33m"
+  te=19; re=22; be=19; le=20; ci=0; co=0
   call BCMAZE2_MAP
 return
 
 ROOM22:  /* entrance to black castle maze */
   room.cur=22; room.gate=-1; dark=1
-  room.c="[0;47;37m"; room.fc="[0;37m"; room.bc="[47m"
-  IF flashlight==0 THEN room.fc="[0;33m"
-  exit.t=20; exit.r=19; exit.b=27; exit.l=21; exit.ci=0; exit.co=0
+  room.c="[22;47;37m"; room.fc="[22;37m"; room.bc="[47m"; room.bc2="[47m"
+  IF flashlight==0 THEN room.fc="[22;33m"
+  te=20; re=19; be=27; le=21; ci=0; co=0
   call BCMAZE3_MAP
 return
 
 ROOM23:  /* white castle maze top left */
   room.cur=23; room.gate=-1; dark=0
-  room.c="[0;47;31m"; room.fc="[0;31m"; room.bc="[47m"
-  exit.t=25; exit.r=24; exit.b=25; exit.l=24; exit.ci=0; exit.co=0
+  room.c="[22;47;31m"; room.fc="[22;31m"; room.bc="[47m"; room.bc2="[41m"
+  te=25; re=24; be=25; le=24; ci=0; co=0
   call WCMAZE0_MAP
 return
 
 ROOM24:  /* white castle maze top right */
   room.cur=24; room.gate=-1; dark=0
-  room.c="[0;47;31m"; room.fc="[0;31m"; room.bc="[47m"
-  exit.t=26; exit.r=23; exit.b=26; exit.l=23; exit.ci=0; exit.co=0
+  room.c="[22;47;31m"; room.fc="[22;31m"; room.bc="[47m"; room.bc2="[41m"
+  te=26; re=23; be=26; le=23; ci=0; co=0
   call WCMAZE1_MAP
 return
 
 ROOM25:  /* white castle maze bottom left */
   room.cur=25; room.gate=-1
-  room.c="[0;47;31m"; room.fc="[0;31m"; room.bc="[47m"
-  exit.t=23; exit.r=26; exit.b=23; exit.l=26; exit.ci=0; exit.co=0
+  room.c="[22;47;31m"; room.fc="[22;31m"; room.bc="[47m"; room.bc2="[41m"
+  te=23; re=26; be=23; le=26; ci=0; co=0
   call WCMAZE2_MAP
 return
 
 ROOM26:  /* entrance to white castle maze */
   room.cur=26; room.gate=-1; dark=0
-  room.c="[0;47;31m"; room.fc="[0;31m"; room.bc="[47m"
-  exit.t=24; exit.r=25; exit.b=24; exit.l=25; exit.ci=0; exit.co=15
+  room.c="[22;47;31m"; room.fc="[22;31m"; room.bc="[47m"; room.bc2="[41m"
+  te=24; re=25; be=24; le=25; ci=0; co=15
   call WCMAZE3_MAP
 return
 
 ROOM27:  /* black castle foyer */
   room.cur=27; room.gate=-1; dark=0
-  room.c="[0;47;31m"; room.fc="[0;31m"; room.bc="[47m"
-  exit.t=28; exit.r=28; exit.b=28; exit.l=28; exit.ci=0; exit.co=16
+  room.c="[22;47;31m"; room.fc="[22;31m"; room.bc="[47m"; room.bc2="[41m"
+  te=28; re=28; be=28; le=28; ci=0; co=16
   IF difficulty > 1 THEN DO
-    exit.t=22; exit.r=22; exit.b=22; exit.l=22
+    te=22; re=22; be=22; le=22
   END
   call MIDDLE_MAP
 return
 
 ROOM28:  /* the other purple room */
   room.cur=28; room.gate=-1; dark=0
-  room.c="[0;47;35m"; room.fc="[0;35m"; room.bc="[47m"
-  exit.t=29; exit.r=7; exit.b=27; exit.l=8; exit.ci=0; exit.co=0
-  IF difficulty > 1 THEN exit.b=12
+  room.c="[22;47;35m"; room.fc="[22;35m"; room.bc="[47m"; room.bc2="[45m"
+  te=29; re=7; be=27; le=8; ci=0; co=0
+  IF difficulty > 1 THEN be=12
   call TOP_MAP
 return
 
 ROOM29:  /* nothing to see here, red top entry room */
   room.cur=29; room.gate=-1; dark=0
-  room.c="[0;47;31m"; room.fc="[0;31m"; room.bc="[47m"
-  exit.t=3; exit.r=1; exit.b=16; exit.l=3; exit.ci=0; exit.co=0
-  IF difficulty > 1 THEN exit.t=12
+  room.c="[22;47;31m"; room.fc="[22;31m"; room.bc="[47m"; room.bc2="[41m"
+  te=3; re=1; be=16; le=3; ci=0; co=0
+  IF difficulty > 1 THEN te=12
   call BOTTOM_MAP
 return
 
 ROOM30:  /* roll credits */
   room.cur=30; room.gate=-1; dark=0
-  room.c="[0;47;35m"; room.fc="[0;35m"; room.bc="[47m"
-  exit.t=3; exit.r=1; exit.b=16; exit.l=3; exit.ci=0; exit.co=0
+  room.c="[22;47;35m"; room.fc="[22;35m"; room.bc="[47m"; room.bc2="[45m"
+  te=3; re=1; be=16; le=3; ci=0; co=0
   call BOTTOM_MAP
 return
 
@@ -1922,7 +2063,7 @@ WCMAZE0_MAP:
   map.24="лллл     лллл     ллллллллллллл     лллллл     ллллллллллллл     лллл     лллл"
 return
 
-WCMAZE1_MAP:
+WCMAZE1_MAP: /* TODO: fix */
    map.1="лллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллл"
    map.2="лллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллллл"
    map.3="                                    лллллл                                    "
@@ -1937,10 +2078,10 @@ WCMAZE1_MAP:
   map.12="                           лллл     лллллл     лллл                           "
   map.13="                           лллл     лллллл     лллл                           "
   map.14="                           лллл     лллллл     лллл                           "
-  map.15="лллл     лллл     лллллллллллллллллллллллллллллллллллллллллл     лллл     лллл"
-  map.16="лллл     лллл     лллллллллллллллллллллллллллллллллллллллллл     лллл     лллл"
-  map.17="лллл     лллл     лллллллллллллллллллллллллллллллллллллллллл     лллл     лллл"
-  map.18="лллл     лллл     лллллллллллллллллллллллллллллллллллллллллл     лллл     лллл"
+  map.15="лллл     лллл     ллллллллллллл     лллллллллллллллллллллллл     лллл     лллл"
+  map.16="лллл     лллл     ллллллллллллл     лллллллллллллллллллллллл     лллл     лллл"
+  map.17="лллл     лллл     ллллллллллллл     лллллллллллллллллллллллл     лллл     лллл"
+  map.18="лллл     лллл     ллллллллллллл     лллллллллллллллллллллллл     лллл     лллл"
   map.19="лллл     лллл     лллл                                  лллл     лллл     лллл"
   map.20="лллл     лллл     лллл                                  лллл     лллл     лллл"
   map.21="лллл     лллл     лллл                                  лллл     лллл     лллл"
@@ -2003,21 +2144,40 @@ WCMAZE3_MAP:
   map.24="ллллллллллллллллллллллллллллллл                ллллллллллллллллллллллллллллллл"
 return
 
-OBJECTS:
+INIT_PLAYER: 
+  pl.x=40; pl.y=20
+  pl.w=1; pl.h=0
+  pl.equip=-1
+  pl.room=17
+return  
+  
+INIT_OBJECTS:
+  _dot="."
   _key="вФo"
   _sword="<--"
   
-  _magnet=""
-  _bridge=""
-  _chalice=""
+  _magnet=""  /* TODO: fix */
+  _bridge=""  /* TODO: fix */
+  _chalice=""  /* TODO: fix */
   
-  _dot="."
+  _bat=""  /* TODO: fix */
+  _dragon=""  /* TODO: fix */
   
-  maxitem=3
+  maxitem=3 /* TODO: fix: limit items for now */
   item.0="YKEY"
   item.1="BKEY"
   item.2="WKEY"
   item.3="SWORD"
+  item.4="MAGNET"
+  item.5="BRIDGE"
+  item.6="CHALICE"
+  iten.7="DOT"
+  
+  maxcreature=3
+  creature.0="KNUBBERRUB"
+  creature.1="YORGLE"
+  creature.2="GRUNDLE"
+  creature.3="RHINDLE"
   
   obj.ykey.room=17
   obj.ykey.x=17
@@ -2026,14 +2186,18 @@ OBJECTS:
   obj.ykey.h=0
   obj.ykey.col="[1;33m"
   obj.ykey.spr=_key
+  obj.ykey.lvl3.0=1   /* random room lower limit */
+  obj.ykey.lvl3.1=29  /* random room upper limit */
   
   obj.bkey.room=29
   obj.bkey.x=17
   obj.bkey.y=11
   obj.bkey.w=2
   obj.bkey.h=0
-  obj.bkey.col="[2;30m"
+  obj.bkey.col="[22;30m"
   obj.bkey.spr=_key
+  obj.bkey.lvl3.0=1   /* random room lower limit */
+  obj.bkey.lvl3.1=18  /* random room upper limit */
   
   obj.wkey.room=14
   obj.wkey.x=17
@@ -2042,6 +2206,8 @@ OBJECTS:
   obj.wkey.h=0
   obj.wkey.col="[1;37m"
   obj.wkey.spr=_key
+  obj.wkey.lvl3.0=1   /* random room lower limit */
+  obj.wkey.lvl3.1=22  /* random room upper limit */
   
   obj.sword.room=18
   obj.sword.x=17
@@ -2050,25 +2216,79 @@ OBJECTS:
   obj.sword.h=0
   obj.sword.col="[1;33m"
   obj.sword.spr=_sword
-  
-  obj.bridge.room=4
-  obj.bridge.x=1 /* fix */
-  obj.bridge.y=1 /* fix */
-  obj.bridge.col="[2;35m"
-  obj.bridge.spr=_bridge
-  
-  obj.chalice.room=28
-  obj.chalice.x=1 /* fix */
-  obj.chalice.y=1 /* fix */
-  obj.chalice.col="[2;35m" /* fix */
-  obj.chalice.spr=_chalice
-  
+  obj.sword.lvl3.0=1   /* random room lower limit */
+  obj.sword.lvl3.1=29  /* random room upper limit */
+
   obj.magnet.room=27
-  obj.magnet.x=1 /* fix */
-  obj.magnet.y=1 /* fix */
+  obj.magnet.x=1 /* TODO: fix */
+  obj.magnet.y=1 /* TODO: fix */
   obj.magnet.col="[2;30m"
   obj.magnet.spr=_magnet
+  obj.magnet.lvl3.0=1   /* random room lower limit */
+  obj.magnet.lvl3.1=29  /* random room upper limit */
+    
+  obj.bridge.room=4
+  obj.bridge.x=1 /* TODO: fix */
+  obj.bridge.y=1 /* TODO: fix */
+  obj.bridge.col="[2;35m"
+  obj.bridge.spr=_bridge
+  obj.bridge.lvl3.0=1   /* random room lower limit */
+  obj.bridge.lvl3.1=29  /* random room upper limit */
   
+  obj.chalice.room=28
+  obj.chalice.x=1 /* TODO: fix */
+  obj.chalice.y=1 /* TODO: fix */
+  obj.chalice.col="[2;35m" /* TODO: fix */
+  obj.chalice.spr=_chalice
+  obj.chalice.lvl3.0=19  /* random room lower limit */
+  obj.chalice.lvl3.1=26  /* random room upper limit */
+  
+  creature.0="KNUBBERRUB"
+  creature.1="YORGLE"
+  creature.2="GRUNDLE"
+  creature.3="RHINDLE"
+  
+  obj.knubberrub.room=30 /* TODO: fix */
+  obj.knubberrub.x=1 /* TODO: fix */
+  obj.knubberrub.y=1 /* TODO: fix */
+  obj.knubberrub.col="[2;30m"
+  obj.knubberrub.spr=_bat
+  obj.knubberrub.lvl3.0=1   /* random room lower limit */
+  obj.knubberrub.lvl3.1=29  /* random room upper limit */
+  
+  obj.yorgle.room=30 /* TODO: fix */
+  obj.yorgle.x=1 /* TODO: fix */
+  obj.yorgle.y=1 /* TODO: fix */
+  obj.yorgle.col="[1;33m"
+  obj.yorgle.spr=_dragon
+  obj.yorgle.lvl3.0=1   /* random room lower limit */
+  obj.yorgle.lvl3.1=29  /* random room upper limit */
+  
+  obj.grundle.room=30 /* TODO: fix */
+  obj.grundle.x=1 /* TODO: fix */
+  obj.grundle.y=1 /* TODO: fix */
+  obj.grundle.col="[1;32m"
+  obj.grundle.spr=_dragon
+  obj.grundle.lvl3.0=1   /* random room lower limit */
+  obj.grundle.lvl3.1=29  /* random room upper limit */
+  
+  obj.rhindle.room=30 /* TODO: fix */
+  obj.rhindle.x=1 /* TODO: fix */
+  obj.rhindle.y=1 /* TODO: fix */
+  obj.rhindle.col="[1;31m" /* TODO: fix */
+  obj.rhindle.spr=_dragon 
+  obj.rhindle.lvl3.0=1   /* random room lower limit */
+  obj.rhindle.lvl3.1=29  /* random room upper limit */
+  
+  obj.dot.room=30 /* TODO: fix */
+  obj.dot.x=1 /* TODO: fix */
+  obj.dot.y=1 /* TODO: fix */
+  obj.dot.col="[2;37m" /* TODO: fix */
+  obj.dot.spr=_dot
+  obj.rhindle.lvl3.0=0  /* random room lower limit */
+  obj.rhindle.lvl3.1=0  /* random room upper limit */
+
+  /* set level 2 item locations */
   IF difficulty==2 THEN DO
     obj.ykey.room=9
     obj.bkey.room=25
@@ -2078,7 +2298,27 @@ OBJECTS:
     obj.chalice.room=20
     obj.magnet.room=14
   END
+  ELSE IF difficulty==3 THEN DO
+    DO i=0 TO maxitem  /* randomize item locations */
+      o=item.i
+      IF obj.o.lvl3.0 ~=0 THEN obj.o.room = random(obj.o.lvl3.0, obj.o.lvl3.1, time('s'))
+    END 
+    DO i=0 TO maxcreature  /* randomize creature locations */
+      o=item.i
+      IF obj.o.lvl3.0 =0 THEN obj.o.room = random(obj.o.lvl3.0, obj.o.lvl3.1, time('s'))
+    END
+  END
 return
+
+/* background colors *** foreground colors */
+/*     black=40      ***     black=30      */ 
+/*       red=41      ***       red=31      */
+/*     green=42      ***     green=32      */
+/*    yellow=43      ***    yellow=33      */
+/*      blue=44      ***      blue=34      */
+/*   magenta=45      ***   magenta=35      */
+/*      cyan=46      ***      cyan=36      */
+/*     white=47      ***     white=37      */
 
 /** ERROR CHECKING *******************************************************/
 CHECK:;if ARG() & ARG(1)~="###PANIC" then return ARG(1)

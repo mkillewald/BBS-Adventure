@@ -23,7 +23,7 @@ changewhere "BBS Adventure "||ver
 **    v0.0 Jun-5-2019  first version                                      ** 
 **                                                                        **
 \**************************************************************************/
-debug=0         /* 0 = disable debug mode,   1 = enable debug mode   */
+debug=o         /* 0 = disable debug mode,   1 = enable debug mode   */
 debug_flash=0   /* 0 = disable flash debug,  1 = enable flash debug  */
 debug_magnet=0  /* 0 = disable magnet debug, 1 = enable magnet debug */
 debug_bat=1     /* 0 = disable bat debug,    1 = enable bat debug    */
@@ -633,7 +633,7 @@ START:
     
     call BAT_SEEK
     call BAT_MOVE
-    
+
     call DRAGON_SEEK
     call DRAGON_FEAR
     call DRAGON_MOVE
@@ -659,16 +659,15 @@ return
 
 DEBUG_MAGNET:
   if game_running~=1 | debug_magnet~=1 THEN return
-  wi=obj.magnet.wanted
-  wo=item.wi
+  wo=obj.magnet.want
   se "[5;2HM.W:" || wi || " M.BUSY:" || obj.magnet.busy|| "  " 
   IF wi~=-1 THEN se " owDX:" || obj.wo.dx || " owDY:" || obj.wo.dy || "              "
 return
 
 DEBUG_BAT:  /* TODO: finish */
   if game_running~=1 | debug_bat~=1 THEN return
-  o="KNUBBERRUB"
-  se "[5;2H"||k.rm.c||"B.R:"||obj.o.room||" B.X:"||obj.o.x||" B.Y:"||obj.o.y||" B.W:"||obj.o.want||" B.FU:"||obj.o.fedup||"   " 
+  kn="KNUBBERRUB"
+  se "[5;2H"||k.rm.c||"B.R:"||obj.kn.room||" B.X:"||obj.kn.x||" B.Y:"||obj.kn.y||" B.W:"||obj.kn.want||" B.FU:"||obj.kn.fedup||" B.S:"||obj.kn.seek||" B.E:"||obj.kn.equip||"     " 
 return
 
 DEBUG_DRAGON:  /* TODO: finish */
@@ -741,8 +740,8 @@ DRAW_PL:  /* draw player */
     END 
   END
   
-  call EQUIP /* handle any equipped object */
-        
+  call EQUIP("PL") /* handle any equipped object */
+
   se "["||obj.pl.y||";"||obj.pl.x||"H"||k.rm.fc||"лл"
   se park
 return
@@ -760,8 +759,7 @@ ERASE_PL:
   END
   
   /* erase equipped object */
-  i=obj.pl.equip
-  IF obj.pl.equip > -1 THEN call ERASE_OBJECT(item.i)
+  IF obj.pl.equip~="NONE" THEN call ERASE_OBJECT(obj.pl.equip)
   
   /* erase player */
   line=obj.pl.y
@@ -779,7 +777,7 @@ DRAW_OBJS:  /* draw objects (not in the main loop) */
   /* draw items */
   DO i=0 TO maxitem
     o=item.i  
-    IF obj.o.room==obj.pl.room & obj.pl.equip~=i THEN DO
+    IF obj.o.room==obj.pl.room & obj.pl.equip~=o & obj.knubberrub.equip~=o THEN DO
       call DRAW_OBJECT(o)
     END
   END  
@@ -806,10 +804,10 @@ DRAW_OBJS:  /* draw objects (not in the main loop) */
 return
 
 OK2DRAWOBJ: /* check if ok to draw object */
-  ARG o
-  IF obj.o.x<mincol | obj.o.x+obj.o.w>maxcol | obj.o.y<minline | obj.o.y+obj.o.h>maxline THEN return 0 /* don't draw */
-  ELSE IF GATE_COLLIDE(o)==1 THEN return 0  /* dont draw */
-  ELSE IF MSG_COLLIDE(o)==1 THEN return 0  /* don't draw */
+  ARG dro
+  IF obj.dro.x<mincol | obj.dro.x+obj.dro.w>maxcol | obj.dro.y<minline | obj.dro.y+obj.dro.h>maxline THEN return 0 /* don't draw */
+  ELSE IF GATE_COLLIDE(dro)==1 THEN return 0  /* dont draw */
+  ELSE IF MSG_COLLIDE(dro)==1 THEN return 0  /* don't draw */
   ELSE return 1  /* draw item */
 return
 
@@ -821,28 +819,29 @@ DRAW_MSG:
   END
 return
 
-DRAW_OBJECT: /* TODO: fix item interactions */
-  ARG o
-  IF OK2DRAWOBJ(o)==0 | obj.o.room ~= obj.pl.room THEN return
-  IF o=="BRIDGE" THEN DO
+DRAW_OBJECT:  /* TODO: fix item interactions */
+  ARG dro
+  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
+  IF dro=="BRIDGE" THEN DO
   	call DRAW_BRIDGE
   	return
   END
+  ELSE IF dro=="KNUBBERRUB" THEN return
   mp=k.rm.map
   IF transparent_items==1 THEN DO
-  	DO j=0 TO obj.o.h
+  	DO j=0 TO obj.dro.h
   		/* for each line of the object's sprite */
-      spr_line=obj.o.spr.j
+      spr_line=obj.dro.spr.j
       
       /* get map data underneath item's sprite line */
-      l=obj.o.y+j
-      map_str=SUBSTR(k.mp.l, obj.o.x-1, obj.o.w+1) /* -1 for map shift, +1 for how width is indexed */
+      l=obj.dro.y+j
+      map_str=SUBSTR(k.mp.l, obj.dro.x-1, obj.dro.w+1) /* -1 for map shift, +1 for how width is indexed */
       
   	  /* loop through each character of the map string and insert bg color based on map character found */
   	  result_line=""
-  	  DO k=1 TO obj.o.w+1 /* +1 due to how width is indexed */
-  	  	spr_char = SUBSTR(spr_line, k, 1)
-  	  	map_char = SUBSTR(map_str, k, 1)
+  	  DO m=1 TO obj.dro.w+1 /* +1 due to how width is indexed */
+  	  	spr_char = SUBSTR(spr_line, m, 1)
+  	  	map_char = SUBSTR(map_str, m, 1)
   	  	SELECT
   	  		WHEN map_char==" " THEN result_line=result_line||k.rm.bc||spr_char
   	  	  WHEN map_char=="л" THEN result_line=result_line||k.rm.bc2||spr_char
@@ -850,89 +849,89 @@ DRAW_OBJECT: /* TODO: fix item interactions */
   	  	  OTHERWISE NOP
   	  	END
   	  END 			
-  	  se "["||obj.o.y+j||";"||obj.o.x||"H"||obj.o.col||result_line||k.rm.fc
+  	  se "["||obj.dro.y+j||";"||obj.dro.x||"H"||obj.dro.col||result_line||k.rm.fc
     END
   END
   ELSE DO 
   	/* transparent items is off, item background color will be white */
-    DO j=0 TO obj.o.h
-      se "["||obj.o.y+j||";"||obj.o.x||"H"||obj.o.col||obj.o.spr.j||k.rm.fc
+    DO j=0 TO obj.dro.h
+      se "["||obj.dro.y+j||";"||obj.dro.x||"H"||obj.dro.col||obj.dro.spr.j||k.rm.fc
     END
   END
 return
 
 DRAW_INVERSE_OBJECT: /* draw object whose bg is fg. what if C A T really spelled DOG? */
-  ARG o
-  IF OK2DRAWOBJ(o)==0 | obj.o.room ~= obj.pl.room THEN return
+  ARG dro
+  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
   mp=k.rm.map
-  DO j=0 TO obj.o.h
+  DO j=0 TO obj.dro.h
 		/* for each line of the object's sprite */
-    spr_line=obj.o.spr.j
+    spr_line=obj.dro.spr.j
     
     /* get map data underneath item's sprite line */
-    l=obj.o.y+j
-    map_str= SUBSTR(k.mp.l, obj.o.x-1, obj.o.w+1) /* -1 for map shift, +1 for how width is indexed */
+    l=obj.dro.y+j
+    map_str= SUBSTR(k.mp.l, obj.dro.x-1, obj.dro.w+1) /* -1 for map shift, +1 for how width is indexed */
     
 	  /* loop through each character of the map string and insert bg color based on map character found */
 	  result_line=""
-	  DO k=1 TO obj.o.w+1 /* +1 due to how width is indexed */
+	  DO k=1 TO obj.dro.w+1 /* +1 due to how width is indexed */
 	  	spr_char = SUBSTR(spr_line, k, 1)
 	  	map_char = SUBSTR(map_str, k, 1)
 	  	SELECT
-	  		WHEN map_char==" " THEN result_line=result_line||obj.o.col||spr_char
+	  		WHEN map_char==" " THEN result_line=result_line||obj.dro.col||spr_char
 	  	  WHEN map_char=="л" THEN DO 
-	  	  	IF spr_char==" " THEN result_line=result_line||obj.o.col||spr_char
+	  	  	IF spr_char==" " THEN result_line=result_line||obj.dro.col||spr_char
 	  			ELSE DO
 	  				IF k.rm.dark==1 & flashlight==0 THEN result_line=result_line||k.rm.c||spr_char
 	  			  ELSE result_line=result_line||k.rm.fc||spr_char
 	  			END
 	  	  END
 	  	  WHEN map_char=="M" THEN DO
-	  	  	IF spr_char==" " THEN result_line=result_line||obj.o.col||spr_char
+	  	  	IF spr_char==" " THEN result_line=result_line||obj.dro.col||spr_char
 	  			ELSE result_line=result_line||"[30m"||spr_char
 	  	  END
 	  	  OTHERWISE NOP
 	  	END
 	  END 			
-  	se "["||obj.o.y+j||";"||obj.o.x||"H"||obj.o.col||result_line||k.rm.fc
+  	se "["||obj.dro.y+j||";"||obj.dro.x||"H"||obj.dro.col||result_line||k.rm.fc
   END
 return
 
 ERASE_OBJECT:
-  ARG o
-  IF OK2DRAWOBJ(o)==0 | obj.o.room ~= obj.pl.room THEN return
-  IF o=="BRIDGE" THEN DO
+  ARG dro
+  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
+  IF dro=="BRIDGE" THEN DO
   	call ERASE_BRIDGE
   	return
   END
   mp=k.rm.map
-  DO j=obj.o.y TO obj.o.y+obj.o.h
-    str = SUBSTR(k.mp.j, obj.o.x-1, obj.o.w+1)  /* -1 for map shift */
+  DO j=obj.dro.y TO obj.dro.y+obj.dro.h
+    str = SUBSTR(k.mp.j, obj.dro.x-1, obj.dro.w+1)  /* -1 for map shift */
     /* handle the side barriers */
     m_index = INDEX(str,"M")
     IF m_index ~=0 THEN DO
       newstr = LEFT(str,m_index-1) || "[0;30;47mл" || k.rm.c || RIGHT(str,length(str)-m_index)
       str = newstr
     END
-    se "["||j||";"||obj.o.x||"H"||k.rm.c||str
+    se "["||j||";"||obj.dro.x||"H"||k.rm.c||str
   END
 return
 
 DRAW_BRIDGE: /* TODO: fix item interactions */
-  o="BRIDGE"
-  IF OK2DRAWOBJ(o)==0 | obj.o.room ~= obj.pl.room THEN return
+  dro="BRIDGE"
+  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
   mp=k.rm.map
-	DO j=0 TO obj.o.h
+	DO j=0 TO obj.dro.h
 		/* for each line of the object's sprite */
-    spr_line=obj.o.spr.j
+    spr_line=obj.dro.spr.j
     rev_line= REVERSE(spr_line) 
     /* get map data underneath item's sprite line */
-    l=obj.o.y+j
-    map_str=SUBSTR(k.mp.l, obj.o.x-1, obj.o.w+1) /* -1 for map shift, +1 for how width is indexed */
+    l=obj.dro.y+j
+    map_str=SUBSTR(k.mp.l, obj.dro.x-1, obj.dro.w+1) /* -1 for map shift, +1 for how width is indexed */
     
 	  /* loop through each character of the map string and insert bg color based on map character found */
 	  result_line=""
-	  DO k=1 TO obj.o.w+1 /* +1 due to how width is indexed */
+	  DO k=1 TO obj.dro.w+1 /* +1 due to how width is indexed */
 	  	IF k<=3 THEN spr_char = SUBSTR(spr_line, k, 1)
 	    ELSE IF k==4 THEN DO
 	    	result_line=result_line||"[6C"
@@ -942,31 +941,31 @@ DRAW_BRIDGE: /* TODO: fix item interactions */
 	  	ELSE IF k>9 THEN spr_char = SUBSTR(rev_line, k-9, 1)
 	  	map_char = SUBSTR(map_str, k, 1)
 	  	SELECT
-	  		WHEN map_char==" " THEN result_line=result_line||obj.o.col||spr_char
+	  		WHEN map_char==" " THEN result_line=result_line||obj.dro.col||spr_char
 	  	  WHEN map_char=="л" THEN DO 
-	  	  	IF spr_char==" " THEN result_line=result_line||obj.o.col||spr_char
+	  	  	IF spr_char==" " THEN result_line=result_line||obj.dro.col||spr_char
 	  			ELSE DO
 	  				IF k.rm.dark==1 & flashlight==0 THEN result_line=result_line||k.rm.c||spr_char
 	  			  ELSE result_line=result_line||k.rm.fc||spr_char
 	  			END
 	  	  END
 	  	  WHEN map_char=="M" THEN DO
-	  	  	IF spr_char==" " THEN result_line=result_line||obj.o.col||spr_char
+	  	  	IF spr_char==" " THEN result_line=result_line||obj.dro.col||spr_char
 	  			ELSE result_line=result_line||"[30m"||spr_char
 	  	  END
 	  	  OTHERWISE NOP
 	  	END
 	  END 			
-	  se "["||obj.o.y+j||";"||obj.o.x||"H"||obj.o.col||result_line||k.rm.fc
+	  se "["||obj.dro.y+j||";"||obj.dro.x||"H"||obj.dro.col||result_line||k.rm.fc
   END
 return
 
 ERASE_BRIDGE:
   o="BRIDGE"
-  IF OK2DRAWOBJ(o)==0 | obj.o.room ~= obj.pl.room THEN return
+  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
  mp=k.rm.map
-  DO j=obj.o.y TO obj.o.y+obj.o.h
-    str= SUBSTR(k.mp.j, obj.o.x-1, obj.o.w+1)  /* -1 for map shift, +1 for how width is indexed */
+  DO j=obj.dro.y TO obj.dro.y+obj.dro.h
+    str= SUBSTR(k.mp.j, obj.dro.x-1, obj.dro.w+1)  /* -1 for map shift, +1 for how width is indexed */
     str1= LEFT(str,3)
     str2= RIGHT(str,3)
     /* handle the side barriers */
@@ -980,38 +979,41 @@ ERASE_BRIDGE:
       newstr2= LEFT(str2,m_index-1) || "[0;30;47mл" || k.rm.c || RIGHT(str2,length(str2)-m_index)
       str2 = newstr2
     END
-    se "["||j||";"||obj.o.x||"H"||k.rm.c||str1||"[6C"||str2
+    se "["||j||";"||obj.dro.x||"H"||k.rm.c||str1||"[6C"||str2
   END
 return
 
 DRAW_GATE:  	
-  ARG o
+  ARG dro
   	
-  DO j=0 TO obj.o.h
-    se "["||obj.o.y+j||";"||obj.o.x||"H"||obj.o.col||obj.o.spr.j
+  DO j=0 TO obj.dro.h
+    se "["||obj.dro.y+j||";"||obj.dro.x||"H"||obj.dro.col||obj.dro.spr.j
   END
 return
 
 DRAW_DRAGON:  /* TODO: finish */
-  ARG o
+  ARG dro
 return
 
 ERASE_DRAGON:  /* TODO: finish */
-  ARG o
+  ARG dro
 return
 
-DRAW_BAT:  /* called by MOVE_BAT in main loop */
-  o="KNUBBERRUB"
-  IF OK2DRAWOBJ(o)==0 | obj.o.room ~= obj.pl.room THEN return
-  frm=TRUNC(obj.o.frame)
-  DO j=0 TO obj.o.h
-  	obj.o.spr.j=_bat.frm.j
+DRAW_BAT:  /* called by BAT_MOVE in main loop */
+	knub="KNUBBERRUB"
+  IF OK2DRAWOBJ(knub)==0 | obj.knub.room~=obj.pl.room THEN return
+  frm=TRUNC(obj.knub.frame)
+  DO j=0 TO obj.knub.h
+  	obj.knub.spr.j=_bat.frm.j
   END
-  call DRAW_INVERSE_OBJECT(o)
+  
+  call EQUIP(knub)
+  call DRAW_INVERSE_OBJECT(knub)
 
-  /* call DEBUG_STEPPER */
-  IF obj.o.frame<(obj.o.maxframe+1)-obj.o.animspd-0 THEN obj.o.frame=obj.o.frame+obj.o.animspd
-  ELSE obj.o.frame=0
+  IF obj.knub.frame<(obj.knub.maxframe+1)-obj.knub.animspd-0 THEN DO
+  	obj.knub.frame=obj.knub.frame+obj.knub.animspd
+  END
+  ELSE obj.knub.frame=0
 return
 
 MV_U:
@@ -1116,7 +1118,7 @@ ITEM_WALL_CHECK:
   DO i=0 TO maxitem
   	o=item.i
   	IF COLLIDE("PL", o)==1 & BRIDGE_COLLIDE("PL")~=1 THEN DO
-  		call GRAB(i)
+  		call GRAB("PL", i)
   		LEAVE
   	END
   END
@@ -1124,10 +1126,10 @@ return
 
 OK2MOVEPL:
   /* do item collision detect */
-  DO i=0 TO maxitem
+  DO i=0 TO maxgrabitem
     o=item.i
-    IF o=="BRIDGE" & BRIDGE_COLLIDE("PL")==1 THEN NOP /* allow pl to walk accross bridge */
-    ELSE IF COLLIDE("PL",o)==1 THEN call grab(i)
+    IF o=="BRIDGE" & obj.knubberrub.equip~=o & BRIDGE_COLLIDE("PL")==1 THEN NOP /* allow pl to walk accross bridge */
+    ELSE IF obj.knubberrub.equip~=o & COLLIDE("PL",o)==1 THEN call GRAB("PL", o)
   END
   call ERASE_PL
   call MOVE("PL",1,1)
@@ -1152,33 +1154,40 @@ GETDIR:
 return 0
   
 EQUIP:
-  IF obj.pl.equip==-1 THEN return
-  i=obj.pl.equip
-  o=item.i
-  obj.o.room=obj.pl.room
-  obj.o.x=obj.pl.x+obj.o.offset.x
-  obj.o.y=obj.pl.y+obj.o.offset.y
-  call DRAW_OBJECT(o)
+  ARG being
+  IF obj.being.equip=="NONE" THEN return
+  eo=obj.being.equip
+  obj.eo.room=obj.being.room
+  obj.eo.x=obj.being.x+obj.eo.offset.x
+  obj.eo.y=obj.being.y+obj.eo.offset.y
+  call DRAW_OBJECT(eo)
 return
 
 GRAB:  /* TODO: fix grab at edge of screen on entrance bug */
-  ARG i
-  IF obj.pl.equip==i THEN return
-  obj.pl.equip=i
-  o=item.i
-  obj.o.offset.x=obj.o.x-obj.pl.x
-  obj.o.offset.y=obj.o.y-obj.pl.y
-  se "b1" /* BEEP! */
+  ARG being, gro
+  IF obj.being.equip==gro THEN return
+  obj.being.equip=gro
+  obj.gro.offset.x=obj.gro.x-obj.being.x
+  obj.gro.offset.y=obj.gro.y-obj.being.y
+  /* copied from pico-8 version, not yet implemented */
+  /* IF obj.being.dirx==0 & obj.being.diry==0 THEN DO
+  	obj.gro.grabx=obj.gro.dirx
+  	obj.gro.graby=obj.gro.diry
+  END
+  ELSE DO
+  	obj.gro.grabx=obj.being.dirx
+  	obj.gro.graby=obj.being.diry
+  END */
+  IF being=="PL" THEN se "b1" /* BEEP! */
 return
 
 DROP:
-  IF obj.pl.equip==-1 THEN return
-  i = obj.pl.equip
-  o=item.i
-  IF OK2DRAWOBJ(o)==0 THEN return
-  obj.o.offset.x=0
-  obj.o.offset.y=0
-  obj.pl.equip=-1
+  IF obj.pl.equip=="NONE" THEN return
+  dro = obj.pl.equip
+  IF OK2DRAWOBJ(dro)==0 THEN return
+  obj.dro.offset.x=0
+  obj.dro.offset.y=0
+  obj.pl.equip="NONE"
   se "b1" /* BEEP! */
 return
 
@@ -1270,7 +1279,7 @@ return 0
 
 WALL: /* detect collision with wall or barrier */
   ARG o
-  IF o==PL & obj.pl.equip~=6 & BRIDGE_COLLIDE("PL")==1 THEN return 0 /* allow player to walk over walls */
+  IF o=="PL" & obj.pl.equip~="BRIDGE" & BRIDGE_COLLIDE("PL")==1 THEN return 0 /* allow player to walk over walls */
   mp=k.rm.map
   DO l= obj.o.y+obj.o.dy TO obj.o.y+obj.o.dy+obj.o.h
     /* for each line of the object, check map chars under object */
@@ -1294,8 +1303,8 @@ return 0 /* wall or barrier not found, return 0 */
 MAGNET_SEEK:  /* magnet will seek an item based on priority */
   DO i=0 TO maxmagnetwant
   	o = item.i
-  	IF obj.magnet.busy==0 & obj.o.room==obj.magnet.room & obj.pl.equip~=i & knubberrub.equip~=i THEN DO
-  		obj.magnet.wanted=i
+  	IF obj.magnet.busy==0 & obj.o.room==obj.magnet.room & obj.pl.equip~=o & knubberrub.equip~=o THEN DO
+  		obj.magnet.want=o
   		obj.magnet.busy=1
   		return
     END
@@ -1304,21 +1313,20 @@ return
 
 /* in main loop */
 MAGNETISM:  /* move wanted object toward magnet */
-  IF obj.magnet.wanted<0 THEN return
+  IF obj.magnet.want~="NONE" THEN return
   	
-  i=obj.magnet.wanted
-  o=item.i
+  o=obj.magnet.want
   
-	IF obj.magnet.busy==1 & obj.o.room==obj.magnet.room & obj.pl.equip~=i & knubberrub.equip~=i THEN DO
+	IF obj.magnet.busy==1 & obj.o.room==obj.magnet.room & obj.pl.equip~=o & knubberrub.equip~=o THEN DO
 		IF obj.o.x==obj.magnet.x & obj.o.y==obj.magnet.y+obj.magnet.h+1 THEN DO  /* wanted item is on magnet */
 			obj.magnet.busy=0
 			obj.o.dx=0; obj.o.dy=0
 		END
 		ELSE DO /* move item to magnet */
-			dirx= GETDIR(obj.o.spdx, obj.magnet.x, obj.o.x, 0, 0)
-			diry= GETDIR(obj.o.spdy, obj.magnet.y+obj.magnet.h+1, obj.o.y, 0, 0)
-	    obj.o.dx=obj.o.dx+(obj.o.spdx*dirx)
-		  obj.o.dy=obj.o.dy+(obj.o.spdy*diry)
+			obj.o.dirx= GETDIR(obj.o.spdx, obj.magnet.x, obj.o.x, 0, 0)
+			obj.o.diry= GETDIR(obj.o.spdy, obj.magnet.y+obj.magnet.h+1, obj.o.y, 0, 0)
+	    obj.o.dx=obj.o.dx+(obj.o.spdx*obj.o.dirx)
+		  obj.o.dy=obj.o.dy+(obj.o.spdy*obj.o.diry)
 		  IF ABS(obj.o.dx)>=1 & ABS(obj.o.dy)>=1 THEN DO
 		  	call ERASE_OBJECT(o)
 		    call MOVE(o,1,1)  /* move x and y */
@@ -1343,35 +1351,67 @@ MAGNETISM:  /* move wanted object toward magnet */
 	/* handle case where magnet leaves the room */
 	IF obj.o.room~=obj.magnet.room THEN DO
 	  obj.magnet.busy=0
-	  obj.magnet.wanted=-1
+	  obj.magnet.want="NONE"
 	  obj.o.dx=0; obj.o.dy=0
 	END
 	IF debug==1 THEN call DEBUG_MAGNET 
 return
 
 /* in main loop */
-BAT_SEEK:  /* TODO: finish */
+BAT_SEEK:
+  knub="KNUBBERRUB"
+  IF obj.knub.fedup==0 THEN obj.knub.seek=1 
+  ELSE DO
+    obj.knub.fedup=obj.knub.fedup+1
+    IF obj.knub.fedup==obj.knub.maxfedup THEN obj.knub.fedup=0
+  END
+  IF obj.knub.seek==1 THEN DO
+	  DO wi=0 TO want.knub.max
+	  	wo=want.knub.wi  /* eg. "SWORD" */	  		
+	  	IF obj.knub.want=="NONE" & obj.wo.room==obj.knub.room & wo~=obj.knub.equip THEN DO
+	  		obj.knub.want=wo
+	  		LEAVE wi
+	  	END
+	  END
+    IF obj.knub.want~="NONE" & obj.wo.room==obj.knub.room & obj.knub.equip~=obj.knub.want THEN call BAT_STEAL
+    ELSE obj.knub.want="NONE"
+	END
+	IF debug==1 THEN call DEBUG_BAT
 return
 
 /* in main loop */
 BAT_MOVE:  /* TODO: finish, fix item interaction */
-  o="KNUBBERRUB"
-  dirx=0
-  diry=1
-  obj.o.dx=obj.o.dx+(obj.o.spdx*dirx)
-  obj.o.dy=obj.o.dy+(obj.o.spdy*diry)
-  IF ABS(obj.o.dy)>=1 THEN DO
-    call ERASE_OBJECT(o)
-    call MOVE(o,1,1)
-    IF obj.o.x+obj.o.w>maxcol THEN call RIGHT_EXIT(o) 
-    IF obj.o.x<mincol THEN call LEFT_EXIT(o)
-    IF obj.o.y+obj.o.h>maxline THEN call BOTTOM_EXIT(o)
-    IF obj.o.y<minline THEN call TOP_EXIT(o)
+  knub="KNUBBERRUB"
+  obj.knub.dx=obj.knub.dx+(obj.knub.spdx*obj.knub.dirx)
+  obj.knub.dy=obj.knub.dy+(obj.knub.spdy*obj.knub.diry)
+  IF obj.pl.equip~=knub & COLLIDE(knub, "PL") THEN call GRAB("PL", knub)
+  IF ABS(obj.knub.dy)>=1 THEN DO
+    call ERASE_OBJECT(knub)
+    IF obj.pl.equip~=knub THEN call MOVE(knub,1,1)
+    IF obj.knub.x+obj.knub.w>maxcol THEN call RIGHT_EXIT(knub) 
+    ELSE IF obj.knub.x<mincol THEN call LEFT_EXIT(knub)
+    ELSE IF obj.knub.y+obj.knub.h>maxline THEN call BOTTOM_EXIT(knub)
+    ELSE IF obj.knub.y<minline THEN call TOP_EXIT(knub)
     call DRAW_BAT
     se park
-    obj.o.dx=0; obj.o.dy=0
+    obj.knub.dy=0
   END
-  IF debug==1 THEN call DEBUG_BAT
+return
+
+BAT_STEAL:
+  knub="KNUBBERRUB"
+  /* se "[7;2H"||k.rm.c||"BAT_STEAL"  */
+  IF obj.knub.want=="NONE" THEN return
+  wo=obj.knub.want  /* eg. "SWORD" */
+  IF obj.pl.equip~=knub THEN DO
+  	obj.knub.dirx= GETDIR(obj.knub.spdx, obj.wo.x, obj.knub.x, 0, 0)
+  	obj.knub.diry= GETDIR(obj.knub.spdy, obj.wo.y, obj.knub.y, 0, 0)
+  END
+  IF COLLIDE(knub, wo) THEN DO
+  	IF obj.pl.equip==wo THEN obj.pl.equip="NONE"
+  	call GRAB(knub, wo)
+  	obj.knub.seek=0; obj.knub.want="NONE"; obj.knub.fedup=1
+  END
 return
 
 /* in main loop */
@@ -2325,7 +2365,7 @@ INIT_PLAYER:
   obj.pl.dy=0
   obj.pl.spdx=1
   obj.pl.spdy=1
-  obj.pl.equip=-1
+  obj.pl.equip="NONE"
 return  
   
 INIT_OBJECTS:
@@ -2457,6 +2497,7 @@ INIT_OBJECTS:
   
   maxitem=7
   maxmagnetwant=5
+  maxgrabitem=8
   item.0="YKEY"
   item.1="WKEY"
   item.2="BKEY"
@@ -2465,6 +2506,7 @@ INIT_OBJECTS:
   item.5="CHALICE"
   item.6="MAGNET"
   item.7="DOT"
+  item.8="KNUBBERRUB"
   
   maxdragon=2
   dragon.0="YORGLE"
@@ -2480,18 +2522,6 @@ INIT_OBJECTS:
   
   fear.rhindle.max=0
   fear.rhindle.0="SWORD"
-
-  want.knubberrub.max=9
-  want.knubberrub.0="CHALICE"
-  want.knubberrub.1="SWORD"
-  want.knubberrub.2="BRIDGE"
-  want.knubberrub.3="YKEY"
-  want.knubberrub.4="WKEY"
-  want.knubberrub.5="BKEY"
-  want.knubberrub.6="RHINDLE"
-  want.knubberrub.7="YORGLE"
-  want.knubberrub.8="GRUNDLE"
-  want.knubberrub.9="MAGNET"
   
   want.yorgle.max=1
   want.yorgle.0="PL"
@@ -2645,6 +2675,10 @@ INIT_OBJECTS:
   obj.ykey.dy=0
   obj.ykey.spdx=0.0625
   obj.ykey.spdy=0.03125
+  obj.ykey.dirx=0
+  obj.ykey.diry=0
+  obj.ykey.offset.x=0
+  obj.ykey.offset.y=0
   obj.ykey.col="[1;33m"
   obj.ykey.spr.0=_key.0
   obj.ykey.lvl3.0=1   /* random room lower limit */
@@ -2659,6 +2693,10 @@ INIT_OBJECTS:
   obj.bkey.dy=0
   obj.bkey.spdx=0.0625
   obj.bkey.spdy=0.03125
+  obj.bkey.dirx=0
+  obj.bkey.diry=0
+  obj.bkey.offset.x=0
+  obj.bkey.offset.y=0
   obj.bkey.col="[0;47;30m"
   obj.bkey.spr.0=_key.0
   obj.bkey.lvl3.0=1   /* random room lower limit */
@@ -2673,6 +2711,10 @@ INIT_OBJECTS:
   obj.wkey.dy=0
   obj.wkey.spdx=0.0625
   obj.wkey.spdy=0.03125
+  obj.wkey.dirx=0
+  obj.wkey.diry=0
+  obj.wkey.offset.x=0
+  obj.wkey.offset.y=0
   obj.wkey.col="[1;37m"
   obj.wkey.spr.0=_key.0
   obj.wkey.lvl3.0=1   /* random room lower limit */
@@ -2687,6 +2729,10 @@ INIT_OBJECTS:
   obj.sword.dy=0
   obj.sword.spdx=0.0625
   obj.sword.spdy=0.03125
+  obj.sword.dirx=0
+  obj.sword.diry=0
+  obj.sword.offset.x=0
+  obj.sword.offset.y=0
   obj.sword.col="[1;33m"
   obj.sword.spr.0=_sword.0
   obj.sword.lvl3.0=1   /* random room lower limit */
@@ -2699,11 +2745,15 @@ INIT_OBJECTS:
   obj.magnet.h=1
   obj.magnet.dx=0
   obj.magnet.dy=0
+  obj.magnet.dirx=0
+  obj.magnet.diry=0
+  obj.magnet.offset.x=0
+  obj.magnet.offset.y=0
   obj.magnet.col="[0;47;30m"
   obj.magnet.spr.0=_magnet.0
   obj.magnet.spr.1=_magnet.1
   obj.magnet.busy=0
-  obj.magnet.wanted=-1
+  obj.magnet.want="NONE"
   obj.magnet.lvl3.0=1   /* random room lower limit */
   obj.magnet.lvl3.1=29  /* random room upper limit */
   
@@ -2716,6 +2766,10 @@ INIT_OBJECTS:
   obj.chalice.dy=0
   obj.chalice.spdx=0.25
   obj.chalice.spdy=0.125
+  obj.chalice.dirx=0
+  obj.chalice.diry=0
+  obj.chalice.offset.x=0
+  obj.chalice.offset.y=0
   obj.chalice.col="[0;47;35m" /* TODO: fix */
   obj.chalice.spr.0=_chalice.0
   obj.chalice.spr.1=_chalice.1
@@ -2732,6 +2786,10 @@ INIT_OBJECTS:
   obj.bridge.dy=0
   obj.bridge.spdx=0.5
   obj.bridge.spdy=0.25
+  obj.bridge.dirx=0
+  obj.bridge.diry=0
+  obj.bridge.offset.x=0
+  obj.bridge.offset.y=0
   obj.bridge.col="[0;45;37m"
   obj.bridge.spr.0=_bridge.0
   obj.bridge.spr.1=_bridge.1
@@ -2749,13 +2807,17 @@ INIT_OBJECTS:
   obj.dot.h=0
   obj.dot.dx=0
   obj.dot.dy=0
+  obj.dot.dirx=0
+  obj.dot.diry=0
+  obj.dot.offset.x=0
+  obj.dot.offset.y=0
   obj.dot.col="[22;47;37m"
   obj.dot.spr.0=_dot.0
   obj.dot.lvl3.0=0  /* random room lower limit */
   obj.dot.lvl3.1=0  /* random room upper limit */
   
   obj.knubberrub.room=2 
-  obj.knubberrub.x=13 /* TODO: fix */
+  obj.knubberrub.x=17 
   obj.knubberrub.y=19 /* TODO: fix */
   obj.knubberrub.w=4
   obj.knubberrub.h=2
@@ -2763,6 +2825,10 @@ INIT_OBJECTS:
   obj.knubberrub.dy=0
   obj.knubberrub.spdx=0.015625
   obj.knubberrub.spdy=0.015625
+  obj.knubberrub.dirx=0
+  obj.knubberrub.diry=1
+  obj.knubberrub.offset.x=0
+  obj.knubberrub.offset.y=0
   obj.knubberrub.col="[0;40;37m"
   obj.knubberrub.frame=0  /* frame counter */
   obj.knubberrub.maxframe=_bat.maxframe
@@ -2770,11 +2836,25 @@ INIT_OBJECTS:
   obj.knubberrub.spr.0=_bat.0.0
   obj.knubberrub.spr.1=_bat.0.1
   obj.knubberrub.spr.2=_bat.0.2
-  obj.knubberrub.equip=-1
-  obj.knubberrub.want=-1
+  obj.knubberrub.equip="NONE"
+  obj.knubberrub.want="NONE"
   obj.knubberrub.fedup=0
+  obj.knubberrub.maxfedup=230 
+  obj.knubberrub.seek=0
   obj.knubberrub.lvl3.0=1   /* random room lower limit */
   obj.knubberrub.lvl3.1=29  /* random room upper limit */
+  
+  want.knubberrub.max=9
+  want.knubberrub.0="CHALICE"
+  want.knubberrub.1="SWORD"
+  want.knubberrub.2="BRIDGE"
+  want.knubberrub.3="YKEY"
+  want.knubberrub.4="WKEY"
+  want.knubberrub.5="BKEY"
+  want.knubberrub.6="RHINDLE"
+  want.knubberrub.7="YORGLE"
+  want.knubberrub.8="GRUNDLE"
+  want.knubberrub.9="MAGNET"
   
   obj.yorgle.room=30 /* TODO: fix */
   obj.yorgle.x=1 /* TODO: fix */
@@ -2783,6 +2863,10 @@ INIT_OBJECTS:
   obj.yorgle.dy=0
   obj.yorgle.spdx=1
   obj.yorgle.spdy=1
+  obj.yorgle.dirx=0
+  obj.yorgle.diry=0
+  obj.yorgle.offset.x=0
+  obj.yorgle.offset.y=0
   obj.yorgle.col="[1;33m"
   obj.yorgle.spr.0=_dragon.0
   obj.yorgle.lvl3.0=1   /* random room lower limit */
@@ -2795,6 +2879,10 @@ INIT_OBJECTS:
   obj.grundle.dy=0
   obj.grundle.spdx=1
   obj.grundle.spdy=1
+  obj.grundle.dirx=0
+  obj.grundle.diry=0
+  obj.grundle.offset.x=0
+  obj.grundle.offset.y=0
   obj.grundle.col="[1;32m"
   obj.grundle.spr.0=_dragon.0
   obj.grundle.lvl3.0=1   /* random room lower limit */
@@ -2807,6 +2895,10 @@ INIT_OBJECTS:
   obj.rhindle.dy=0
   obj.rhindle.spdx=1
   obj.rhindle.spdy=1
+  obj.rhindle.dirx=0
+  obj.rhindle.diry=0
+  obj.rhindle.offset.x=0
+  obj.rhindle.offset.y=0
   obj.rhindle.col="[1;31m" /* TODO: fix */
   obj.rhindle.spr.0=_dragon.0
   obj.rhindle.lvl3.0=1   /* random room lower limit */

@@ -26,7 +26,7 @@ changewhere "BBS Adventure "||ver
 debug=o         /* 0 = disable debug mode,   1 = enable debug mode   */
 debug_flash=0   /* 0 = disable flash debug,  1 = enable flash debug  */
 debug_magnet=0  /* 0 = disable magnet debug, 1 = enable magnet debug */
-debug_bat=1     /* 0 = disable bat debug,    1 = enable bat debug    */
+debug_bat=0     /* 0 = disable bat debug,    1 = enable bat debug    */
 debug_dragon=0  /* 0 = disable dragon debug, 1 = enable dragon debug */
 
 transparent_items=1 /* 0 = disaled, 1 = enabled */
@@ -655,6 +655,7 @@ DEBUG_PL:
   IF game_running~=1 THEN return
   se "[3;2HPL.X:" || obj.pl.x || " PL.Y:" || obj.pl.y || "  "
   IF flashlight>0 THEN se "[43m[4;2HFlash X:"|| light.x || " Y:" || light.y || " W:" || light.w || " H:" || light.h
+  se "[5;2HYKEY.R:"||obj.ykey.room||" X:"||obj.ykey.x||" Y:"||obj.ykey.y||" OFFX:"||obj.ykey.offset.x||" OFFY:"||obj.ykey.offset.y||"         "
 return
 
 DEBUG_MAGNET:
@@ -804,10 +805,10 @@ DRAW_OBJS:  /* draw objects (not in the main loop) */
 return
 
 OK2DRAWOBJ: /* check if ok to draw object */
-  ARG dro
-  IF obj.dro.x<mincol | obj.dro.x+obj.dro.w>maxcol | obj.dro.y<minline | obj.dro.y+obj.dro.h>maxline THEN return 0 /* don't draw */
-  ELSE IF GATE_COLLIDE(dro)==1 THEN return 0  /* dont draw */
-  ELSE IF MSG_COLLIDE(dro)==1 THEN return 0  /* don't draw */
+  ARG o
+  IF obj.o.x<mincol | obj.o.x+obj.dro.w>maxcol | obj.o.y<minline | obj.o.y+obj.o.h>maxline THEN return 0 /* don't draw */
+  ELSE IF GATE_COLLIDE(o)==1 THEN return 0  /* dont draw */
+  ELSE IF MSG_COLLIDE(o)==1 THEN return 0  /* don't draw */
   ELSE return 1  /* draw item */
 return
 
@@ -1009,6 +1010,7 @@ DRAW_BAT:  /* called by BAT_MOVE in main loop */
   
   call EQUIP(knub)
   call DRAW_INVERSE_OBJECT(knub)
+  se park
 
   IF obj.knub.frame<(obj.knub.maxframe+1)-obj.knub.animspd-0 THEN DO
   	obj.knub.frame=obj.knub.frame+obj.knub.animspd
@@ -1016,10 +1018,17 @@ DRAW_BAT:  /* called by BAT_MOVE in main loop */
   ELSE obj.knub.frame=0
 return
 
+ERASE_BAT:
+  /* erase equipped object */
+  IF obj.knubberrub.equip~="NONE" THEN call ERASE_OBJECT(obj.knubberrub.equip)
+  /* erase knubberrub */
+  call ERASE_OBJECT("KNUBBERRUB")
+return
+
 MV_U:
   IF obj.pl.y==minline THEN DO 
   	call TOP_EXIT("PL")
-  	return
+  	/* return */
   END
   IF k.rm.ci~=0 & obj.pl.x > 37 & obj.pl.x < 43 & obj.pl.y==16 THEN DO 
   	call CASTLE_ENTRANCE("PL")
@@ -1042,11 +1051,11 @@ MV_D:
   IF obj.pl.y==maxline THEN DO
     IF k.rm.co==0 THEN DO
     	call BOTTOM_EXIT("PL")
-    	return
+    	/* return */
     END
     ELSE DO
     	call CASTLE_EXIT("PL")
-    	return
+    	/* return */
     END
   END
   obj.pl.dy=1
@@ -1063,7 +1072,7 @@ return
 MV_R:
   IF obj.pl.x==maxcol-1 THEN DO
   	call RIGHT_EXIT("PL")
-  	return
+  	/* return */
   END
   IF obj.pl.x==maxcol-2 THEN obj.pl.dx=1
   ELSE obj.pl.dx=2  	
@@ -1090,7 +1099,7 @@ return
 MV_L:
   IF obj.pl.x==mincol THEN DO
   	call LEFT_EXIT("PL")
-  	return
+  	/* return */
   END
   IF obj.pl.x==mincol+1 THEN obj.pl.dx=-1
   ELSE obj.pl.dx=-2
@@ -1118,7 +1127,7 @@ ITEM_WALL_CHECK:
   DO i=0 TO maxitem
   	o=item.i
   	IF COLLIDE("PL", o)==1 & BRIDGE_COLLIDE("PL")~=1 THEN DO
-  		call GRAB("PL", i)
+  		call GRAB("PL", o)
   		LEAVE
   	END
   END
@@ -1169,6 +1178,11 @@ GRAB:  /* TODO: fix grab at edge of screen on entrance bug */
   obj.being.equip=gro
   obj.gro.offset.x=obj.gro.x-obj.being.x
   obj.gro.offset.y=obj.gro.y-obj.being.y
+  /* hacky knubberrub grab offset fix */
+  IF being=="KNUBBERRUB" THEN DO
+  	obj.gro.offset.x=obj.gro.offset.x+obj.being.dirx
+  	obj.gro.offset.y=obj.gro.offset.y+obj.being.diry
+  END
   /* copied from pico-8 version, not yet implemented */
   /* IF obj.being.dirx==0 & obj.being.diry==0 THEN DO
   	obj.gro.grabx=obj.gro.dirx
@@ -1241,7 +1255,7 @@ MSG_COLLIDE:  /* check if object collides with msg in secret room */
   ARG o
   DO j=0 to maxmsg
   	m=msg.j
-  	IF COLLIDE(o, m) THEN return 1
+  	IF COLLIDE(o, m)==1 THEN return 1
   END
 return 0
 
@@ -1249,7 +1263,7 @@ GATE_COLLIDE:  /* check if object collides with gate */
   ARG o  
   DO j=0 TO maxgate
   	g=gate.j
-  	IF COLLIDE(o, g) THEN DO
+  	IF COLLIDE(o, g)==1 THEN DO
   		IF obj.g.key==o & obj.g.locked==1 THEN DO 
   			call UNLOCK(g)
   			call DRAW_OBJECT(o)
@@ -1268,13 +1282,12 @@ return 0 /* o not on bridge */
 
 COLLIDE:  /* detect if object1 and object2 are colliding */
   ARG o1, o2
-  IF obj.o1.room==obj.o2.room &,                      /* o1 and o2 are in same room and   */ 
-     obj.o2.x+obj.o2.w >= obj.o1.x+obj.o1.dx &,       /* o2 right edge > o1 left edge and */
-     obj.o2.y+obj.o2.h >= obj.o1.y+obj.o1.dy &,       /* o2 bottom edge > o1 top edge and */
-     obj.o2.x <= obj.o1.x+obj.o1.w+obj.o1.dx &,       /* o2 left edge < o1 right edge and */
-     obj.o2.y <= obj.o1.y+obj.o1.h+obj.o1.dy THEN DO  /* o2 top edge < o1 bottom edge     */
-     	return 1
-  END
+  IF obj.o1.room==obj.o2.room &,                            /* o1 and o2 are in same room and   */ 
+     obj.o2.x+obj.o2.w >= obj.o1.x+obj.o1.dx &,             /* o2 right edge > o1 left edge and */
+     obj.o2.y+obj.o2.h >= obj.o1.y+obj.o1.dy &,             /* o2 bottom edge > o1 top edge and */
+     obj.o2.x <= obj.o1.x+obj.o1.w+obj.o1.dx &,             /* o2 left edge < o1 right edge and */
+     obj.o2.y <= obj.o1.y+obj.o1.h+obj.o1.dy THEN return 1  /* o2 top edge < o1 bottom edge     */
+  ELSE return 0
 return 0
 
 WALL: /* detect collision with wall or barrier */
@@ -1311,8 +1324,9 @@ MAGNET_SEEK:  /* magnet will seek an item based on priority */
   END
 return
 
-/* in main loop */
-MAGNETISM:  /* move wanted object toward magnet */
+/* TODO: fix magnet, broke when added bat */
+/* in main loop */ 
+MAGNETISM:  /* move wanted object toward magnet */ 
   IF obj.magnet.want~="NONE" THEN return
   	
   o=obj.magnet.want
@@ -1384,30 +1398,39 @@ BAT_MOVE:  /* TODO: finish, fix item interaction */
   knub="KNUBBERRUB"
   obj.knub.dx=obj.knub.dx+(obj.knub.spdx*obj.knub.dirx)
   obj.knub.dy=obj.knub.dy+(obj.knub.spdy*obj.knub.diry)
-  IF obj.pl.equip~=knub & COLLIDE(knub, "PL") THEN call GRAB("PL", knub)
-  IF ABS(obj.knub.dy)>=1 THEN DO
-    call ERASE_OBJECT(knub)
-    IF obj.pl.equip~=knub THEN call MOVE(knub,1,1)
-    IF obj.knub.x+obj.knub.w>maxcol THEN call RIGHT_EXIT(knub) 
-    ELSE IF obj.knub.x<mincol THEN call LEFT_EXIT(knub)
-    ELSE IF obj.knub.y+obj.knub.h>maxline THEN call BOTTOM_EXIT(knub)
-    ELSE IF obj.knub.y<minline THEN call TOP_EXIT(knub)
+  IF obj.pl.equip~=knub & COLLIDE(knub, "PL")==1 THEN call GRAB("PL", knub)  
+  IF ABS(obj.knub.dx)>=1 & ABS(obj.knub.dy)>=1 THEN DO
+  	call ERASE_BAT
+    IF obj.pl.equip~=knub THEN call MOVE(knub,1,1)  /* move x and y */
+    call EXIT_OBJ(knub)
     call DRAW_BAT
-    se park
+    obj.knub.dx=0; obj.knub.dy=0
+  END
+  ELSE IF ABS(obj.knub.dx)>=1 THEN DO
+  	call ERASE_BAT
+    IF obj.pl.equip~=knub THEN call MOVE(knub,1,0)  /* move x only */
+    call EXIT_OBJ(knub)
+    call DRAW_BAT
+    obj.knub.dx=0
+  END
+  ELSE IF ABS(obj.knub.dy)>=1 THEN DO
+  	call ERASE_BAT
+    IF obj.pl.equip~=knub THEN call MOVE(knub,0,1)  /* move y only */
+    call EXIT_OBJ(knub)
+    call DRAW_BAT
     obj.knub.dy=0
   END
 return
 
 BAT_STEAL:
   knub="KNUBBERRUB"
-  /* se "[7;2H"||k.rm.c||"BAT_STEAL"  */
   IF obj.knub.want=="NONE" THEN return
   wo=obj.knub.want  /* eg. "SWORD" */
   IF obj.pl.equip~=knub THEN DO
   	obj.knub.dirx= GETDIR(obj.knub.spdx, obj.wo.x, obj.knub.x, 0, 0)
   	obj.knub.diry= GETDIR(obj.knub.spdy, obj.wo.y, obj.knub.y, 0, 0)
   END
-  IF COLLIDE(knub, wo) THEN DO
+  IF COLLIDE(knub, wo)==1 THEN DO
   	IF obj.pl.equip==wo THEN obj.pl.equip="NONE"
   	call GRAB(knub, wo)
   	obj.knub.seek=0; obj.knub.want="NONE"; obj.knub.fedup=1
@@ -1427,7 +1450,7 @@ DRAGON_MOVE:  /* TODO: finish */
   IF debug==1 THEN call DEBUG_DRAGON
 return
 
-SECRET:
+SECRET:  /* TODO: fix trigger/untrigger with bat */
   IF obj.pl.room==3 & obj.dot.room==3 THEN DO
   	DO s=0 TO maxitem-1
   		o=item.s
@@ -1438,6 +1461,15 @@ SECRET:
   	END
   END
 return 0
+
+EXIT_OBJ:
+  ARG eo
+  IF obj.eo.x+obj.eo.w>maxcol THEN call RIGHT_EXIT(eo) 
+  ELSE IF obj.eo.x<mincol THEN call LEFT_EXIT(eo)
+  ELSE IF obj.eo.y+obj.eo.h>maxline THEN call BOTTOM_EXIT(eo)
+  ELSE IF obj.eo.y<minline THEN call TOP_EXIT(eo)
+return
+
 
 TOP_EXIT:
   ARG p
@@ -2399,12 +2431,12 @@ INIT_OBJECTS:
   _bat.0.0=" ллл "
   _bat.0.1=" м м "
   _bat.0.2="ммлмм"
-  _bat.0.3="ллллл"
+  /* _bat.0.3="ллллл" */
   
   _bat.1.0="ллллл"
   _bat.1.1="пм мп"
   _bat.1.2=" млм "
-  _bat.1.3="млллм"
+  /* _bat.1.3="млллм" */
   
   _dragon.0=""  /* TODO: fix */
   
@@ -2800,9 +2832,9 @@ INIT_OBJECTS:
   obj.bridge.lvl3.0=1   /* random room lower limit */
   obj.bridge.lvl3.1=29  /* random room upper limit */
   
-  obj.dot.room=3  /* orig 21, easy 3  */
-  obj.dot.x=74    /* orig 34, easy 74 */
-  obj.dot.y=23    /* orig 22, easy 23 */
+  obj.dot.room=21  /* orig 21, easy 3  */
+  obj.dot.x=34     /* orig 34, easy 74 */
+  obj.dot.y=22     /* orig 22, easy 23 */
   obj.dot.w=0
   obj.dot.h=0
   obj.dot.dx=0
@@ -2839,12 +2871,12 @@ INIT_OBJECTS:
   obj.knubberrub.equip="NONE"
   obj.knubberrub.want="NONE"
   obj.knubberrub.fedup=0
-  obj.knubberrub.maxfedup=230 
+  obj.knubberrub.maxfedup=5000 
   obj.knubberrub.seek=0
   obj.knubberrub.lvl3.0=1   /* random room lower limit */
   obj.knubberrub.lvl3.1=29  /* random room upper limit */
   
-  want.knubberrub.max=9
+  want.knubberrub.max=5 /* TODO: fix this. limited for now */
   want.knubberrub.0="CHALICE"
   want.knubberrub.1="SWORD"
   want.knubberrub.2="BRIDGE"

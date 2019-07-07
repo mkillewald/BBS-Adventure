@@ -26,7 +26,7 @@ changewhere "BBS Adventure "||ver
 debug=0         /* 0 = disable debug mode,   1 = enable debug mode   */
 debug_flash=0   /* 0 = disable flash debug,  1 = enable flash debug  */
 debug_magnet=0  /* 0 = disable magnet debug, 1 = enable magnet debug */
-debug_bat=1     /* 0 = disable bat debug,    1 = enable bat debug    */
+debug_bat=0     /* 0 = disable bat debug,    1 = enable bat debug    */
 debug_dragon=0  /* 0 = disable dragon debug, 1 = enable dragon debug */
 
 transparent_items=1 /* 0 = disaled, 1 = enabled */
@@ -572,7 +572,7 @@ START:
   IF difficulty==2 THEN DO
   	call EXPAND_KINGDOM
   	/* set level 2 item locations */
-    obj.ykey.room=3  /* orig 9, test 3 */
+    obj.ykey.room=9  /* orig 9, test 3 */
     obj.bkey.room=25
     obj.wkey.room=6
     obj.sword.room=17
@@ -1694,29 +1694,29 @@ INIT_KINGDOM:
   k.21.map="BCMAZE2_MAP"
 
   /* entrance to black castle maze */
-  k.21.dark=1
-  k.21.c="[0;47;37m"; k.21.fc="[22;37m"; k.21.bc="[47m"; k.21.bc2="[47m"
-  IF flashlight==0 THEN k.21.fc="[22;33m"
-  k.21.te=20; k.21.re=19; k.21.be=27; k.21.le=21; k.21.ci=0; k.21.co=0
-  k.21.map="BCMAZE3_MAP"
+  k.22.dark=1
+  k.22.c="[0;47;37m"; k.22.fc="[22;37m"; k.22.bc="[47m"; k.22.bc2="[47m"
+  IF flashlight==0 THEN k.22.fc="[22;33m"
+  k.22.te=20; k.22.re=19; k.22.be=27; k.22.le=21; k.22.ci=0; k.22.co=0
+  k.22.map="BCMAZE3_MAP"
 
   /* white castle maze top left */
-  k.22.dark=0
-  k.22.c="[0;47;31m"; k.22.fc="[22;31m"; k.22.bc="[47m"; k.22.bc2="[41m"
-  k.22.te=25; k.22.re=24; k.22.be=25; k.22.le=24; k.22.ci=0; k.22.co=0
-  k.22.map="WCMAZE0_MAP"
-
-  /* white castle maze top right */
   k.23.dark=0
   k.23.c="[0;47;31m"; k.23.fc="[22;31m"; k.23.bc="[47m"; k.23.bc2="[41m"
-  k.23.te=26; k.23.re=23; k.23.be=26; k.23.le=23; k.23.ci=0; k.23.co=0
-  k.23.map="WCMAZE1_MAP"
+  k.23.te=25; k.23.re=24; k.23.be=25; k.23.le=24; k.23.ci=0; k.23.co=0
+  k.23.map="WCMAZE0_MAP"
 
-  /* white castle maze bottom left */
+  /* white castle maze top right */
   k.24.dark=0
   k.24.c="[0;47;31m"; k.24.fc="[22;31m"; k.24.bc="[47m"; k.24.bc2="[41m"
-  k.24.te=23; k.24.re=26; k.24.be=23; k.24.le=26; k.24.ci=0; k.24.co=0
-  k.24.map="WCMAZE2_MAP"
+  k.24.te=26; k.24.re=23; k.24.be=26; k.24.le=23; k.24.ci=0; k.24.co=0
+  k.24.map="WCMAZE1_MAP"
+
+  /* white castle maze bottom left */
+  k.25.dark=0
+  k.25.c="[0;47;31m"; k.25.fc="[22;31m"; k.25.bc="[47m"; k.25.bc2="[41m"
+  k.25.te=23; k.25.re=26; k.25.be=23; k.25.le=26; k.25.ci=0; k.25.co=0
+  k.25.map="WCMAZE2_MAP"
 
   /* entrance to white castle maze */
   k.26.dark=0

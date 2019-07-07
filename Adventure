@@ -25,8 +25,8 @@ changewhere "BBS Adventure "||ver
 \**************************************************************************/
 debug=0         /* 0 = disable debug mode,   1 = enable debug mode   */
 debug_flash=0   /* 0 = disable flash debug,  1 = enable flash debug  */
-debug_magnet=1  /* 0 = disable magnet debug, 1 = enable magnet debug */
-debug_bat=0     /* 0 = disable bat debug,    1 = enable bat debug    */
+debug_magnet=0  /* 0 = disable magnet debug, 1 = enable magnet debug */
+debug_bat=1     /* 0 = disable bat debug,    1 = enable bat debug    */
 debug_dragon=0  /* 0 = disable dragon debug, 1 = enable dragon debug */
 
 transparent_items=1 /* 0 = disaled, 1 = enabled */
@@ -572,7 +572,7 @@ START:
   IF difficulty==2 THEN DO
   	call EXPAND_KINGDOM
   	/* set level 2 item locations */
-    obj.ykey.room=9
+    obj.ykey.room=3  /* orig 9, test 3 */
     obj.bkey.room=25
     obj.wkey.room=6
     obj.sword.room=17
@@ -656,8 +656,7 @@ return
 DEBUG_PL:
   IF game_running~=1 THEN return
   se "[3;2HPL.X:" || obj.pl.x || " PL.Y:" || obj.pl.y || "  "
-  IF flashlight>0 THEN se "[43m[4;2HFlash X:"|| light.x || " Y:" || light.y || " W:" || light.w || " H:" || light.h
-  /* se "[5;2HYKEY.R:"||obj.ykey.room||" X:"||obj.ykey.x||" Y:"||obj.ykey.y||" OFFX:"||obj.ykey.offset.x||" OFFY:"||obj.ykey.offset.y||"         " */
+  IF flashlight>0 THEN se "[43m[4;2HFlash X:"|| light.x || " Y:" || light.y || " W:" || light.w || " H:" || light.h 
 return
 
 DEBUG_MAGNET:
@@ -671,6 +670,7 @@ DEBUG_BAT:  /* TODO: finish */
   if game_running~=1 | debug_bat~=1 THEN return
   kn="KNUBBERRUB"
   se "[5;2H"||k.rm.c||"B.R:"||obj.kn.room||" B.X:"||obj.kn.x||" B.Y:"||obj.kn.y||" B.W:"||obj.kn.want||" B.FU:"||obj.kn.fedup||" B.S:"||obj.kn.seek||" B.E:"||obj.kn.equip||"     " 
+  /* se "[6;2HYKEY.R:"||obj.ykey.room||" X:"||obj.ykey.x||" Y:"||obj.ykey.y||" OFFX:"||obj.ykey.offset.x||" OFFY:"||obj.ykey.offset.y||"         " */
 return
 
 DEBUG_DRAGON:  /* TODO: finish */
@@ -1010,7 +1010,7 @@ DRAW_BAT:  /* called by BAT_MOVE in main loop */
   	obj.knub.spr.j=_bat.frm.j
   END
   
-  call EQUIP(knub)
+  /* call EQUIP("KNUBBERRUB") */
   call DRAW_INVERSE_OBJECT(knub)
   se park
 
@@ -1168,6 +1168,7 @@ EQUIP:
   ARG being
   IF obj.being.equip=="NONE" THEN return
   eo=obj.being.equip
+  /* se "[7;2H"||being|| " E:"||eo|| " e.r:"||obj.eo.room||" b.r:"||obj.being.room */
   obj.eo.room=obj.being.room
   obj.eo.x=obj.being.x+obj.eo.offset.x
   obj.eo.y=obj.being.y+obj.eo.offset.y
@@ -1387,21 +1388,21 @@ BAT_SEEK:
     IF obj.knub.fedup==obj.knub.maxfedup THEN obj.knub.fedup=0
   END
   IF obj.knub.seek==1 THEN DO
-	  DO wi=0 TO want.knub.max
-	  	wo=want.knub.wi  /* eg. "SWORD" */	  		
-	  	IF obj.knub.want=="NONE" & obj.wo.room==obj.knub.room & wo~=obj.knub.equip THEN DO
-	  		obj.knub.want=wo
-	  		LEAVE wi
+	  DO kwi=0 TO want.knub.max
+	  	kwo=want.knub.kwi  /* eg. "SWORD" */	  		
+	  	IF obj.knub.want=="NONE" & obj.kwo.room==obj.knub.room & kwo~=obj.knub.equip THEN DO
+	  		obj.knub.want=kwo
+	  		LEAVE kwi
 	  	END
 	  END
-    IF obj.knub.want~="NONE" & obj.wo.room==obj.knub.room & obj.knub.equip~=obj.knub.want THEN call BAT_STEAL
+    IF obj.knub.want~="NONE" & obj.kwo.room==obj.knub.room & obj.knub.equip~=obj.knub.want THEN call BAT_STEAL
     ELSE obj.knub.want="NONE"
 	END
 	IF debug==1 THEN call DEBUG_BAT
 return
 
 /* in main loop */
-BAT_MOVE:  /* TODO: finish, fix item interaction */
+BAT_MOVE:  /* TODO: finish, fix item interaction, fix player grab, fix bat flash */
   knub="KNUBBERRUB"
   obj.knub.dx=obj.knub.dx+(obj.knub.spdx*obj.knub.dirx)
   obj.knub.dy=obj.knub.dy+(obj.knub.spdy*obj.knub.diry)
@@ -1411,6 +1412,7 @@ BAT_MOVE:  /* TODO: finish, fix item interaction */
     IF obj.pl.equip~=knub THEN call MOVE(knub,1,1)  /* move x and y */
     call EXIT_OBJ(knub)
     call DRAW_BAT
+    call EQUIP(knub)
     obj.knub.dx=0; obj.knub.dy=0
   END
   ELSE IF ABS(obj.knub.dx)>=1 THEN DO
@@ -1418,6 +1420,7 @@ BAT_MOVE:  /* TODO: finish, fix item interaction */
     IF obj.pl.equip~=knub THEN call MOVE(knub,1,0)  /* move x only */
     call EXIT_OBJ(knub)
     call DRAW_BAT
+    call EQUIP(knub)
     obj.knub.dx=0
   END
   ELSE IF ABS(obj.knub.dy)>=1 THEN DO
@@ -1425,21 +1428,23 @@ BAT_MOVE:  /* TODO: finish, fix item interaction */
     IF obj.pl.equip~=knub THEN call MOVE(knub,0,1)  /* move y only */
     call EXIT_OBJ(knub)
     call DRAW_BAT
+    call EQUIP(knub)
     obj.knub.dy=0
-  END
+  END 
+  
 return
 
 BAT_STEAL:
   knub="KNUBBERRUB"
   IF obj.knub.want=="NONE" THEN return
-  wo=obj.knub.want  /* eg. "SWORD" */
+  kswo=obj.knub.want  /* eg. "SWORD" */
   IF obj.pl.equip~=knub THEN DO
-  	obj.knub.dirx= GETDIR(obj.knub.spdx, obj.wo.x, obj.knub.x, 0, 0)
-  	obj.knub.diry= GETDIR(obj.knub.spdy, obj.wo.y, obj.knub.y, 0, 0)
+  	obj.knub.dirx= GETDIR(obj.knub.spdx, obj.kswo.x, obj.knub.x, 0, 0)
+  	obj.knub.diry= GETDIR(obj.knub.spdy, obj.kswo.y, obj.knub.y, 0, 0)
   END
-  IF COLLIDE(knub, wo)==1 THEN DO
-  	IF obj.pl.equip==wo THEN obj.pl.equip="NONE"
-  	call GRAB(knub, wo)
+  IF COLLIDE(knub, kswo)==1 THEN DO
+  	IF obj.pl.equip==kswo THEN obj.pl.equip="NONE"
+  	call GRAB(knub, kswo)
   	obj.knub.seek=0; obj.knub.want="NONE"; obj.knub.fedup=1
   END
 return
@@ -2705,7 +2710,7 @@ INIT_OBJECTS:
   obj.wgate.locked=1
   obj.wgate.key="WKEY"
   
-  obj.ykey.room=17
+  obj.ykey.room=17 
   obj.ykey.x=17
   obj.ykey.y=11
   obj.ykey.w=2
@@ -2777,7 +2782,7 @@ INIT_OBJECTS:
   obj.sword.lvl3.0=1   /* random room lower limit */
   obj.sword.lvl3.1=29  /* random room upper limit */
 
-  obj.magnet.room=27  /* 27 orig, 29 easy */
+  obj.magnet.room=27  /* 27 orig, 29 test */
   obj.magnet.x=64
   obj.magnet.y=19
   obj.magnet.w=2

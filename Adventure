@@ -23,9 +23,9 @@ changewhere "BBS Adventure "||ver
 **    v0.0 Jun-5-2019  first version                                      ** 
 **                                                                        **
 \**************************************************************************/
-debug=o         /* 0 = disable debug mode,   1 = enable debug mode   */
+debug=0         /* 0 = disable debug mode,   1 = enable debug mode   */
 debug_flash=0   /* 0 = disable flash debug,  1 = enable flash debug  */
-debug_magnet=0  /* 0 = disable magnet debug, 1 = enable magnet debug */
+debug_magnet=1  /* 0 = disable magnet debug, 1 = enable magnet debug */
 debug_bat=0     /* 0 = disable bat debug,    1 = enable bat debug    */
 debug_dragon=0  /* 0 = disable dragon debug, 1 = enable dragon debug */
 
@@ -631,8 +631,10 @@ START:
     call MAGNET_SEEK
     call MAGNETISM
     
-    call BAT_SEEK
-    call BAT_MOVE
+    IF difficulty~=1 THEN DO
+    	call BAT_SEEK
+      call BAT_MOVE
+    END
 
     call DRAGON_SEEK
     call DRAGON_FEAR
@@ -655,14 +657,14 @@ DEBUG_PL:
   IF game_running~=1 THEN return
   se "[3;2HPL.X:" || obj.pl.x || " PL.Y:" || obj.pl.y || "  "
   IF flashlight>0 THEN se "[43m[4;2HFlash X:"|| light.x || " Y:" || light.y || " W:" || light.w || " H:" || light.h
-  se "[5;2HYKEY.R:"||obj.ykey.room||" X:"||obj.ykey.x||" Y:"||obj.ykey.y||" OFFX:"||obj.ykey.offset.x||" OFFY:"||obj.ykey.offset.y||"         "
+  /* se "[5;2HYKEY.R:"||obj.ykey.room||" X:"||obj.ykey.x||" Y:"||obj.ykey.y||" OFFX:"||obj.ykey.offset.x||" OFFY:"||obj.ykey.offset.y||"         " */
 return
 
 DEBUG_MAGNET:
   if game_running~=1 | debug_magnet~=1 THEN return
-  wo=obj.magnet.want
-  se "[5;2HM.W:" || wi || " M.BUSY:" || obj.magnet.busy|| "  " 
-  IF wi~=-1 THEN se " owDX:" || obj.wo.dx || " owDY:" || obj.wo.dy || "              "
+  dbmwo=obj.magnet.want
+  se "[5;2HM.W:" || dbmwo || " M.BUSY:" || obj.magnet.busy|| "             " 
+  IF dbmwo~="NONE" THEN se " owDX:" || obj.dbmwo.dx || " owDY:" || obj.dbmwo.dy || "              "
 return
 
 DEBUG_BAT:  /* TODO: finish */
@@ -1313,60 +1315,65 @@ WALL: /* detect collision with wall or barrier */
 return 0 /* wall or barrier not found, return 0 */
 
 /* in main loop */
+/* TODO: fix magnet only wants highest pri item, need to compare with original */
 MAGNET_SEEK:  /* magnet will seek an item based on priority */
   DO i=0 TO maxmagnetwant
-  	o = item.i
-  	IF obj.magnet.busy==0 & obj.o.room==obj.magnet.room & obj.pl.equip~=o & knubberrub.equip~=o THEN DO
-  		obj.magnet.want=o
+  	mso = item.i
+  	IF obj.magnet.busy==0 & obj.mso.room==obj.magnet.room & obj.pl.equip~=mso & obj.knubberrub.equip~=mso THEN DO
+  		obj.magnet.want=mso
   		obj.magnet.busy=1
-  		return
+  		LEAVE i
     END
   END
 return
 
-/* TODO: fix magnet, broke when added bat */
 /* in main loop */ 
 MAGNETISM:  /* move wanted object toward magnet */ 
-  IF obj.magnet.want~="NONE" THEN return
+  IF obj.magnet.want=="NONE" THEN return
   	
-  o=obj.magnet.want
-  
-	IF obj.magnet.busy==1 & obj.o.room==obj.magnet.room & obj.pl.equip~=o & knubberrub.equip~=o THEN DO
-		IF obj.o.x==obj.magnet.x & obj.o.y==obj.magnet.y+obj.magnet.h+1 THEN DO  /* wanted item is on magnet */
+  mwo=obj.magnet.want
+	IF obj.magnet.busy==1 & obj.mwo.room==obj.magnet.room & obj.pl.equip~=mwo & obj.knubberrub.equip~=mwo THEN DO
+		IF obj.mwo.x==obj.magnet.x & obj.mwo.y==obj.magnet.y+obj.magnet.h+1 THEN DO  /* wanted item is on magnet */
 			obj.magnet.busy=0
-			obj.o.dx=0; obj.o.dy=0
+			obj.magnet.want="NONE"
+			obj.mwo.dx=0; obj.mwo.dy=0
+			obj.mwo.dirx=0; obj.mwo.diry=0
 		END
 		ELSE DO /* move item to magnet */
-			obj.o.dirx= GETDIR(obj.o.spdx, obj.magnet.x, obj.o.x, 0, 0)
-			obj.o.diry= GETDIR(obj.o.spdy, obj.magnet.y+obj.magnet.h+1, obj.o.y, 0, 0)
-	    obj.o.dx=obj.o.dx+(obj.o.spdx*obj.o.dirx)
-		  obj.o.dy=obj.o.dy+(obj.o.spdy*obj.o.diry)
-		  IF ABS(obj.o.dx)>=1 & ABS(obj.o.dy)>=1 THEN DO
-		  	call ERASE_OBJECT(o)
-		    call MOVE(o,1,1)  /* move x and y */
-		    call DRAW_OBJECT(o)
-		    obj.o.dx=0; obj.o.dy=0
+			obj.mwo.dirx= GETDIR(obj.mwo.spdx, obj.magnet.x, obj.mwo.x, 0, 0)
+			obj.mwo.diry= GETDIR(obj.mwo.spdy, obj.magnet.y+obj.magnet.h+1, obj.mwo.y, 0, 0)
+	    obj.mwo.dx=obj.mwo.dx+(obj.mwo.spdx*obj.mwo.dirx)
+		  obj.mwo.dy=obj.mwo.dy+(obj.mwo.spdy*obj.mwo.diry)
+		  IF ABS(obj.mwo.dx)>=1 & ABS(obj.mwo.dy)>=1 THEN DO
+		  	call ERASE_OBJECT(mwo)
+		    call MOVE(mwo,1,1)  /* move x and y */
+		    call DRAW_OBJECT(mwo)
+		    obj.mwo.dx=0; obj.mwo.dy=0
+		    obj.mwo.dirx=0; obj.mwo.diry=0
 		  END
-		  ELSE IF ABS(obj.o.dx)>=1 THEN DO
-		  	call ERASE_OBJECT(o)
-		    call MOVE(o,1,0)  /* move x only */
-		    call DRAW_OBJECT(o)
+		  ELSE IF ABS(obj.mwo.dx)>=1 THEN DO
+		  	call ERASE_OBJECT(mwo)
+		    call MOVE(mwo,1,0)  /* move x only */
+		    call DRAW_OBJECT(mwo)
 		    obj.o.dx=0
+		    obj.mwo.dirx=0
 		  END
-		  ELSE IF ABS(obj.o.dy)>=1 THEN DO
-		  	call ERASE_OBJECT(o)
-		    call MOVE(o,0,1)  /* move y only */
-		    call DRAW_OBJECT(o) 
-		    obj.o.dy=0
+		  ELSE IF ABS(obj.mwo.dy)>=1 THEN DO
+		  	call ERASE_OBJECT(mwo)
+		    call MOVE(mwo,0,1)  /* move y only */
+		    call DRAW_OBJECT(mwo) 
+		    obj.mwo.dy=0
+		    obj.mwo.diry=0
 		  END
 	  END
 	END
 	
 	/* handle case where magnet leaves the room */
-	IF obj.o.room~=obj.magnet.room THEN DO
+	IF obj.mwo.room~=obj.magnet.room THEN DO
 	  obj.magnet.busy=0
 	  obj.magnet.want="NONE"
-	  obj.o.dx=0; obj.o.dy=0
+	  obj.mwo.dx=0; obj.mwo.dy=0
+	  obj.mwo.dirx=0; obj.mwo.diry=0
 	END
 	IF debug==1 THEN call DEBUG_MAGNET 
 return
@@ -2770,7 +2777,7 @@ INIT_OBJECTS:
   obj.sword.lvl3.0=1   /* random room lower limit */
   obj.sword.lvl3.1=29  /* random room upper limit */
 
-  obj.magnet.room=27
+  obj.magnet.room=27  /* 27 orig, 29 easy */
   obj.magnet.x=64
   obj.magnet.y=19
   obj.magnet.w=2

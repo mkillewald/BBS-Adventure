@@ -633,6 +633,7 @@ START:
     
     IF difficulty~=1 THEN DO
     	call BAT_SEEK
+    	call BAT_ANIM
       call BAT_MOVE
     END
 
@@ -762,7 +763,9 @@ ERASE_PL:
   END
   
   /* erase equipped object */
+  /* TODO: optimize this by moving this into ERASE_OBJECT */
   IF obj.pl.equip~="NONE" THEN call ERASE_OBJECT(obj.pl.equip)
+  IF obj.pl.equip=="KNUBBERRUB" & obj.knubberrub.equip~="NONE" THEN call ERASE_OBJECT(obj.knubberrub.equip)
   
   /* erase player */
   line=obj.pl.y
@@ -829,7 +832,11 @@ DRAW_OBJECT:  /* TODO: fix item interactions */
   	call DRAW_BRIDGE
   	return
   END
-  ELSE IF dro=="KNUBBERRUB" THEN return
+  ELSE IF dro=="KNUBBERRUB" THEN DO 
+  	call DRAW_BAT
+  	call EQUIP("KNUBBERRUB")
+    return
+  END
   mp=k.rm.map
   IF transparent_items==1 THEN DO
   	DO j=0 TO obj.dro.h
@@ -1005,19 +1012,8 @@ return
 DRAW_BAT:  /* called by BAT_MOVE in main loop */
 	knub="KNUBBERRUB"
   IF OK2DRAWOBJ(knub)==0 | obj.knub.room~=obj.pl.room THEN return
-  frm=TRUNC(obj.knub.frame)
-  DO j=0 TO obj.knub.h
-  	obj.knub.spr.j=_bat.frm.j
-  END
-  
-  /* call EQUIP("KNUBBERRUB") */
   call DRAW_INVERSE_OBJECT(knub)
   se park
-
-  IF obj.knub.frame<(obj.knub.maxframe+1)-obj.knub.animspd-0 THEN DO
-  	obj.knub.frame=obj.knub.frame+obj.knub.animspd
-  END
-  ELSE obj.knub.frame=0
 return
 
 ERASE_BAT:
@@ -1402,36 +1398,52 @@ BAT_SEEK:
 return
 
 /* in main loop */
+BAT_ANIM:
+  knub="KNUBBERRUB"
+  pfrm=TRUNC(obj.knub.frame)
+  IF obj.knub.frame<(obj.knub.maxframe+1)-obj.knub.animspd THEN DO
+  	obj.knub.frame=obj.knub.frame+obj.knub.animspd
+  END
+  ELSE obj.knub.frame=0
+  nfrm=TRUNC(obj.knub.frame)
+  IF nfrm~=pfrm THEN DO
+    DO j=0 TO obj.knub.h
+  	  obj.knub.spr.j=_bat.nfrm.j
+    END
+    call DRAW_BAT
+  END
+return
+
+/* in main loop */
 BAT_MOVE:  /* TODO: finish, fix item interaction, fix player grab, fix bat flash */
   knub="KNUBBERRUB"
   obj.knub.dx=obj.knub.dx+(obj.knub.spdx*obj.knub.dirx)
   obj.knub.dy=obj.knub.dy+(obj.knub.spdy*obj.knub.diry)
   IF obj.pl.equip~=knub & COLLIDE(knub, "PL")==1 THEN call GRAB("PL", knub)  
   IF ABS(obj.knub.dx)>=1 & ABS(obj.knub.dy)>=1 THEN DO
-  	call ERASE_BAT
+  	IF obj.pl.equip~=knub THEN call ERASE_BAT
     IF obj.pl.equip~=knub THEN call MOVE(knub,1,1)  /* move x and y */
-    call EXIT_OBJ(knub)
-    call DRAW_BAT
-    call EQUIP(knub)
+    IF obj.pl.equip~=knub THEN call EXIT_OBJ(knub)
+    IF obj.pl.equip~=knub THEN call DRAW_BAT
+    IF obj.pl.equip~=knub THEN call EQUIP(knub)
     obj.knub.dx=0; obj.knub.dy=0
   END
   ELSE IF ABS(obj.knub.dx)>=1 THEN DO
-  	call ERASE_BAT
+  	IF obj.pl.equip~=knub THEN call ERASE_BAT
     IF obj.pl.equip~=knub THEN call MOVE(knub,1,0)  /* move x only */
-    call EXIT_OBJ(knub)
-    call DRAW_BAT
-    call EQUIP(knub)
+    IF obj.pl.equip~=knub THEN call EXIT_OBJ(knub)
+    IF obj.pl.equip~=knub THEN call DRAW_BAT
+    IF obj.pl.equip~=knub THEN call EQUIP(knub)
     obj.knub.dx=0
   END
   ELSE IF ABS(obj.knub.dy)>=1 THEN DO
-  	call ERASE_BAT
+  	IF obj.pl.equip~=knub THEN call ERASE_BAT
     IF obj.pl.equip~=knub THEN call MOVE(knub,0,1)  /* move y only */
-    call EXIT_OBJ(knub)
-    call DRAW_BAT
-    call EQUIP(knub)
+    IF obj.pl.equip~=knub THEN call EXIT_OBJ(knub)
+    IF obj.pl.equip~=knub THEN call DRAW_BAT
+    IF obj.pl.equip~=knub THEN call EQUIP(knub)
     obj.knub.dy=0
   END 
-  
 return
 
 BAT_STEAL:
@@ -2867,8 +2879,8 @@ INIT_OBJECTS:
   obj.knubberrub.h=2
   obj.knubberrub.dx=0
   obj.knubberrub.dy=0
-  obj.knubberrub.spdx=0.015625
-  obj.knubberrub.spdy=0.015625
+  obj.knubberrub.spdx=0.03125  /* 1/32 */
+  obj.knubberrub.spdy=0.03125
   obj.knubberrub.dirx=0
   obj.knubberrub.diry=1
   obj.knubberrub.offset.x=0
@@ -2876,7 +2888,7 @@ INIT_OBJECTS:
   obj.knubberrub.col="[0;40;37m"
   obj.knubberrub.frame=0  /* frame counter */
   obj.knubberrub.maxframe=_bat.maxframe
-  obj.knubberrub.animspd=0.25
+  obj.knubberrub.animspd=0.015625 /* 1/64 */
   obj.knubberrub.spr.0=_bat.0.0
   obj.knubberrub.spr.1=_bat.0.1
   obj.knubberrub.spr.2=_bat.0.2

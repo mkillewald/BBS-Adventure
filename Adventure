@@ -27,7 +27,7 @@ changewhere "BBS Adventure "||ver
 debug=0         /* 0 = disable debug mode,   1 = enable debug mode   */
 debug_flash=0   /* 0 = disable flash debug,  1 = enable flash debug  */
 debug_magnet=0  /* 0 = disable magnet debug, 1 = enable magnet debug */
-debug_bat=0     /* 0 = disable bat debug,    1 = enable bat debug    */
+debug_bat=1     /* 0 = disable bat debug,    1 = enable bat debug    */
 debug_dragon=0  /* 0 = disable dragon debug, 1 = enable dragon debug */
 
 transparent_items=1 /* 0 = disaled, 1 = enabled */
@@ -668,9 +668,7 @@ return
 
 DEBUG_BAT:  /* TODO: finish */
   if game_running~=1 | debug_bat~=1 THEN return
-  kn="KNUBBERRUB"
-  se "[5;2H"||k.rm.c||"B.R:"||obj.kn.room||" B.X:"||obj.kn.x||" B.Y:"||obj.kn.y||" B.W:"||obj.kn.want||" B.FU:"||obj.kn.fedup||" B.S:"||obj.kn.seek||" B.E:"||obj.kn.equip||"     " 
-  /* se "[6;2HYKEY.R:"||obj.ykey.room||" X:"||obj.ykey.x||" Y:"||obj.ykey.y||" OFFX:"||obj.ykey.offset.x||" OFFY:"||obj.ykey.offset.y||"         " */
+  se "[5;2H"||k.rm.c||"B.R:"||obj.knub.room||" B.X:"||obj.knub.x||" B.Y:"||obj.knub.y||" B.W:"||obj.knub.want||" B.FU:"||obj.knub.fedup||" B.S:"||obj.knub.seek||" B.E:"||obj.knub.equip||"     " 
 return
 
 DEBUG_DRAGON:  /* TODO: finish */
@@ -1011,7 +1009,6 @@ ERASE_DRAGON:  /* TODO: finish */
 return
 
 DRAW_BAT:  /* called by BAT_MOVE in main loop */
-  knub="KNUBBERRUB"
   IF OK2DRAWOBJ(knub)==0 | obj.knub.room~=obj.pl.room THEN return
   call EQUIP(knub)
   call DRAW_INVERSE_OBJECT(knub)
@@ -1117,10 +1114,12 @@ return
 
 OK2MOVEPL:
   /* do item collision detect */
+  
   DO i=0 TO maxgrabitem
     o=item.i
-    IF o=="BRIDGE" & obj.knubberrub.equip~=o & BRIDGE_COLLIDE("PL")==1 THEN NOP /* allow pl to walk accross bridge */
-    ELSE IF obj.knubberrub.equip~=o & COLLIDE("PL",o)==1 THEN call GRAB("PL", o)
+    IF o=="BRIDGE" & obj.knubberrub.equip~=o & BRIDGE_COLLIDE("PL")==1 THEN NOP /* allow pl to wa lk accross bridge */
+    ELSE IF o==knub & (obj.knub.fedup==0 | obj.knub.fedup>400) & COLLIDE("PL", o)==1 THEN call GRAB("PL", o)
+    ELSE IF obj.knubberrub.equip~=o & COLLIDE("PL", o)==1 THEN call GRAB("PL", o)
   END
   call ERASE_PL
   call MOVE("PL",1,1)
@@ -1362,7 +1361,6 @@ return
 
 /* in main loop */
 BAT_SEEK:
-  knub="KNUBBERRUB"
   IF obj.knub.fedup==0 THEN obj.knub.seek=1 
   ELSE DO
     obj.knub.fedup=obj.knub.fedup+1
@@ -1384,7 +1382,6 @@ return
 
 /* in main loop */
 BAT_ANIM:
-  knub="KNUBBERRUB"
   pfrm=TRUNC(obj.knub.frame)
   obj.knub.frame=obj.knub.frame+obj.knub.animspd
   IF obj.knub.frame>=(obj.knub.maxframe+1) THEN obj.knub.frame=0
@@ -1399,10 +1396,10 @@ return
 
 /* in main loop */
 BAT_MOVE:  /* TODO: finish, fix item interaction */
-  knub="KNUBBERRUB"
   obj.knub.dx=obj.knub.dx+(obj.knub.spdx*obj.knub.dirx)
   obj.knub.dy=obj.knub.dy+(obj.knub.spdy*obj.knub.diry)
-  IF obj.pl.equip~=knub & COLLIDE(knub, "PL")==1 THEN call GRAB("PL", knub)  
+  /* added a small window where knubberrub is not grabbable by the player */
+  /* IF (obj.knub.fedup==0 | obj.knub.fedup>400) & obj.pl.equip~=knub & COLLIDE(knub, "PL")==1 THEN call GRAB("PL", knub) */ 
   IF ABS(obj.knub.dx)>=1 & ABS(obj.knub.dy)>=1 THEN DO
     IF obj.pl.equip~=knub THEN DO 
       call ERASE_BAT
@@ -1433,12 +1430,16 @@ BAT_MOVE:  /* TODO: finish, fix item interaction */
 return
 
 BAT_STEAL:
-  knub="KNUBBERRUB"
   IF obj.knub.want=="NONE" THEN return
   kswo=obj.knub.want  /* eg. "SWORD" */
   IF obj.pl.equip~=knub THEN DO
-    obj.knub.dirx= GETDIR(obj.knub.spdx, obj.kswo.x, obj.knub.x, 0, 0)
-    obj.knub.diry= GETDIR(obj.knub.spdy, obj.kswo.y, obj.knub.y, 0, 0)
+  	tdirx=GETDIR(obj.knub.spdx, obj.kswo.x, obj.knub.x, 0, 0)
+  	tdiry=GETDIR(obj.knub.spdy, obj.kswo.y, obj.knub.y, 0, 0)
+    IF tdirx==0 & tdiry==0 THEN NOP /* because this would freeze knubby */
+    ELSE DO
+    	obj.knub.dirx=tdirx 
+      obj.knub.diry=tdiry
+    END 
   END
   IF COLLIDE(knub, kswo)==1 THEN DO
     IF obj.pl.equip==kswo THEN obj.pl.equip="NONE"
@@ -2870,6 +2871,7 @@ INIT_OBJECTS:
   obj.dot.lvl3.0=0  /* random room lower limit */
   obj.dot.lvl3.1=0  /* random room upper limit */
   
+  knub="KNUBBERRUB"  /* handy shortcut because i'm too lazy to type his full name every god damn time */
   obj.knubberrub.room=2 
   obj.knubberrub.x=17 
   obj.knubberrub.y=19 /* TODO: fix */

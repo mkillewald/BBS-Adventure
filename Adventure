@@ -1,5 +1,5 @@
 /**************************************************************************\
-    $VER: BBS Adventure, v0.2 (Jun-5-2019) by k1ds3ns4t10n of -X-caliber 
+    $VER: BBS Adventure, v0.3 (Jul-11-2019) by k1ds3ns4t10n of -X-caliber 
 \**************************************************************************/
 options results;signal on SYNTAX;signal on ERROR;signal on IOERR
 a=sourceline(2);parse var a . ", "ver" ("vdate")" .
@@ -15,10 +15,11 @@ changewhere "BBS Adventure "||ver
 **    by Warren Robinett                                                  **
 **                                                                        **
 **  Change Log:                                                           **
+**    v0.3 Jul-11-2019 bat 100% working, fixed grab object at edge of     **
+**                     screen on entering new room bug                    **
 **    v0.2 Jun-23-2019 added bridge, chalice, magnet and magic dot        **
 **                     added ability to grab item at edge of wall         **
 **                     added messages and secret room activation          **
-**                                                                        **
 **    v0.1 Jun-16-2019 first public demo 70% complete                     **
 **    v0.0 Jun-5-2019  first version                                      ** 
 **                                                                        **

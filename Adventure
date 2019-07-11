@@ -93,7 +93,7 @@ MAIN_MENU:
   DO FOREVER
     mg
     IF result~="NOCHAR" THEN d=C2D(result)
-    ELSE d=-999 
+    ELSE d=-999
     SELECT
       WHEN d==113 THEN signal QUIT               /* q */
       WHEN d==111 THEN signal OPTIONS            /* o */
@@ -206,7 +206,7 @@ OPTIONS:
   DO FOREVER
     mg
     IF result~="NOCHAR" THEN d=C2D(result)
-    ELSE d=-999 
+    ELSE d=-999
     SELECT
       WHEN d==113 | d==98 THEN signal MAIN_MENU  /* q or b (Back to main) */
       WHEN d==103 THEN DO 
@@ -425,7 +425,7 @@ CONTROLS:
   DO FOREVER
     mg
     IF result~="NOCHAR" THEN d=C2D(result)
-    ELSE d=-999 
+    ELSE d=-999
     SELECT
       WHEN d==113 | d==98 THEN signal MAIN_MENU  /* q or b Back to Main Menu */
       WHEN d==103 THEN DO 
@@ -504,7 +504,7 @@ ABOUT_SELECT:
 return
 
 NEXT_ITEM:
-  IF item.cur == item.tot - 1 THEN return  
+  IF item.cur==item.tot-1 THEN return  
   i = item.cur  
   se "["||item.y||";"||item.x||"H"||item.nc||mitem.i
   item.cur = item.cur + 1
@@ -604,13 +604,12 @@ START:
   
   /* main loop */
   RESUME:
-
   DO FOREVER
-    obj.pl.dx=0; obj.pl.dy=0  /* reset player x,y movement */ 
+    obj.pl.dx=0; obj.pl.dy=0; obj.pl.dirx=0; obj.pl.diry=0  /* reset player x,y movement */ 
     
     mg
     IF result~="NOCHAR" THEN d=C2D(result)
-    ELSE d="-999"
+    ELSE d=-999
     SELECT
       WHEN d==113 | d==109 THEN call MAIN_MENU  /* q or m */
       WHEN d==32 | d==13 THEN call DROP       /* Space or Enter */
@@ -624,7 +623,6 @@ START:
         ELSE debug=1
         call REFRESH
       END
-      WHEN d=="-999" THEN bufferflush
       OTHERWISE NOP
     END
     
@@ -714,6 +712,7 @@ return
 
 DRAW_PL:  /* draw player */
   IF rm==0 THEN return
+  IF OK2DRAWOBJ("PL")==0 THEN return
   IF debug==1 THEN call DEBUG_PL   
   IF flashlight>0 & k.rm.dark==1 THEN DO
     light.x=obj.pl.x-flash_dx; light.y=obj.pl.y-flash_dy; light.w=flash_width; light.h=flash_height
@@ -768,6 +767,7 @@ ERASE_PL:
   IF obj.pl.equip=="KNUBBERRUB" & obj.knubberrub.equip~="NONE" THEN call ERASE_OBJECT(obj.knubberrub.equip)
   
   /* erase player */
+  IF OK2DRAWOBJ("PL")==0 THEN return
   line=obj.pl.y
   str = SUBSTR(k.mp.line, obj.pl.x-1, obj.pl.w+1)  /* -1 for map shift, +1 for how width is indexed */
   /* handle the side barriers */
@@ -811,7 +811,7 @@ return
 
 OK2DRAWOBJ: /* check if ok to draw object */
   ARG o
-  IF obj.o.x<mincol | obj.o.x+obj.dro.w>maxcol | obj.o.y<minline | obj.o.y+obj.o.h>maxline THEN return 0 /* don't draw */
+  IF obj.o.x<mincol | obj.o.x+obj.o.w>maxcol | obj.o.y<minline | obj.o.y+obj.o.h>maxline THEN return 0 /* don't draw */
   ELSE IF GATE_COLLIDE(o)==1 THEN return 0  /* dont draw */
   ELSE IF MSG_COLLIDE(o)==1 THEN return 0  /* don't draw */
   ELSE return 1  /* draw item */
@@ -1012,6 +1012,7 @@ return
 DRAW_BAT:  /* called by BAT_MOVE in main loop */
   knub="KNUBBERRUB"
   IF OK2DRAWOBJ(knub)==0 | obj.knub.room~=obj.pl.room THEN return
+  call EQUIP(knub)
   call DRAW_INVERSE_OBJECT(knub)
   se park
 return
@@ -1024,15 +1025,9 @@ ERASE_BAT:
 return
 
 MV_U:
-  IF obj.pl.y==minline THEN DO 
-    call TOP_EXIT("PL")
-    /* return */
-  END
-  IF k.rm.ci~=0 & obj.pl.x > 37 & obj.pl.x < 43 & obj.pl.y==16 THEN DO 
-    call CASTLE_ENTRANCE("PL")
-    return
-  END     
-  obj.pl.dy=-1  /* desired movement direction */  
+  obj.pl.diry=-1  /* desired movement direction */
+  call EXIT_OBJ("PL") 
+  obj.pl.dy=-1  
   /* do player-gate collision detect */
   IF GATE_COLLIDE("PL")==1 THEN return
   /* do player-msg collision detect */
@@ -1046,16 +1041,8 @@ MV_U:
 return
 
 MV_D:
-  IF obj.pl.y==maxline THEN DO
-    IF k.rm.co==0 THEN DO
-      call BOTTOM_EXIT("PL")
-      /* return */
-    END
-    ELSE DO
-      call CASTLE_EXIT("PL")
-      /* return */
-    END
-  END
+  obj.pl.diry=1
+  call EXIT_OBJ("PL") 
   obj.pl.dy=1
   /* do player-msg collision detect */
   IF MSG_COLLIDE("PL")==1 THEN return
@@ -1068,12 +1055,10 @@ MV_D:
 return
 
 MV_R:
-  IF obj.pl.x==maxcol-1 THEN DO
-    call RIGHT_EXIT("PL")
-    /* return */
-  END
+  obj.pl.dirx=1
+  call EXIT_OBJ("PL") 
   IF obj.pl.x==maxcol-2 THEN obj.pl.dx=1
-  ELSE obj.pl.dx=2    
+  ELSE obj.pl.dx=2 
   /* do player-gate collision detect */
   IF GATE_COLLIDE("PL")==1 THEN return
   /* do player-msg collision detect */
@@ -1095,12 +1080,10 @@ MV_R:
 return
 
 MV_L:
-  IF obj.pl.x==mincol THEN DO
-    call LEFT_EXIT("PL")
-    /* return */
-  END
+  obj.pl.dirx=-1
+  call EXIT_OBJ("PL") 
   IF obj.pl.x==mincol+1 THEN obj.pl.dx=-1
-  ELSE obj.pl.dx=-2
+  ELSE obj.pl.dx=-2	
   /* do player-gate collision detect */
   IF GATE_COLLIDE("PL")==1 THEN return
   /* do player-msg collision detect */
@@ -1123,9 +1106,9 @@ return
 
 ITEM_WALL_CHECK:
   DO i=0 TO maxitem
-    o=item.i
-    IF COLLIDE("PL", o)==1 & BRIDGE_COLLIDE("PL")~=1 THEN DO
-      call GRAB("PL", o)
+    wco=item.i
+    IF COLLIDE("PL", wco)==1 & BRIDGE_COLLIDE("PL")~=1 THEN DO
+      call GRAB("PL", wco)
       LEAVE
     END
   END
@@ -1171,7 +1154,7 @@ EQUIP:
   call DRAW_OBJECT(eo)
 return
 
-GRAB:  /* TODO: fix grab at edge of screen on entrance bug */
+GRAB:
   ARG being, gro
   IF obj.being.equip==gro THEN return
   obj.being.equip=gro
@@ -1290,12 +1273,13 @@ COLLIDE:  /* detect if object1 and object2 are colliding */
 return 0
 
 WALL: /* detect collision with wall or barrier */
-  ARG o
-  IF o=="PL" & obj.pl.equip~="BRIDGE" & BRIDGE_COLLIDE("PL")==1 THEN return 0 /* allow player to walk over walls */
+  ARG wo
+  IF wo=="PL" & obj.pl.equip~="BRIDGE" & BRIDGE_COLLIDE("PL")==1 THEN return 0 /* allow player to walk over walls */
   mp=k.rm.map
-  DO l= obj.o.y+obj.o.dy TO obj.o.y+obj.o.dy+obj.o.h
+  IF obj.wo.x+obj.wo.dx-1<=0 THEN return 0 /* hacky fix to left exit bug */
+  DO l= obj.wo.y+obj.o.dy TO obj.wo.y+obj.wo.dy+obj.wo.h
     /* for each line of the object, check map chars under object */
-    str= SUBSTR(k.mp.l, obj.o.x+obj.o.dx-1, obj.o.w+1)  /* -1 for map shift, +1 due to how obj.o.w is indexed */
+    str= SUBSTR(k.mp.l, obj.wo.x+obj.wo.dx-1, obj.wo.w+1)  /* -1 for map shift, +1 due to how obj.o.w is indexed */
     IF INDEX(str, "Û") ~=0 THEN DO
       /* wall found */
       bufferflush
@@ -1401,16 +1385,14 @@ return
 BAT_ANIM:
   knub="KNUBBERRUB"
   pfrm=TRUNC(obj.knub.frame)
-  IF obj.knub.frame<(obj.knub.maxframe+1)-obj.knub.animspd THEN DO
-    obj.knub.frame=obj.knub.frame+obj.knub.animspd
-  END
-  ELSE obj.knub.frame=0
+  obj.knub.frame=obj.knub.frame+obj.knub.animspd
+  IF obj.knub.frame>=(obj.knub.maxframe+1) THEN obj.knub.frame=0
   nfrm=TRUNC(obj.knub.frame)
   IF nfrm~=pfrm THEN DO
     DO j=0 TO obj.knub.h
       obj.knub.spr.j=_bat.nfrm.j
     END
-    call DRAW_BAT
+    call DRAW_INVERSE_OBJECT(knub)
   END
 return
 
@@ -1424,9 +1406,8 @@ BAT_MOVE:  /* TODO: finish, fix item interaction */
     IF obj.pl.equip~=knub THEN DO 
       call ERASE_BAT
       call MOVE(knub,1,1)  /* move x and y */
-    I call EXIT_OBJ(knub)
+      call EXIT_OBJ(knub)
       call DRAW_BAT
-      call EQUIP(knub)
     END
     obj.knub.dx=0; obj.knub.dy=0
   END
@@ -1436,7 +1417,6 @@ BAT_MOVE:  /* TODO: finish, fix item interaction */
       call MOVE(knub,1,0)  /* move x only */
       call EXIT_OBJ(knub)
       call DRAW_BAT
-      call EQUIP(knub)
     END
     obj.knub.dx=0
   END
@@ -1446,7 +1426,6 @@ BAT_MOVE:  /* TODO: finish, fix item interaction */
       call MOVE(knub,0,1)  /* move y only */
       call EXIT_OBJ(knub)
       call DRAW_BAT
-      call EQUIP(knub)
     END
     obj.knub.dy=0
   END 
@@ -1494,18 +1473,25 @@ return 0
 
 EXIT_OBJ:
   ARG eo
-  IF obj.eo.x+obj.eo.w>maxcol THEN call RIGHT_EXIT(eo) 
-  ELSE IF obj.eo.x<mincol THEN call LEFT_EXIT(eo)
-  ELSE IF obj.eo.y+obj.eo.h>maxline THEN call BOTTOM_EXIT(eo)
-  ELSE IF obj.eo.y<minline THEN call TOP_EXIT(eo)
+  eorm=obj.eo.room
+  IF obj.eo.dirx>0 & obj.eo.x+obj.eo.w>=maxcol THEN call RIGHT_EXIT(eo) 
+  ELSE IF obj.eo.dirx<0 & obj.eo.x<=mincol THEN call LEFT_EXIT(eo)
+  ELSE IF obj.eo.diry<0 THEN DO
+  	 IF obj.eo.y<=minline THEN call TOP_EXIT(eo)
+  	 ELSE IF k.eorm.ci~=0 & obj.eo.x>37 & obj.eo.x<43 & obj.eo.y==16 THEN call CASTLE_ENTRANCE(eo)
+  END
+  ELSE IF obj.eo.diry>0 & obj.eo.y+obj.eo.h>=maxline THEN DO  	
+  	IF k.eorm.co==0 THEN call BOTTOM_EXIT(eo)
+  	ELSE call CASTLE_EXIT(eo)
+  END 	
 return
-
 
 TOP_EXIT:
   ARG p
   crm=obj.p.room
   IF k.rm.te==0 THEN return  
-  obj.p.y=maxline-obj.p.h
+  /* obj.p.y=maxline-obj.p.h */
+  obj.p.y=maxline+1
   call NEXTROOM(p, k.crm.te)
 return
 
@@ -1513,7 +1499,8 @@ BOTTOM_EXIT:
   ARG p
   crm=obj.p.room
   IF k.rm.be==0 THEN return
-  obj.p.y=minline 
+  /* obj.p.y=minline */
+  obj.p.y=minline-1
   call NEXTROOM(p, k.crm.be)
 return
 
@@ -1521,7 +1508,8 @@ LEFT_EXIT:
   ARG p
   crm=obj.p.room
   IF k.rm.le==0 THEN return
-  obj.p.x=maxcol-obj.p.w
+  /* obj.p.x=maxcol-obj.p.w */
+  obj.p.x=maxcol+1
   call NEXTROOM(p, k.crm.le)
 return
 
@@ -1529,7 +1517,8 @@ RIGHT_EXIT:
   ARG p
   crm=obj.p.room
   IF k.rm.re==0 THEN return
-  obj.p.x=mincol
+  /* obj.p.x=mincol */
+  obj.p.x=mincol-(1+obj.p.w)
   call NEXTROOM(p, k.crm.re)
 return
 
@@ -2427,6 +2416,8 @@ INIT_PLAYER:
   obj.pl.dy=0
   obj.pl.spdx=1
   obj.pl.spdy=1
+  obj.pl.dirx=0
+  obj.pl.diry=0
   obj.pl.equip="NONE"
 return  
   
@@ -2886,7 +2877,7 @@ INIT_OBJECTS:
   obj.knubberrub.dx=0
   obj.knubberrub.dy=0
   obj.knubberrub.spdx=0.03125  /* 1/32 */
-  obj.knubberrub.spdy=0.03125
+  obj.knubberrub.spdy=0.015625 /* 1/64 */
   obj.knubberrub.dirx=0
   obj.knubberrub.diry=1
   obj.knubberrub.offset.x=0
@@ -2894,7 +2885,7 @@ INIT_OBJECTS:
   obj.knubberrub.col="[0;40;37m"
   obj.knubberrub.frame=0  /* frame counter */
   obj.knubberrub.maxframe=_bat.maxframe
-  obj.knubberrub.animspd=0.015625 /* 1/64 */
+  obj.knubberrub.animspd=0.0078125 /* 1/128 */
   obj.knubberrub.spr.0=_bat.0.0
   obj.knubberrub.spr.1=_bat.0.1
   obj.knubberrub.spr.2=_bat.0.2

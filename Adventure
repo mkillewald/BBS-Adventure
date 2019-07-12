@@ -41,7 +41,7 @@ fear=0  /* 0 = dragons do not fear sword, 1 = dragons fear sword */
 /* used for boundary checks only! */
 /* changing these values will not */ 
 /* adapt the users display        */
-minline=1; maxline=24; mincol=2; maxcol=79
+minline=1; maxline=24; mincol=2; maxcol=79; castleline=16
 
 clear_scr="[40mf1@4" /* black background, clear screen, disable more */
 park="f0" /* returns cursor to home position without clearing screen */
@@ -765,8 +765,13 @@ ERASE_PL:
   IF obj.pl.equip~="NONE" THEN call ERASE_OBJECT(obj.pl.equip)
   IF obj.pl.equip=="KNUBBERRUB" & obj.knubberrub.equip~="NONE" THEN call ERASE_OBJECT(obj.knubberrub.equip)
   
-  /* erase player */
   IF OK2DRAWOBJ("PL")==0 THEN return
+  DO j=0 to maxgate
+  	g=gate.j
+  	IF COLLIDE_NOW("PL", g)==1 THEN return
+  END
+  
+  /* erase player */	
   line=obj.pl.y
   str = SUBSTR(k.mp.line, obj.pl.x-1, obj.pl.w+1)  /* -1 for map shift, +1 for how width is indexed */
   /* handle the side barriers */
@@ -811,7 +816,7 @@ return
 OK2DRAWOBJ: /* check if ok to draw object */
   ARG o
   IF obj.o.x<mincol | obj.o.x+obj.o.w>maxcol | obj.o.y<minline | obj.o.y+obj.o.h>maxline THEN return 0 /* don't draw */
-  ELSE IF GATE_COLLIDE(o)==1 THEN return 0  /* dont draw */
+  ELSE IF o~="PL" & GATE_COLLIDE(o)==1 THEN return 0  /* dont draw */
   ELSE IF MSG_COLLIDE(o)==1 THEN return 0  /* don't draw */
   ELSE return 1  /* draw item */
 return
@@ -1262,13 +1267,23 @@ BRIDGE_COLLIDE: /* check if p is on bridge */
     obj.p.y+obj.p.dy>=obj.bridge.y & obj.p.y+obj.p.dy<=obj.bridge.y+obj.bridge.h THEN return 1
 return 0 /* o not on bridge */
 
-COLLIDE:  /* detect if object1 and object2 are colliding */
+COLLIDE:  /* detect if object1 and object2 will collide (with object 1 in motion) */
   ARG o1, o2
   IF obj.o1.room==obj.o2.room &,                            /* o1 and o2 are in same room and   */ 
      obj.o2.x+obj.o2.w >= obj.o1.x+obj.o1.dx &,             /* o2 right edge > o1 left edge and */
      obj.o2.y+obj.o2.h >= obj.o1.y+obj.o1.dy &,             /* o2 bottom edge > o1 top edge and */
      obj.o2.x <= obj.o1.x+obj.o1.w+obj.o1.dx &,             /* o2 left edge < o1 right edge and */
      obj.o2.y <= obj.o1.y+obj.o1.h+obj.o1.dy THEN return 1  /* o2 top edge < o1 bottom edge     */
+  ELSE return 0
+return 0
+
+COLLIDE_NOW:  /* detect if object1 and object2 are colliding now */
+  ARG o1, o2
+  IF obj.o1.room==obj.o2.room &,                  /* o1 and o2 are in same room and   */ 
+     obj.o2.x+obj.o2.w >= obj.o1.x &,             /* o2 right edge > o1 left edge and */
+     obj.o2.y+obj.o2.h >= obj.o1.y &,             /* o2 bottom edge > o1 top edge and */
+     obj.o2.x <= obj.o1.x+obj.o1.w &,             /* o2 left edge < o1 right edge and */
+     obj.o2.y <= obj.o1.y+obj.o1.h THEN return 1  /* o2 top edge < o1 bottom edge     */
   ELSE return 0
 return 0
 
@@ -1480,7 +1495,7 @@ EXIT_OBJ:
   ELSE IF obj.eo.dirx<0 & obj.eo.x<=mincol THEN call LEFT_EXIT(eo)
   ELSE IF obj.eo.diry<0 THEN DO
   	 IF obj.eo.y<=minline THEN call TOP_EXIT(eo)
-  	 ELSE IF k.eorm.ci~=0 & obj.eo.x>37 & obj.eo.x<43 & obj.eo.y==16 THEN call CASTLE_ENTRANCE(eo)
+  	 ELSE IF k.eorm.ci~=0 & obj.eo.x>37 & obj.eo.x<43 & obj.eo.y==castleline THEN call CASTLE_ENTRANCE(eo)
   END
   ELSE IF obj.eo.diry>0 & obj.eo.y+obj.eo.h>=maxline THEN DO  	
   	IF k.eorm.co==0 THEN call BOTTOM_EXIT(eo)
@@ -1528,7 +1543,7 @@ CASTLE_ENTRANCE:
   ARG p
   crm=obj.p.room
   IF k.rm.ci==0 THEN return 
-  obj.p.y=24
+  obj.p.y=maxline+1
   call NEXTROOM(p, k.crm.ci)
 return
 
@@ -1536,7 +1551,7 @@ CASTLE_EXIT:
   ARG p
   crm=obj.p.room
   IF k.rm.co==0 THEN return      
-  obj.p.x=40; obj.p.y=16
+  obj.p.x=40; obj.p.y=castleline-1
   call NEXTROOM(p, k.crm.co)
 return
 

@@ -703,13 +703,14 @@ DRAW_ROOM:
       line = newline
     END
     IF i==maxline THEN DO
-      se line
+      se line 
       se park
     END
     ELSE tr line
   END
 return
 
+/* TODO: fix equipped object being drawn in wrong room on castle exit if grap/drop occurs on exit */
 DRAW_PL:  /* draw player */
   IF rm==0 THEN return
   IF OK2DRAWOBJ("PL")==0 THEN return
@@ -743,7 +744,7 @@ DRAW_PL:  /* draw player */
     END 
   END
   
-  call EQUIP("PL") /* handle any equipped object */
+  call EQUIP("PL")  /* handle any equipped object */
 
   se "["||obj.pl.y||";"||obj.pl.x||"H"||k.rm.fc||"лл"
   IF debug==1 THEN call DEBUG_PL   
@@ -766,8 +767,10 @@ ERASE_PL:
   /* TODO: optimize this by moving this into ERASE_OBJECT */
   IF obj.pl.equip~="NONE" THEN call ERASE_OBJECT(obj.pl.equip)
   IF obj.pl.equip=="KNUBBERRUB" & obj.knubberrub.equip~="NONE" THEN call ERASE_OBJECT(obj.knubberrub.equip)
-  
+   
   IF OK2DRAWOBJ("PL")==0 THEN return
+  	
+  /* fix for castle exit player/gate interaction */
   DO j=0 to maxgate
   	g=gate.j
   	IF COLLIDE_NOW("PL", g)==1 THEN return
@@ -1121,7 +1124,6 @@ return
 
 OK2MOVEPL:
   /* do item collision detect */
-  
   DO i=0 TO maxgrabitem
     o=item.i
     IF o=="BRIDGE" & obj.knubberrub.equip~=o & BRIDGE_COLLIDE("PL")==1 THEN NOP /* allow pl to wa lk accross bridge */
@@ -1187,6 +1189,13 @@ DROP:
   obj.dro.diry=0
   obj.pl.equip="NONE"
   call EXIT_OBJ(dro)
+  
+  /* hacky fix for bug where item gets trapped under gate*/
+  DO j=0 TO maxgate
+  	g=gate.j
+  	IF COLLIDE_NOW(dro, g)==1 THEN obj.dro.y=obj.g.y+obj.g.h+1
+  END
+  
   IF beep==1 THEN se "b1" /* BEEP! */
 return
 
@@ -1576,7 +1585,6 @@ NEXTROOM:
   IF exo=="PL" THEN DO
     rm=next_room
     call DRAW_BG
-    call DRAW_PL
     call DRAW_OBJS
     IF rm==3 THEN call SECRET
   END

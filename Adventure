@@ -570,7 +570,8 @@ START:
   
   call INIT_OBJECTS  /* init objects */
   
-  IF difficulty==2 THEN DO
+  IF DIFFICULTY==1 THEN obj.knub.room=0
+  ELSE IF difficulty==2 THEN DO
     call EXPAND_KINGDOM
     /* set level 2 item locations */
     obj.ykey.room=9  /* orig 9, test 3 */
@@ -840,6 +841,10 @@ DRAW_OBJECT:  /* TODO: fix item interactions */
   IF dro=="BRIDGE" THEN DO
     call DRAW_BRIDGE
     return
+  END
+  ELSE IF dro=="CHALICE" | dro=="MAGNET" THEN DO
+  	call DRAW_INVERSE_OBJECT(dro)
+  	return
   END
   ELSE IF dro=="KNUBBERRUB" THEN DO 
     call DRAW_BAT
@@ -1190,7 +1195,7 @@ DROP:
   obj.pl.equip="NONE"
   call EXIT_OBJ(dro)
   
-  /* hacky fix for bug where item gets trapped under gate*/
+  /* fix for bug where item gets trapped under gate*/
   DO j=0 TO maxgate
   	g=gate.j
   	IF COLLIDE_NOW(dro, g)==1 THEN obj.dro.y=obj.g.y+obj.g.h+1
@@ -1320,7 +1325,7 @@ return 0 /* wall or barrier not found, return 0 */
 /* in main loop */
 /* TODO: fix magnet only wants highest pri item, need to compare with original */
 MAGNET_SEEK:  /* magnet will seek an item based on priority */
-  DO i=0 TO maxmagnetwant
+  DO i=0 TO maxmagnetitem
     mso = item.i
     IF obj.magnet.busy==0 & obj.mso.room==obj.magnet.room & obj.pl.equip~=mso & obj.knubberrub.equip~=mso THEN DO
       obj.magnet.want=mso
@@ -1485,7 +1490,7 @@ return
 
 SECRET:  /* TODO: fix trigger/untrigger with bat */
   IF obj.pl.room==3 & obj.dot.room==3 THEN DO
-    DO s=0 TO maxitem-1
+    DO s=0 TO maxsecretitem
       o=item.s
       IF obj.o.room==3 THEN DO
         k.3.re=30
@@ -2471,9 +2476,9 @@ INIT_OBJECTS:
   _key.0="ÒÄo"
   _sword.0="<--"
   
-  _magnet.0=" Ü "
-  _magnet.1="Û Û"
-  
+  _magnet.0="ÛßÛ"
+  _magnet.1=" Û "
+
   _bridge.0="   "
   _bridge.1="ÛÛ "
   _bridge.2="ÛÛ "
@@ -2481,49 +2486,99 @@ INIT_OBJECTS:
   _bridge.4="ÛÛ "
   _bridge.5="   "
   
-  /* _bat.0="ßÛÛÛÛÛÛÜ"
-  _bat.1="ßÛÛÛÛÛÛÜ"
-  _bat.2="ÛßÜ  ÜßÛ"
-  _bat.3="ß ÜÛÛÜ ß"
-  _bat.4=" ÛÛÛÛÛÛ "
-  _bat.5="ÜÛÛÛÛÛÛÜ" */
+ /* original bat sprites */
+ /* _bat.0.0="ßÛÛÛÛÛÛÜ"
+    _bat.0.1="ßÛÛÛÛÛÛÜ"
+    _bat.0.2="ÛßÜ  ÜßÛ"
+    _bat.0.3="ß ÜÛÛÜ ß"
+    _bat.0.4=" ÛÛÛÛÛÛ "
+    _bat.0.5="ÜÛÛÛÛÛÛÜ" 
+    
+    _bat.1.0=" ÛÛÛÛÛÛ "
+    _bat.1.1="  ÛÛÛÛ  "
+    _bat.1.2="Ü Ü  Ü Ü"
+    _bat.1.3="ÛÜÜÛÛÜÜÛ" */    
   
   _bat.maxframe=1
   _bat.0.0=" ÛÛÛ "
   _bat.0.1=" Ü Ü "
   _bat.0.2="ÜÜÛÜÜ"
-  /* _bat.0.3="ÛÛÛÛÛ" */
   
   _bat.1.0="ÛÛÛÛÛ"
   _bat.1.1="ßÜ Üß"
   _bat.1.2=" ÜÛÜ "
-  /* _bat.1.3="ÜÛÛÛÜ" */
+
+  /* original dragon sprites */
+  /* _dragon.0.0="ÛÛÛÛß  ß"
+     _dragon.0.1="    ßß Ü"
+     _dragon.0.2="ÛÛÛÛÜ ÜÛ"
+     _dragon.0.3="ÛÛÛßß ßÛ"
+     _dragon.0.4="Ûß      "
+     _dragon.0.5="  ÜÛÛÛ  "
+     _dragon.0.6="  ÛÛÛß  "
+     _dragon.0.7="ÜÜ    ÜÜ"
+     _dragon.0.8="ßÛÛÛ ßßß"
+     _dragon.0.9="ÜÜ ßßßß "
+
+     _dragon.1.0="ÜßÛÛÛÛÛÛ"
+     _dragon.1.1="ÛÛÜßß  ß"
+     _dragon.1.2="ÛÛÛÛ ß Ü"
+     _dragon.1.3="ÛÛßÜÜ ÜÛ"
+     _dragon.1.4="ßÜÛÛß ßÛ"
+     _dragon.1.5="ÛÛß    ß"
+     _dragon.1.6="Û       "
+     _dragon.1.7="Û       "
+     _dragon.1.8="ÛÛÜ   ÜÛ"
+     _dragon.1.9="ßßßß ÛÛÛ"
+     _dragon.1.10=" ßßÛÛÛÛÛ"
+
+     _dragon.2.0="ÛÛÛÛßßÛÛ"
+     _dragon.2.1="ÛÛÛÛ  ÛÛ"
+     _dragon.2.2="ÛÛÛß Ü ß"
+     _dragon.2.3="ß ÜÜ   Ü"
+     _dragon.2.4=" ßßßßßÛÛ"
+     _dragon.2.5="       Û"
+     _dragon.2.6="Û    ÜÜÛ"
+     _dragon.2.7="Ûß ÛßßßÛ"
+     _dragon.2.8="Û ßßßß Û" */
   
-  _dragon.0=""  /* TODO: fix */
+  _dragon.0.0="ÛÛß ß"
+  _dragon.0.1="ÜÜß Ü"
+  _dragon.0.2="ÛÛß Û"
+  _dragon.0.3="ß ÜÜ "
+  _dragon.0.4=" ÛÛß "
+  _dragon.0.5="Ü   Ü"
+  _dragon.0.6="ÛÛ ßß"
+  _dragon.0.7=" ßßß "
+
+  _dragon.1.0="Üßß ß"
+  _dragon.1.1="Ûß ß "
+  _dragon.1.2="ÜÛß Û"
+  _dragon.1.3="ß    "
+  _dragon.1.4="     "
+  _dragon.1.5="Ü   Ü"
+  _dragon.1.6="ßß ÛÛ"
+  _dragon.1.7=" ßÛÛÛ"
+
+  _dragon.2.0="ÛÛ ÛÛ"
+  _dragon.2.1="Ûß Üß"
+  _dragon.2.2=" Ü  Ü"
+  _dragon.2.3=" ßßßÛ"
+  _dragon.2.4="     "
+  _dragon.2.5="Ü   Ü"
+  _dragon.2.6="ß Ûßß"
+  _dragon.2.7=" ßßß "
   
-  /* _chalice0.0="Ü      Ü"
-  _chalice0.1="ÛÜ    ÜÛ"
-  _chalice0.2=" ÛÛÛÛÛÛ "
-  _chalice0.3="  ßÛÛß  "
-  _chalice0.4=" ÜÜÛÛÜÜ "
+  /* original chalice sprite */
+	/* _chalice.0="ßÛÛÛÛÛÛß"
+		 _chalice.1=" ßÛÛÛÛß "
+		 _chalice.2="Û      Û"
+		 _chalice.3="ÛÛÜ  ÜÛÛ"
+		 _chalice.4="Ûßß  ßßÛ" */
   
-  _chalice2.0="È» É¼"
-  _chalice2.1=" ÈË¼ "
-  _chalice2.2=" ÍÊÍ "
-  
-  _chalice3.0="ÛÜÜÜÛ"
-  _chalice3.1=" ßÛß "
-  _chalice3.2=" ÜÛÜ "
-  
-  _chalice4.0="³    ³"
-  _chalice4.1="À¿  ÚÙ"
-  _chalice4.2=" ÀÂÂÙ "
-  _chalice4.3=" ÍÏÏÍ " */
-  
-  /*_chalice.0="ÛÜ  ÜÛ"*/
-  _chalice.0="ÞÜ  ÜÝ"
-  _chalice.1=" ßÛÛß "
-  _chalice.2=" ÜÛÛÜ "
+  _chalice.0=" ßßß "
+  _chalice.1="ÛÜ ÜÛ"
+  _chalice.2="Ûß ßÛ"
   
    _msg0.0="   "
    _msg0.1="C  "
@@ -2589,8 +2644,9 @@ INIT_OBJECTS:
   gate.2="WGATE"
   
   maxitem=7
-  maxmagnetwant=5
   maxgrabitem=8
+  maxmagnetitem=5
+  maxsecretitem=6
   item.0="YKEY"
   item.1="WKEY"
   item.2="BKEY"
@@ -2605,32 +2661,6 @@ INIT_OBJECTS:
   dragon.0="YORGLE"
   dragon.1="GRUNDLE"
   dragon.2="RHINDLE"
- 
-  fear.yorgle.max=1
-  fear.yorgle.0="SWORD"
-  fear.yorgle.1="YKEY"
-  
-  fear.grundle.max=0
-  fear.grundle.0="SWORD"
-  
-  fear.rhindle.max=0
-  fear.rhindle.0="SWORD"
-  
-  want.yorgle.max=1
-  want.yorgle.0="PL"
-  want.yorgle.1="CHALICE"
-  
-  want.grundle.max=4
-  want.grundle.0="PL"
-  want.grundle.1="CHALICE"
-  want.grundle.2="BRIDGE"
-  want.grundle.3="MAGNET"
-  want.grundle.4="BKEY"
-  
-  want.rhindle.max=2
-  want.rhindle.0="PL"
-  want.rhindle.1="CHALICE"
-  want.rhindle.2="WKEY"
   
   obj.msg0.room=30
   obj.msg0.x=40
@@ -2842,7 +2872,7 @@ INIT_OBJECTS:
   obj.magnet.diry=0
   obj.magnet.offset.x=0
   obj.magnet.offset.y=0
-  obj.magnet.col="[0;47;30m"
+  obj.magnet.col="[0;40;37m"
   obj.magnet.spr.0=_magnet.0
   obj.magnet.spr.1=_magnet.1
   obj.magnet.busy=0
@@ -2853,7 +2883,7 @@ INIT_OBJECTS:
   obj.chalice.room=28
   obj.chalice.x=25 /* TODO: fix */
   obj.chalice.y=5 /* TODO: fix */
-  obj.chalice.w=5
+  obj.chalice.w=4
   obj.chalice.h=2
   obj.chalice.dx=0
   obj.chalice.dy=0
@@ -2863,7 +2893,7 @@ INIT_OBJECTS:
   obj.chalice.diry=0
   obj.chalice.offset.x=0
   obj.chalice.offset.y=0
-  obj.chalice.col="[0;47;35m" /* TODO: fix */
+  obj.chalice.col="[0;45;37m" /* TODO: color cycle */
   obj.chalice.spr.0=_chalice.0
   obj.chalice.spr.1=_chalice.1
   obj.chalice.spr.2=_chalice.2
@@ -2962,9 +2992,24 @@ INIT_OBJECTS:
   obj.yorgle.offset.x=0
   obj.yorgle.offset.y=0
   obj.yorgle.col="[1;33m"
-  obj.yorgle.spr.0=_dragon.0
+  obj.yorgle.spr.0=_dragon.0.0
+  obj.yorgle.spr.1=_dragon.0.1
+  obj.yorgle.spr.2=_dragon.0.2
+  obj.yorgle.spr.3=_dragon.0.3
+  obj.yorgle.spr.4=_dragon.0.4
+  obj.yorgle.spr.5=_dragon.0.5
+  obj.yorgle.spr.6=_dragon.0.6
+  obj.yorgle.spr.7=_dragon.0.7
   obj.yorgle.lvl3.0=1   /* random room lower limit */
   obj.yorgle.lvl3.1=29  /* random room upper limit */
+  
+  fear.yorgle.max=1
+  fear.yorgle.0="SWORD"
+  fear.yorgle.1="YKEY"
+  
+  want.yorgle.max=1
+  want.yorgle.0="PL"
+  want.yorgle.1="CHALICE"
   
   obj.grundle.room=30 /* TODO: fix */
   obj.grundle.x=1 /* TODO: fix */
@@ -2978,9 +3023,26 @@ INIT_OBJECTS:
   obj.grundle.offset.x=0
   obj.grundle.offset.y=0
   obj.grundle.col="[1;32m"
-  obj.grundle.spr.0=_dragon.0
+  obj.grundle.spr.0=_dragon.0.0
+  obj.grundle.spr.1=_dragon.0.1
+  obj.grundle.spr.2=_dragon.0.2
+  obj.grundle.spr.3=_dragon.0.3
+  obj.grundle.spr.4=_dragon.0.4
+  obj.grundle.spr.5=_dragon.0.5
+  obj.grundle.spr.6=_dragon.0.6
+  obj.grundle.spr.7=_dragon.0.7
   obj.grundle.lvl3.0=1   /* random room lower limit */
   obj.grundle.lvl3.1=29  /* random room upper limit */
+  
+  fear.grundle.max=0
+  fear.grundle.0="SWORD"  
+
+  want.grundle.max=4
+  want.grundle.0="PL"
+  want.grundle.1="CHALICE"
+  want.grundle.2="BRIDGE"
+  want.grundle.3="MAGNET"
+  want.grundle.4="BKEY"
   
   obj.rhindle.room=30 /* TODO: fix */
   obj.rhindle.x=1 /* TODO: fix */
@@ -2994,9 +3056,24 @@ INIT_OBJECTS:
   obj.rhindle.offset.x=0
   obj.rhindle.offset.y=0
   obj.rhindle.col="[1;31m" /* TODO: fix */
-  obj.rhindle.spr.0=_dragon.0
+  obj.rhindle.spr.0=_dragon.0.0
+  obj.rhindle.spr.1=_dragon.0.1
+  obj.rhindle.spr.2=_dragon.0.2
+  obj.rhindle.spr.3=_dragon.0.3
+  obj.rhindle.spr.4=_dragon.0.4
+  obj.rhindle.spr.5=_dragon.0.5
+  obj.rhindle.spr.6=_dragon.0.6
+  obj.rhindle.spr.7=_dragon.0.7
   obj.rhindle.lvl3.0=1   /* random room lower limit */
   obj.rhindle.lvl3.1=29  /* random room upper limit */
+  
+  fear.rhindle.max=0
+  fear.rhindle.0="SWORD"
+  
+  want.rhindle.max=2
+  want.rhindle.0="PL"
+  want.rhindle.1="CHALICE"
+  want.rhindle.2="WKEY"
 return
 
 /* background colors *** foreground colors */

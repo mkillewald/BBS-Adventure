@@ -943,82 +943,79 @@ DRAW_INVERSE_OBJECT: /* draw object whose bg is fg. what if C A T really spelled
   END
 return
 
-/* TODO: fix M barrier on "erase" */
 DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T really spelled DOG? */
   ARG dro
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
   mp=k.rm.map
   
   erasex=0
-  erasey=0
-  loopstart=0
-  loopend=obj.dro.h
-  mapstart=obj.dro.x-1 /* -1 for map shift */
+  outerloopstart=0
+  outerloopend=obj.dro.h
+  mapstart=obj.dro.x-1   /* -1 for map shift */
   maplength=obj.dro.w+1  /* +1 for how obj width is indexed */ 
   
   /* check for movement in x direction */
 	IF obj.dro.dirx==-1 & obj.dro.x+obj.dro.w<maxcol THEN DO
 		/* dro is moving left and not at right edge of screen bounds */
-		erasex=1 /* we will need to erase one char position to the right of dro */
+		/* we will need to erase one char position to the right of dro */
+		erasex=1 
 	END
 	ELSE IF obj.dro.dirx==1 & obj.dro.x>mincol THEN DO
 		/* dro is moving right and not at left edge of screen bounds */
-		erasex=-1  /* we will need to erase one char position to the left of dro */
+		/* we will need to erase one char position to the left of dro */
+		erasex=-1  
 	END
 	
 	/* check for movement in y direction */
 	IF obj.dro.diry==-1 & obj.dro.y+obj.dro.h<maxline THEN DO
 		/* dro is moving up and not at bottom edge of screen bounds */
-		erasey=1  /* we will need to erase one line below dro */
+		/* we will need to erase one line below dro */
+		outerloopend=obj.dro.h+1
 	END
 	ELSE IF obj.dro.diry==1 & obj.dro.y>minline THEN DO
 		/* dro is moving down and not at top edge of screen bounds */ 
-		erasey=-1 /* we will need to erase one line above dro */
+	  /* we will need to erase one line above dro */
+		outerloopstart=-1
 	END
-	
-	se "[1;2H"||erasex||" "||erasey||"  "
-	se "[2;2H"||obj.dro.dirx||" "||obj.dro.diry||"  "
-	call DEBUG_STEPPER
-		 
-	/* check if we need to erase 1 line above sprite */
-	IF erasey==-1 THEN DO
-		line=obj.dro.y-1
-		drawxpos=obj.dro.x
-  	IF erasex==1 THEN result_str= SUBSTR(k.mp.line, mapstart, maplength+1)  /* dro moving left */
-    ELSE IF erasex==-1 THEN DO
-    	drawxpos=drawxpos-1
-    	result_str= SUBSTR(k.mp.line, mapstart-1, maplength+1) /* dro moving right */
-    END
-  	ELSE result_str= SUBSTR(k.mp.line, mapstart, maplength)  /* dro not moving left or right */
-  		
-  	se "["||line||";"||drawxpos||"H"||k.rm.c||result_str
-  END
-  
+		   
   /* outer loop goes through each line of sprite */ 
-  DO j=loopstart TO loopend BY 1
-    line=obj.dro.y+j
+  DO j=outerloopstart TO outerloopend BY 1
+    line=obj.dro.y+(j)
     drawxpos=obj.dro.x
     /* IF line<minline | line>maxline THEN ITERATE */ /* skip loop iteration if line is out of bounds */
   	
+  	/* get current line of sprite to work on */
+  	IF j==-1 | j==obj.dro.h+1 THEN DO
+  		/* this is either 1 line above or 1 line below dro sprite, so we are "erasing" on y */
+  		spr_line=COPIES("Û", obj.dro.w+1)
+  	END
+  	ELSE DO
+	    IF (dro=="YORGLE" | dro=="GRUNDLE" | dro=="RHINDLE") & obj.dro.dirx==1 THEN DO
+	      spr_line=REVERSE(obj.dro.spr.j) 
+	    END
+	    ELSE spr_line=obj.dro.spr.j
+	  END
+	    	    	  
   	/* check if we need to erase 1 char to left of sprite */
     IF erasex==-1 THEN DO
     	drawxpos=drawxpos-1
-    	result_str=k.rm.c|| SUBSTR(k.mp.line, mapstart-1, 1)||obj.dro.col
+    	spr_line= "Û"||spr_line
+    	mapstart=(obj.dro.x-1)-1   /* (original value)-1, due to being inside loop */
+    	maplength=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
     END
-    ELSE result_str=obj.dro.col
-    	
-    /* get current line of sprite to work on */
-    IF (dro=="YORGLE" | dro=="GRUNDLE" | dro=="RHINDLE") & obj.dro.dirx==1 THEN DO
-      spr_line=REVERSE(obj.dro.spr.j) 
-    END
-    ELSE spr_line=obj.dro.spr.j
-    	
-    /* get map data from undeneath the sprite */	
+    /* check if we need to erase 1 char to right of sprite */
+    ELSE IF erasex==1 THEN DO
+    	spr_line=spr_line||"Û"
+    	maplength=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
+    END 
+    
+    /* get map data that is layered "undeneath" the sprite line */	
   	map_str= SUBSTR(k.mp.line, mapstart, maplength) 
    
     /* inner loop goes through each character of the sprite string and
-       inserts bg color based on map character found underneath        */
-    DO k=1 TO obj.dro.w+1 /* +1 due to how width is indexed */    	
+       inserts bg color based on map character data found underneath  */
+    result_str=obj.dro.col
+    DO k=1 TO maplength 
       spr_char = SUBSTR(spr_line, k, 1)
       map_char = SUBSTR(map_str, k, 1)
       SELECT
@@ -1038,22 +1035,7 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
       END
     END
     
-    /* check if we need to erase 1 char to right of sprite */
-    IF erasex==1 THEN result_str=result_str||k.rm.c|| SUBSTR(k.mp.line, mapstart+obj.dro.w+1, 1) 
-    se "["||obj.dro.y+j||";"||drawxpos||"H"||result_str||k.rm.fc          
-  END
-  
-  /* check if we need to erase 1 line below sprite */
-	IF erasey==1 THEN DO
-		line=obj.dro.y+obj.dro.h+1
-		drawxpos=obj.dro.x
-  	IF erasex==1 THEN result_str= SUBSTR(k.mp.line, mapstart, maplength+1)  /* dro moving left */
-    ELSE IF erasex==-1 THEN DO
-    	drawxpos=drawxpos-1
-    	result_str= SUBSTR(k.mp.line, mapstart-1, maplength+1) /* dro moving right */
-    END
-  	ELSE result_str= SUBSTR(k.mp.line, mapstart, maplength)  /* dro not moving left or right */
-  	se "["||line||";"||drawxpos||"H"||k.rm.c||result_str
+    se "["||obj.dro.y+(j)||";"||drawxpos||"H"||result_str||k.rm.fc          
   END
 return
 

@@ -27,8 +27,8 @@ changewhere "BBS Adventure "||ver
 debug=0         /* 0 = disable debug mode,   1 = enable debug mode   */
 debug_flash=0   /* 0 = disable flash debug,  1 = enable flash debug  */
 debug_magnet=0  /* 0 = disable magnet debug, 1 = enable magnet debug */
-debug_bat=1     /* 0 = disable bat debug,    1 = enable bat debug    */
-debug_dragon=0  /* 0 = disable dragon debug, 1 = enable dragon debug */
+debug_bat=0     /* 0 = disable bat debug,    1 = enable bat debug    */
+debug_dragon=1  /* 0 = disable dragon debug, 1 = enable dragon debug */
 
 transparent_items=1 /* 0 = disaled, 1 = enabled */
 flashlight=0  /* 0=disabled, 1=small, 2=medium, 3=large */
@@ -37,6 +37,10 @@ flashlight=0  /* 0=disabled, 1=small, 2=medium, 3=large */
 difficulty=1  /* 1 = leve 1, 2 = level 2, 3 = level 3 */
 attack=0  /* 0 = dragons delay before attack, 1 = dragons attack instantly */
 fear=0  /* 0 = dragons do not fear sword, 1 = dragons fear sword */ 
+
+/* dragon attack delay */
+instantattack=6   /* about 1.5 seconds */
+delayedattack=15  /* about 3 seconds */
 
 /* used for boundary checks only! */
 /* changing these values will not */ 
@@ -570,7 +574,11 @@ START:
   
   call INIT_OBJECTS  /* init objects */
   
-  IF DIFFICULTY==1 THEN obj.knub.room=0
+  IF difficulty==1 THEN DO
+    obj.knub.room=0
+    maxdragon=1
+    obj.rhindle.room=0
+  END
   ELSE IF difficulty==2 THEN DO
     call EXPAND_KINGDOM
     /* set level 2 item locations */
@@ -595,7 +603,14 @@ START:
       IF obj.o.lvl3.0 =0 THEN obj.o.room = random(obj.o.lvl3.0, obj.o.lvl3.1, time('s'))
     END */
   END
-
+  
+  IF attack==1 THEN DO
+    DO i=0 TO maxdragon
+      drago=dragon.i
+      obj.drago.atkwait=instantattack
+    END
+  END
+    
   REINCARNATE:
   call INIT_PLAYER  /* init player */
 
@@ -636,10 +651,12 @@ START:
       call BAT_ANIM
       call BAT_MOVE
     END
-
-    call DRAGON_SEEK
-    call DRAGON_FEAR
-    call DRAGON_MOVE
+    
+    DO i=0 TO maxdragon
+      call DRAGON_GUARD(dragon.i)
+      call DRAGON_FLEE(dragon.i)
+      call DRAGON_MOVE(dragon.i)
+    END
        
     call CHECK
   END
@@ -662,19 +679,20 @@ DEBUG_PL:
 return
 
 DEBUG_MAGNET:
-  if game_running~=1 | debug_magnet~=1 THEN return
+  IF game_running~=1 | debug_magnet~=1 THEN return
   dbmwo=obj.magnet.want
   se "[5;2HM.W:" || dbmwo || " M.BUSY:" || obj.magnet.busy|| "             " 
   IF dbmwo~="NONE" THEN se " owDX:" || obj.dbmwo.dx || " owDY:" || obj.dbmwo.dy || "              "
 return
 
 DEBUG_BAT:  /* TODO: finish */
-  if game_running~=1 | debug_bat~=1 THEN return
+  IF game_running~=1 | debug_bat~=1 THEN return
   se "[5;2H"||k.rm.c||"B.R:"||obj.knub.room||" B.X:"||obj.knub.x||" B.Y:"||obj.knub.y||" B.W:"||obj.knub.want||" B.FU:"||obj.knub.fedup||" B.S:"||obj.knub.seek||" B.E:"||obj.knub.equip||"     " 
 return
 
 DEBUG_DRAGON:  /* TODO: finish */
-  if game_running~=1 | debug_dragon~=1 THEN return
+  IF game_running~=1 | debug_dragon~=1 THEN return
+  se "[5;2HY.R:"||obj.yorgle.room||" Y.X:"||obj.yorgle.x||" Y.Y:"||obj.yorgle.y||" Y.DIRX:"||obj.yorgle.dirx||" Y.DIRY:"||obj.yorgle.diry||" Y.W:"||obj.yorgle.want||" Y.F:"||obj.yorgle.fear||"      "
 return
 
 DEBUG_STEPPER:
@@ -689,6 +707,7 @@ REFRESH:  /* redraw entire screen */
 return
 
 DRAW_BG:  /* draw background (not in main loop) */
+  /* draw layer 0 */
   call DRAW_ROOM
   IF DEBUG==1 THEN call DEBUG
 return
@@ -770,14 +789,14 @@ ERASE_PL:
   IF obj.pl.equip=="KNUBBERRUB" & obj.knubberrub.equip~="NONE" THEN call ERASE_OBJECT(obj.knubberrub.equip)
    
   IF OK2DRAWOBJ("PL")==0 THEN return
-  	
+    
   /* fix for castle exit player/gate interaction */
   DO j=0 to maxgate
-  	g=gate.j
-  	IF COLLIDE_NOW("PL", g)==1 THEN return
+    g=gate.j
+    IF COLLIDE_NOW("PL", g)==1 THEN return
   END
   
-  /* erase player */	
+  /* erase player */  
   line=obj.pl.y
   str = SUBSTR(k.mp.line, obj.pl.x-1, obj.pl.w+1)  /* -1 for map shift, +1 for how width is indexed */
   /* handle the side barriers */
@@ -792,7 +811,8 @@ return
 DRAW_OBJS:  /* draw objects (not in the main loop) */
   /* draw items */
   DO i=0 TO maxitem
-    o=item.i  
+    o=item.i
+    /* draw objects in current room that are not equipped by player or knubberrub */ 
     IF obj.o.room==obj.pl.room & obj.pl.equip~=o & obj.knubberrub.equip~=o THEN DO
       call DRAW_OBJECT(o)
     END
@@ -812,11 +832,11 @@ DRAW_OBJS:  /* draw objects (not in the main loop) */
     call DRAW_MSG(2)
     call DRAW_MSG(3)
   END
-  /* draw dragons */
-  /* DO i=0 TO maxdragon
-    o=dragon.i
-    call DRAW_DRAGON(o)
-  END */
+  /* draw dead dragons */
+  DO i=0 TO maxdragon
+  	d=dragon.i
+  	IF obj.d.dead==1 THEN call DRAW_DRAGON(d)
+  END
 return
 
 OK2DRAWOBJ: /* check if ok to draw object */
@@ -843,8 +863,8 @@ DRAW_OBJECT:  /* TODO: fix item interactions */
     return
   END
   ELSE IF dro=="CHALICE" | dro=="MAGNET" THEN DO
-  	call DRAW_INVERSE_OBJECT(dro)
-  	return
+    call DRAW_INVERSE_OBJECT(dro)
+    return
   END
   ELSE IF dro=="KNUBBERRUB" THEN DO 
     call DRAW_BAT
@@ -869,7 +889,7 @@ DRAW_OBJECT:  /* TODO: fix item interactions */
         SELECT
           WHEN map_char==" " THEN result_line=result_line||k.rm.bc||spr_char
           WHEN map_char=="л" THEN result_line=result_line||k.rm.bc2||spr_char
-          WHEN map_char=="M" THEN result_line=result_line||"[40m"||spr_char
+          WHEN map_char=="M" THEN result_line=result_line||"[22;40m"||spr_char
           OTHERWISE NOP
         END
       END       
@@ -890,8 +910,10 @@ DRAW_INVERSE_OBJECT: /* draw object whose bg is fg. what if C A T really spelled
   mp=k.rm.map
   DO j=0 TO obj.dro.h
     /* for each line of the object's sprite */
-    spr_line=obj.dro.spr.j
-    
+    IF (dro=="YORGLE" | dro=="GRUNDLE" | dro=="RHINDLE") & obj.dro.dirx==1 THEN DO
+      spr_line= REVERSE(obj.dro.spr.j)
+    END
+    ELSE spr_line=obj.dro.spr.j
     /* get map data underneath item's sprite line */
     l=obj.dro.y+j
     map_str= SUBSTR(k.mp.l, obj.dro.x-1, obj.dro.w+1) /* -1 for map shift, +1 for how width is indexed */
@@ -912,12 +934,126 @@ DRAW_INVERSE_OBJECT: /* draw object whose bg is fg. what if C A T really spelled
         END
         WHEN map_char=="M" THEN DO
           IF spr_char==" " THEN result_line=result_line||obj.dro.col||spr_char
-          ELSE result_line=result_line||"[30m"||spr_char
+          ELSE result_line=result_line||"[22;30m"||spr_char
         END
         OTHERWISE NOP
       END
     END       
     se "["||obj.dro.y+j||";"||obj.dro.x||"H"||obj.dro.col||result_line||k.rm.fc
+  END
+return
+
+/* TODO: fix M barrier on "erase" */
+DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T really spelled DOG? */
+  ARG dro
+  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
+  mp=k.rm.map
+  
+  erasex=0
+  erasey=0
+  loopstart=0
+  loopend=obj.dro.h
+  mapstart=obj.dro.x-1 /* -1 for map shift */
+  maplength=obj.dro.w+1  /* +1 for how obj width is indexed */ 
+  
+  /* check for movement in x direction */
+	IF obj.dro.dirx==-1 & obj.dro.x+obj.dro.w<maxcol THEN DO
+		/* dro is moving left and not at right edge of screen bounds */
+		erasex=1 /* we will need to erase one char position to the right of dro */
+	END
+	ELSE IF obj.dro.dirx==1 & obj.dro.x>mincol THEN DO
+		/* dro is moving right and not at left edge of screen bounds */
+		erasex=-1  /* we will need to erase one char position to the left of dro */
+	END
+	
+	/* check for movement in y direction */
+	IF obj.dro.diry==-1 & obj.dro.y+obj.dro.h<maxline THEN DO
+		/* dro is moving up and not at bottom edge of screen bounds */
+		erasey=1  /* we will need to erase one line below dro */
+	END
+	ELSE IF obj.dro.diry==1 & obj.dro.y>minline THEN DO
+		/* dro is moving down and not at top edge of screen bounds */ 
+		erasey=-1 /* we will need to erase one line above dro */
+	END
+	
+	se "[1;2H"||erasex||" "||erasey||"  "
+	se "[2;2H"||obj.dro.dirx||" "||obj.dro.diry||"  "
+	call DEBUG_STEPPER
+		 
+	/* check if we need to erase 1 line above sprite */
+	IF erasey==-1 THEN DO
+		line=obj.dro.y-1
+		drawxpos=obj.dro.x
+  	IF erasex==1 THEN result_str= SUBSTR(k.mp.line, mapstart, maplength+1)  /* dro moving left */
+    ELSE IF erasex==-1 THEN DO
+    	drawxpos=drawxpos-1
+    	result_str= SUBSTR(k.mp.line, mapstart-1, maplength+1) /* dro moving right */
+    END
+  	ELSE result_str= SUBSTR(k.mp.line, mapstart, maplength)  /* dro not moving left or right */
+  		
+  	se "["||line||";"||drawxpos||"H"||k.rm.c||result_str
+  END
+  
+  /* outer loop goes through each line of sprite */ 
+  DO j=loopstart TO loopend BY 1
+    line=obj.dro.y+j
+    drawxpos=obj.dro.x
+    /* IF line<minline | line>maxline THEN ITERATE */ /* skip loop iteration if line is out of bounds */
+  	
+  	/* check if we need to erase 1 char to left of sprite */
+    IF erasex==-1 THEN DO
+    	drawxpos=drawxpos-1
+    	result_str=k.rm.c|| SUBSTR(k.mp.line, mapstart-1, 1)||obj.dro.col
+    END
+    ELSE result_str=obj.dro.col
+    	
+    /* get current line of sprite to work on */
+    IF (dro=="YORGLE" | dro=="GRUNDLE" | dro=="RHINDLE") & obj.dro.dirx==1 THEN DO
+      spr_line=REVERSE(obj.dro.spr.j) 
+    END
+    ELSE spr_line=obj.dro.spr.j
+    	
+    /* get map data from undeneath the sprite */	
+  	map_str= SUBSTR(k.mp.line, mapstart, maplength) 
+   
+    /* inner loop goes through each character of the sprite string and
+       inserts bg color based on map character found underneath        */
+    DO k=1 TO obj.dro.w+1 /* +1 due to how width is indexed */    	
+      spr_char = SUBSTR(spr_line, k, 1)
+      map_char = SUBSTR(map_str, k, 1)
+      SELECT
+        WHEN map_char==" " THEN result_str=result_str||obj.dro.col||spr_char
+        WHEN map_char=="л" THEN DO 
+          IF spr_char==" " THEN result_str=result_str||obj.dro.col||spr_char
+          ELSE DO
+            IF k.rm.dark==1 & flashlight==0 THEN result_str=result_str||k.rm.c||spr_char
+            ELSE result_str=result_str||k.rm.fc||spr_char
+          END
+        END
+        WHEN map_char=="M" THEN DO
+          IF spr_char==" " THEN result_str=result_str||obj.dro.col||spr_char
+          ELSE result_str=result_str||"[22;30m"||spr_char
+        END
+        OTHERWISE NOP
+      END
+    END
+    
+    /* check if we need to erase 1 char to right of sprite */
+    IF erasex==1 THEN result_str=result_str||k.rm.c|| SUBSTR(k.mp.line, mapstart+obj.dro.w+1, 1) 
+    se "["||obj.dro.y+j||";"||drawxpos||"H"||result_str||k.rm.fc          
+  END
+  
+  /* check if we need to erase 1 line below sprite */
+	IF erasey==1 THEN DO
+		line=obj.dro.y+obj.dro.h+1
+		drawxpos=obj.dro.x
+  	IF erasex==1 THEN result_str= SUBSTR(k.mp.line, mapstart, maplength+1)  /* dro moving left */
+    ELSE IF erasex==-1 THEN DO
+    	drawxpos=drawxpos-1
+    	result_str= SUBSTR(k.mp.line, mapstart-1, maplength+1) /* dro moving right */
+    END
+  	ELSE result_str= SUBSTR(k.mp.line, mapstart, maplength)  /* dro not moving left or right */
+  	se "["||line||";"||drawxpos||"H"||k.rm.c||result_str
   END
 return
 
@@ -987,7 +1123,7 @@ return
 ERASE_BRIDGE:
   o="BRIDGE"
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
- mp=k.rm.map
+  mp=k.rm.map
   DO j=obj.dro.y TO obj.dro.y+obj.dro.h
     str= SUBSTR(k.mp.j, obj.dro.x-1, obj.dro.w+1)  /* -1 for map shift, +1 for how width is indexed */
     str1= LEFT(str,3)
@@ -1017,10 +1153,12 @@ return
 
 DRAW_DRAGON:  /* TODO: finish */
   ARG dro
+  call DRAW_INVERSE_OBJECT_WITH_MOTION(dro)
 return
 
 ERASE_DRAGON:  /* TODO: finish */
   ARG dro
+  call ERASE_OBJECT(dro)
 return
 
 DRAW_BAT:  /* called by BAT_MOVE in main loop */
@@ -1038,6 +1176,7 @@ ERASE_BAT:
 return
 
 MV_U:
+  IF obj.pl.dead==1 THEN return
   obj.pl.diry=-1  /* desired movement direction */
   call EXIT_BEING("PL") 
   obj.pl.dy=-1  
@@ -1054,6 +1193,7 @@ MV_U:
 return
 
 MV_D:
+IF obj.pl.dead==1 THEN return
   obj.pl.diry=1
   call EXIT_BEING("PL") 
   obj.pl.dy=1
@@ -1068,6 +1208,7 @@ MV_D:
 return
 
 MV_R:
+IF obj.pl.dead==1 THEN return
   obj.pl.dirx=1
   call EXIT_BEING("PL") 
   IF obj.pl.x==maxcol-2 THEN obj.pl.dx=1
@@ -1093,10 +1234,11 @@ MV_R:
 return
 
 MV_L:
+IF obj.pl.dead==1 THEN return
   obj.pl.dirx=-1
   call EXIT_BEING("PL") 
   IF obj.pl.x==mincol+1 THEN obj.pl.dx=-1
-  ELSE obj.pl.dx=-2	
+  ELSE obj.pl.dx=-2 
   /* do player-gate collision detect */
   IF GATE_COLLIDE("PL")==1 THEN return
   /* do player-msg collision detect */
@@ -1141,20 +1283,18 @@ OK2MOVEPL:
 return
 
 MOVE:  /* moves the desired object */
-  ARG o, movex, movey
-  IF TRUNC(obj.o.dx)==0 & TRUNC(obj.o.dy)==0 THEN return
-  IF movex THEN obj.o.x=obj.o.x+TRUNC(obj.o.dx)
-  IF movey THEN obj.o.y=obj.o.y+TRUNC(obj.o.dy)
+  ARG mo, movex, movey
+  IF TRUNC(obj.mo.dx)==0 & TRUNC(obj.mo.dy)==0 THEN return
+  IF movex THEN obj.mo.x=obj.mo.x+TRUNC(obj.mo.dx)
+  IF movey THEN obj.mo.y=obj.mo.y+TRUNC(obj.mo.dy)
 return 
 
-/* cond3==1 for bullets only (not implemented) */
-/* cond4==1 for hop (only for dragon movement) */
 GETDIR:           
-  ARG speed, pos1, pos2, cond3, cond4
-  IF pos1<pos2 & pos2-pos1>=speed THEN return -1
-  ELSE IF cond3 | (pos1>pos2 & pos1-pos2>=speed) THEN return 1
-  ELSE IF cond4 & pos1==pos2 THEN return 1
-  ELSE return 0
+  ARG pos1, pos2, hop
+  IF pos1<pos2 THEN return -1
+  ELSE IF pos1>pos2 THEN return 1
+  ELSE IF hop==1 & pos1==pos2 THEN return 1
+  ELSE NOP
 return 0
   
 EQUIP:
@@ -1197,8 +1337,8 @@ DROP:
   
   /* fix for bug where item gets trapped under gate*/
   DO j=0 TO maxgate
-  	g=gate.j
-  	IF COLLIDE_NOW(dro, g)==1 THEN obj.dro.y=obj.g.y+obj.g.h+1
+    g=gate.j
+    IF COLLIDE_NOW(dro, g)==1 THEN obj.dro.y=obj.g.y+obj.g.h+1
   END
   
   IF beep==1 THEN se "b1" /* BEEP! */
@@ -1348,8 +1488,8 @@ MAGNETISM:  /* move wanted object toward magnet */
       obj.mwo.dirx=0; obj.mwo.diry=0
     END
     ELSE DO /* move item to magnet */
-      obj.mwo.dirx= GETDIR(obj.mwo.spdx, obj.magnet.x, obj.mwo.x, 0, 0)
-      obj.mwo.diry= GETDIR(obj.mwo.spdy, obj.magnet.y+obj.magnet.h+1, obj.mwo.y, 0, 0)
+      obj.mwo.dirx= GETDIR(obj.magnet.x, obj.mwo.x)
+      obj.mwo.diry= GETDIR(obj.magnet.y+obj.magnet.h+1, obj.mwo.y)
       obj.mwo.dx=obj.mwo.dx+(obj.mwo.spdx*obj.mwo.dirx)
       obj.mwo.dy=obj.mwo.dy+(obj.mwo.spdy*obj.mwo.diry)
       IF ABS(obj.mwo.dx)>=1 & ABS(obj.mwo.dy)>=1 THEN DO
@@ -1404,7 +1544,6 @@ BAT_SEEK:
     IF obj.knub.want~="NONE" & obj.kwo.room==obj.knub.room & obj.knub.equip~=obj.knub.want THEN call BAT_STEAL
     ELSE obj.knub.want="NONE"
   END
-  IF debug==1 THEN call DEBUG_BAT
 return
 
 /* in main loop */
@@ -1422,7 +1561,7 @@ BAT_ANIM:
 return
 
 /* in main loop */
-BAT_MOVE:  /* TODO: finish, fix item interaction */
+BAT_MOVE:  /* TODO:  fix item interaction */
   obj.knub.dx=obj.knub.dx+(obj.knub.spdx*obj.knub.dirx)
   obj.knub.dy=obj.knub.dy+(obj.knub.spdy*obj.knub.diry)
   /* added a small window where knubberrub is not grabbable by the player */
@@ -1454,17 +1593,18 @@ BAT_MOVE:  /* TODO: finish, fix item interaction */
     END
     obj.knub.dy=0
   END 
+  IF debug==1 THEN call DEBUG_BAT
 return
 
 BAT_STEAL:
   IF obj.knub.want=="NONE" THEN return
   kswo=obj.knub.want  /* eg. "SWORD" */
   IF obj.pl.equip~=knub THEN DO
-  	tdirx=GETDIR(obj.knub.spdx, obj.kswo.x, obj.knub.x, 0, 0)
-  	tdiry=GETDIR(obj.knub.spdy, obj.kswo.y, obj.knub.y, 0, 0)
+    tdirx=GETDIR(obj.kswo.x, obj.knub.x)
+    tdiry=GETDIR(obj.kswo.y, obj.knub.y)
     IF tdirx==0 & tdiry==0 THEN NOP /* because this would freeze knubby */
     ELSE DO
-    	obj.knub.dirx=tdirx 
+      obj.knub.dirx=tdirx 
       obj.knub.diry=tdiry
     END 
   END
@@ -1476,26 +1616,108 @@ BAT_STEAL:
 return
 
 /* in main loop */
-DRAGON_SEEK:  /* TODO: finish */
+DRAGON_GUARD: 
+  ARG drago
+  DO dwi=0 TO want.drago.max
+    dwo=want.drago.dwi
+    IF obj.dwo.room==obj.drago.room THEN DO
+      obj.drago.want=dwo
+      LEAVE dwi
+    END
+    ELSE obj.drago.want="NONE"
+  END
 return
 
 /* in main loop */
-DRAGON_FEAR:  /* TODO: finish */
+DRAGON_FLEE: 
+  ARG drago
+  DO dfi=0 TO fear.drago.max
+    dfo=fear.drago.dfi
+    IF obj.dfo.room==obj.drago.room THEN DO
+      obj.drago.fear=dfo
+      LEAVE dfi
+    END
+    ELSE obj.drago.fear="NONE"
+  END
 return
 
 /* in main loop */
 DRAGON_MOVE:  /* TODO: finish */
+  ARG drago
+  dfo=obj.drago.fear
+  dwo=obj.drago.want
+  IF dfo~="NONE" & obj.dfo.room==obj.drago.room  THEN DO    
+    tdirx=GETDIR(obj.drago.x, obj.dfo.x)
+    tdiry=GETDIR(obj.drago.y, obj.dfo.y)
+    IF tdirx==0 & tdiry==0 THEN NOP  /* to avoid freezing (with fright) */
+    ELSE DO
+      obj.drago.dirx=tdirx
+      obj.drago.diry=tdiry
+    END
+  END
+  ELSE IF dwo~="NONE" & obj.dwo.room==obj.drago.room THEN DO
+    tdirx=GETDIR(obj.dwo.x, obj.drago.x)
+    tdiry=GETDIR(obj.dwo.y, obj.drago.y) /* TODO: fix drago hop */
+    /* IF tdirx==0 & tdiry==0 THEN NOP 
+    ELSE DO */
+      obj.drago.dirx=tdirx
+      obj.drago.diry=tdiry
+    /* END */
+  END
+  obj.drago.dx=obj.drago.dx+(obj.drago.spdx*obj.drago.dirx)
+  obj.drago.dy=obj.drago.dy+(obj.drago.spdy*obj.drago.diry)
+  IF ABS(obj.drago.dx)>=1 & ABS(obj.drago.dy)>=1 THEN DO
+    IF obj.knub.equip~=drago THEN DO 
+      /* call ERASE_DRAGON(drago) */
+      call MOVE(drago,1,1)  /* move x and y */
+      call EXIT_OBJ(drago)
+      call DRAW_DRAGON(drago)
+    END
+    obj.drago.dx=0; obj.drago.dy=0
+  END
+  ELSE IF ABS(obj.drago.dx)>=1 THEN DO
+    IF obj.knub.equip~=drago THEN DO
+      /* call ERASE_DRAGON(drago) */
+      call MOVE(drago,1,0)  /* move x only */
+      call EXIT_OBJ(drago)
+      call DRAW_DRAGON(drago)
+    END
+    obj.drago.dx=0
+  END
+  ELSE IF ABS(obj.drago.dy)>=1 THEN DO
+    IF obj.knub.equip~=drago THEN DO
+      /* call ERASE_DRAGON(drago) */
+      call MOVE(drago,0,1)  /* move y only */
+      call EXIT_OBJ(drago)
+      call DRAW_DRAGON(drago)
+    END
+    obj.drago.dy=0
+  END 
   IF debug==1 THEN call DEBUG_DRAGON
 return
 
-SECRET:  /* TODO: fix trigger/untrigger with bat */
+SECRET:  /* TODO: fix trigger/untrigger with bat (fixed? need to test) */
   IF obj.pl.room==3 & obj.dot.room==3 THEN DO
+  	/* player and dot are both in room 3, we just need any other item or a dragon */
+  	
+  	/* check for any other item also in room 3 */
     DO s=0 TO maxsecretitem
       o=item.s
       IF obj.o.room==3 THEN DO
         k.3.re=30
         return 1 /* dot in room 3 along with any other item */
       END
+      ELSE k.3.re=1
+    END
+    
+    /* any other item not found, check for a dragon */
+    DO s=0 TO maxdragon
+      d=dragon.s
+      IF obj.d.room==3 THEN DO
+        k.3.re=30
+        return 1
+      END
+      ELSE k.3.re=1
     END
   END
 return 0
@@ -1508,10 +1730,10 @@ EXIT_OBJ:  /* perform exit occurred on an object without motion */
   ELSE IF obj.exo.x<mincol THEN call LEFT_EXIT(exo, 0)
   ELSE IF obj.exo.y<minline THEN call TOP_EXIT(exo)
   ELSE IF k.exorm.ci~=0 & obj.exo.x>37 & obj.exo.x<43 & obj.exo.y<castleline THEN call CASTLE_ENTRANCE(exo)
-  ELSE IF obj.exo.y+obj.exo.h>maxline THEN DO  	
-  	IF k.exorm.co==0 THEN call BOTTOM_EXIT(exo)
-  	ELSE call CASTLE_EXIT(exo)
-  END 	
+  ELSE IF obj.exo.y+obj.exo.h>maxline THEN DO   
+    IF k.exorm.co==0 THEN call BOTTOM_EXIT(exo)
+    ELSE call CASTLE_EXIT(exo)
+  END   
 return
 return
 
@@ -1521,13 +1743,13 @@ EXIT_BEING:  /* perform exit on a being with motion */
   IF obj.exo.dirx>0 & obj.exo.x+obj.exo.w>=maxcol THEN call RIGHT_EXIT(exo, 1) 
   ELSE IF obj.exo.dirx<0 & obj.exo.x<=mincol THEN call LEFT_EXIT(exo, 1)
   ELSE IF obj.exo.diry<0 THEN DO
-  	 IF obj.exo.y<=minline THEN call TOP_EXIT(exo)
-  	 ELSE IF k.exorm.ci~=0 & obj.exo.x>37 & obj.exo.x<43 & obj.exo.y==castleline THEN call CASTLE_ENTRANCE(exo)
+     IF obj.exo.y<=minline THEN call TOP_EXIT(exo)
+     ELSE IF k.exorm.ci~=0 & obj.exo.x>37 & obj.exo.x<43 & obj.exo.y==castleline THEN call CASTLE_ENTRANCE(exo)
   END
-  ELSE IF obj.exo.diry>0 & obj.exo.y+obj.exo.h>=maxline THEN DO  	
-  	IF k.exorm.co==0 THEN call BOTTOM_EXIT(exo)
-  	ELSE call CASTLE_EXIT(exo)
-  END 	
+  ELSE IF obj.exo.diry>0 & obj.exo.y+obj.exo.h>=maxline THEN DO   
+    IF k.exorm.co==0 THEN call BOTTOM_EXIT(exo)
+    ELSE call CASTLE_EXIT(exo)
+  END   
 return
 
 TOP_EXIT:
@@ -2464,6 +2686,7 @@ INIT_PLAYER:
   obj.pl.dirx=0
   obj.pl.diry=0
   obj.pl.equip="NONE"
+  obj.pl.dead=0
 return  
   
 INIT_OBJECTS:
@@ -2570,11 +2793,11 @@ INIT_OBJECTS:
   _dragon.2.7=" ппп "
   
   /* original chalice sprite */
-	/* _chalice.0="пллллллп"
-		 _chalice.1=" пллллп "
-		 _chalice.2="л      л"
-		 _chalice.3="ллм  млл"
-		 _chalice.4="лпп  ппл" */
+  /* _chalice.0="пллллллп"
+     _chalice.1=" пллллп "
+     _chalice.2="л      л"
+     _chalice.3="ллм  млл"
+     _chalice.4="лпп  ппл" */
   
   _chalice.0=" ппп "
   _chalice.1="лм мл"
@@ -2907,8 +3130,8 @@ INIT_OBJECTS:
   obj.bridge.h=5
   obj.bridge.dx=0
   obj.bridge.dy=0
-  obj.bridge.spdx=0.5
-  obj.bridge.spdy=0.25
+  obj.bridge.spdx=0.25
+  obj.bridge.spdy=0.125
   obj.bridge.dirx=0
   obj.bridge.diry=0
   obj.bridge.offset.x=0
@@ -2983,15 +3206,17 @@ INIT_OBJECTS:
   obj.yorgle.room=30 /* TODO: fix */
   obj.yorgle.x=1 /* TODO: fix */
   obj.yorgle.y=1 /* TODO: fix */
+  obj.yorgle.w=4
+  obj.yorgle.h=7
   obj.yorgle.dx=0
   obj.yorgle.dy=0
-  obj.yorgle.spdx=1
-  obj.yorgle.spdy=1
-  obj.yorgle.dirx=0
+  obj.yorgle.spdx=0.5
+  obj.yorgle.spdy=0.25
+  obj.yorgle.dirx=-1
   obj.yorgle.diry=0
   obj.yorgle.offset.x=0
   obj.yorgle.offset.y=0
-  obj.yorgle.col="[1;33m"
+  obj.yorgle.col="[0;43;37m"
   obj.yorgle.spr.0=_dragon.0.0
   obj.yorgle.spr.1=_dragon.0.1
   obj.yorgle.spr.2=_dragon.0.2
@@ -3000,8 +3225,13 @@ INIT_OBJECTS:
   obj.yorgle.spr.5=_dragon.0.5
   obj.yorgle.spr.6=_dragon.0.6
   obj.yorgle.spr.7=_dragon.0.7
+  obj.yorgle.fear="NONE"
+  obj.yorgle.want="NONE"
+  obj.yorgle.atk=0
+  obj.yorgle.atkwait=delayedattack
   obj.yorgle.lvl3.0=1   /* random room lower limit */
   obj.yorgle.lvl3.1=29  /* random room upper limit */
+  obj.yorgle.dead=0
   
   fear.yorgle.max=1
   fear.yorgle.0="SWORD"
@@ -3014,6 +3244,8 @@ INIT_OBJECTS:
   obj.grundle.room=30 /* TODO: fix */
   obj.grundle.x=1 /* TODO: fix */
   obj.grundle.y=1 /* TODO: fix */
+  obj.grundle.w=4
+  obj.grundle.h=7
   obj.grundle.dx=0
   obj.grundle.dy=0
   obj.grundle.spdx=1
@@ -3031,8 +3263,13 @@ INIT_OBJECTS:
   obj.grundle.spr.5=_dragon.0.5
   obj.grundle.spr.6=_dragon.0.6
   obj.grundle.spr.7=_dragon.0.7
+  obj.grundle.fear="NONE"
+  obj.grundle.want="NONE"
+  obj.grundle.atk=0
+  obj.grundle.atkwait=delayedattack
   obj.grundle.lvl3.0=1   /* random room lower limit */
   obj.grundle.lvl3.1=29  /* random room upper limit */
+  obj.grundle.dead=0
   
   fear.grundle.max=0
   fear.grundle.0="SWORD"  
@@ -3047,6 +3284,8 @@ INIT_OBJECTS:
   obj.rhindle.room=30 /* TODO: fix */
   obj.rhindle.x=1 /* TODO: fix */
   obj.rhindle.y=1 /* TODO: fix */
+  obj.rhindle.w=4
+  obj.rhindle.h=7
   obj.rhindle.dx=0
   obj.rhindle.dy=0
   obj.rhindle.spdx=1
@@ -3064,8 +3303,13 @@ INIT_OBJECTS:
   obj.rhindle.spr.5=_dragon.0.5
   obj.rhindle.spr.6=_dragon.0.6
   obj.rhindle.spr.7=_dragon.0.7
+  obj.rhindle.fear="NONE"
+  obj.rhindle.want="NONE"
+  obj.rhindle.atk=0
+  obj.rhindle.atkwait=delayedattack 
   obj.rhindle.lvl3.0=1   /* random room lower limit */
   obj.rhindle.lvl3.1=29  /* random room upper limit */
+  obj.rhindle.dead=0
   
   fear.rhindle.max=0
   fear.rhindle.0="SWORD"

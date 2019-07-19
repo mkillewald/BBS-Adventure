@@ -52,7 +52,7 @@ park="f0" /* returns cursor to home position without clearing screen */
 
 menu_yadv=1  /* menu y advance */
 
-rm=0  /* splash screen */
+obj.pl.rm=0  /* splash screen */
 call INIT_KINGDOM
 call DRAW_BG
  
@@ -614,7 +614,6 @@ START:
   REINCARNATE:
   call INIT_PLAYER  /* init player */
 
-  rm=17  /* yellow castle */
   call DRAW_BG
   call DRAW_PL
   call DRAW_OBJS
@@ -716,7 +715,7 @@ return
   
 DRAW_ROOM:
   se clear_scr
-  if rm~=0 THEN rm=obj.pl.room /* fix for drawing room 0 before player is initialized */
+  rm=obj.pl.room
   mp=k.rm.map
   DO i=1 TO maxline
     line="[40m "k.rm.c||k.mp.i

@@ -716,6 +716,7 @@ return
   
 DRAW_ROOM:
   se clear_scr
+  rm=obj.pl.room
   mp=k.rm.map
   DO i=1 TO maxline
     line="[40m "k.rm.c||k.mp.i
@@ -734,6 +735,7 @@ return
 
 /* TODO: fix equipped object being drawn in wrong room on castle exit if grap/drop occurs on exit */
 DRAW_PL:  /* draw player */
+  rm=obj.pl.room
   IF rm==0 THEN return
   IF OK2DRAWOBJ("PL")==0 THEN return
   
@@ -774,6 +776,7 @@ DRAW_PL:  /* draw player */
 return
 
 ERASE_PL:
+  rm=obj.pl.room
   IF rm==0 THEN return
   mp=k.rm.map  
   /* erase flashlight */
@@ -827,7 +830,7 @@ DRAW_OBJS:  /* draw objects (not in the main loop) */
     END
   END
   /* draw msg's */
-  IF rm==30 THEN DO
+  IF obj.pl.room==30 THEN DO
     IF msg_toggle==1 THEN msg_toggle=0
     ELSE msg_toggle=1
     call DRAW_MSG(msg_toggle)
@@ -852,6 +855,7 @@ return
 DRAW_MSG:
   ARG n
   m=msg.n
+  rm=obj.pl.room
   DO l=0 TO obj.m.h
     se "["||obj.m.y+l||";"||obj.m.x||"H"||obj.m.col||obj.m.spr.l||k.rm.fc
   END
@@ -873,6 +877,7 @@ DRAW_OBJECT:  /* TODO: fix item interactions */
     call EQUIP("KNUBBERRUB")
     return
   END
+  rm=obj.pl.room
   mp=k.rm.map
   IF transparent_items==1 THEN DO
     DO j=0 TO obj.dro.h
@@ -909,6 +914,7 @@ return
 DRAW_INVERSE_OBJECT: /* draw object whose bg is fg. what if C A T really spelled DOG? */
   ARG dro
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
+  rm=obj.pl.room
   mp=k.rm.map
   DO j=0 TO obj.dro.h
     /* for each line of the object's sprite */
@@ -948,6 +954,7 @@ return
 DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T really spelled DOG? */
   ARG dro
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
+  rm=obj.pl.room
   mp=k.rm.map
   
   erasex=0
@@ -1048,6 +1055,7 @@ ERASE_OBJECT:
     call ERASE_BRIDGE
     return
   END
+  rm=obj.pl.room
   mp=k.rm.map
   DO j=obj.dro.y TO obj.dro.y+obj.dro.h
     str = SUBSTR(k.mp.j, obj.dro.x-1, obj.dro.w+1)  /* -1 for map shift */
@@ -1064,6 +1072,7 @@ return
 DRAW_BRIDGE: /* TODO: fix item interactions */
   dro="BRIDGE"
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
+  rm=obj.pl.room
   mp=k.rm.map
   DO j=0 TO obj.dro.h
     /* for each line of the object's sprite */
@@ -1107,6 +1116,7 @@ return
 ERASE_BRIDGE:
   o="BRIDGE"
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
+  rm=obj.pl.room
   mp=k.rm.map
   DO j=obj.dro.y TO obj.dro.y+obj.dro.h
     str= SUBSTR(k.mp.j, obj.dro.x-1, obj.dro.w+1)  /* -1 for map shift, +1 for how width is indexed */
@@ -1692,7 +1702,7 @@ return
 TOP_EXIT:
   ARG exo
   crm=obj.exo.room
-  IF k.rm.te==0 THEN return  
+  IF k.crm.te==0 THEN return  
   /* obj.p.y=maxline-obj.p.h */
   obj.exo.y=maxline-(obj.exo.diry)  /* diry should be -1 or 0 */
   call NEXTROOM(exo, k.crm.te)
@@ -1701,7 +1711,7 @@ return
 BOTTOM_EXIT:
   ARG exo
   crm=obj.exo.room
-  IF k.rm.be==0 THEN return
+  IF k.crm.be==0 THEN return
   /* obj.p.y=minline */
   obj.exo.y=minline-obj.exo.diry  /* diry should be +1 or 0 */
   call NEXTROOM(exo, k.crm.be)
@@ -1710,7 +1720,7 @@ return
 LEFT_EXIT:
   ARG exo, moving
   crm=obj.exo.room
-  IF k.rm.le==0 THEN return
+  IF k.crm.le==0 THEN return
   /* obj.p.x=maxcol-obj.p.w */
   IF moving==1 THEN obj.exo.x=maxcol-(obj.exo.dirx)  /* dirx should be -1 or 0 */
   else obj.exo.x=maxcol-obj.exo.w
@@ -1720,7 +1730,7 @@ return
 RIGHT_EXIT:
   ARG exo, moving
   crm=obj.exo.room
-  IF k.rm.re==0 THEN return
+  IF k.crm.re==0 THEN return
   /* obj.p.x=mincol */
   IF moving==1 THEN obj.exo.x=mincol-(obj.exo.dirx+obj.exo.w)  /* dirx should be +1 or 0 */
   ELSE obj.exo.x=mincol
@@ -1730,7 +1740,7 @@ return
 CASTLE_ENTRANCE:
   ARG exo
   crm=obj.exo.room
-  IF k.rm.ci==0 THEN return 
+  IF k.crm.ci==0 THEN return 
   obj.exo.y=maxline-(obj.exo.diry)  /* diry should be -1 or 0 */
   call NEXTROOM(exo, k.crm.ci)
 return
@@ -1738,7 +1748,7 @@ return
 CASTLE_EXIT:
   ARG exo
   crm=obj.exo.room
-  IF k.rm.co==0 THEN return      
+  IF k.crm.co==0 THEN return      
   obj.exo.x=40; obj.exo.y=castleline-obj.exo.diry  /* diry should be +1 */
   call NEXTROOM(exo, k.crm.co)
 return

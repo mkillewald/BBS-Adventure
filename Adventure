@@ -716,7 +716,7 @@ return
   
 DRAW_ROOM:
   se clear_scr
-  rm=obj.pl.room
+  if rm~=0 THEN rm=obj.pl.room /* fix for drawing room 0 before player is initialized */
   mp=k.rm.map
   DO i=1 TO maxline
     line="[40m "k.rm.c||k.mp.i
@@ -1257,11 +1257,11 @@ return
 DROP:
   ARG beep
   IF obj.pl.equip=="NONE" THEN return
-  dro = obj.pl.equip
-  obj.dro.offset.x=0
+  drpo=obj.pl.equip
+  obj.drpo.offset.x=0
   obj.dro.offset.y=0
-  obj.dro.dirx=0
-  obj.dro.diry=0
+  /* obj.drpo.dirx=0
+  obj.drpo.diry=0 */
   obj.pl.equip="NONE"
   call EXIT_OBJ(dro)
   
@@ -1516,8 +1516,8 @@ BAT_MOVE:  /* TODO:  fix item interaction */
   IF ABS(obj.knub.dx)>=1 & ABS(obj.knub.dy)>=1 THEN DO
     IF obj.pl.equip~=knub THEN DO 
       call ERASE_BAT
-      call MOVE(knub,1,1)  /* move x and y */
       call EXIT_BEING(knub)
+      call MOVE(knub,1,1)  /* move x and y */
       call DRAW_BAT
     END
     obj.knub.dx=0; obj.knub.dy=0
@@ -1525,8 +1525,8 @@ BAT_MOVE:  /* TODO:  fix item interaction */
   ELSE IF ABS(obj.knub.dx)>=1 THEN DO
     IF obj.pl.equip~=knub THEN DO
       call ERASE_BAT
-      call MOVE(knub,1,0)  /* move x only */
       call EXIT_BEING(knub)
+      call MOVE(knub,1,0)  /* move x only */
       call DRAW_BAT
     END
     obj.knub.dx=0
@@ -1534,8 +1534,8 @@ BAT_MOVE:  /* TODO:  fix item interaction */
   ELSE IF ABS(obj.knub.dy)>=1 THEN DO
     IF obj.pl.equip~=knub THEN DO
       call ERASE_BAT
-      call MOVE(knub,0,1)  /* move y only */
       call EXIT_BEING(knub)
+      call MOVE(knub,0,1)  /* move y only */
       call DRAW_BAT
     END
     obj.knub.dy=0
@@ -1616,8 +1616,8 @@ DRAGON_MOVE:  /* TODO: finish */
   IF ABS(obj.drago.dx)>=1 & ABS(obj.drago.dy)>=1 THEN DO
     IF obj.knub.equip~=drago THEN DO 
       /* call ERASE_DRAGON(drago) */
+      call EXIT_BEING(drago)
       call MOVE(drago,1,1)  /* move x and y */
-      call EXIT_OBJ(drago)
       call DRAW_DRAGON(drago)
     END
     obj.drago.dx=0; obj.drago.dy=0
@@ -1625,8 +1625,8 @@ DRAGON_MOVE:  /* TODO: finish */
   ELSE IF ABS(obj.drago.dx)>=1 THEN DO
     IF obj.knub.equip~=drago THEN DO
       /* call ERASE_DRAGON(drago) */
+      call EXIT_BEING(drago)
       call MOVE(drago,1,0)  /* move x only */
-      call EXIT_OBJ(drago)
       call DRAW_DRAGON(drago)
     END
     obj.drago.dx=0
@@ -1634,8 +1634,8 @@ DRAGON_MOVE:  /* TODO: finish */
   ELSE IF ABS(obj.drago.dy)>=1 THEN DO
     IF obj.knub.equip~=drago THEN DO
       /* call ERASE_DRAGON(drago) */
+      call EXIT_BEING(drago)
       call MOVE(drago,0,1)  /* move y only */
-      call EXIT_OBJ(drago)
       call DRAW_DRAGON(drago)
     END
     obj.drago.dy=0

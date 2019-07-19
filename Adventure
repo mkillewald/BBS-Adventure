@@ -628,20 +628,22 @@ START:
     IF result~="NOCHAR" THEN d=C2D(result)
     ELSE d=-999
     SELECT
-      WHEN d==113 | d==109 THEN call MAIN_MENU  /* q or m */
-      WHEN d==32 | d==13 THEN call DROP(1)       /* Space or Enter */
-      WHEN d==119 | d==65 THEN call MV_U  /* w or up arrow (A) */
-      WHEN d==115 | d==66 THEN call MV_D  /* s or down arrow (B) */
-      WHEN d==100 | d==67 THEN call MV_R  /* d or --> (C) */
-      WHEN d==97 | d==68 THEN call MV_L   /* a or <-- (D) */
-      WHEN d==114 THEN call REFRESH /* r */
-      WHEN d==112 THEN DO /* p */
+      WHEN d==113 | d==109 THEN call MAIN_MENU /* q or m */
+      WHEN d==32 | d==13 THEN call DROP(1)     /* Space or Enter */
+      WHEN d==119 | d==65 THEN obj.pl.diry=-1  /* call MV_U */  /* w or up arrow (A) */
+      WHEN d==115 | d==66 THEN obj.pl.diry=1   /* call MV_D */ /* s or down arrow (B) */
+      WHEN d==100 | d==67 THEN obj.pl.dirx=1   /* call MV_R */ /* d or --> (C) */
+      WHEN d==97 | d==68 THEN obj.pl.dirx=-1   /* call MV_L */  /* a or <-- (D) */
+      WHEN d==114 THEN call REFRESH            /* r */
+      WHEN d==112 THEN DO                      /* p */
         IF debug==1 THEN debug=0
         ELSE debug=1
         call REFRESH
       END
       OTHERWISE NOP
     END
+    
+    call PLAYER_MOVE
     
     call MAGNET_SEEK
     call MAGNETISM
@@ -1175,7 +1177,7 @@ MV_U:
 return
 
 MV_D:
-IF obj.pl.dead==1 THEN return
+  IF obj.pl.dead==1 THEN return
   obj.pl.diry=1
   call EXIT_BEING("PL") 
   obj.pl.dy=1
@@ -1190,7 +1192,7 @@ IF obj.pl.dead==1 THEN return
 return
 
 MV_R:
-IF obj.pl.dead==1 THEN return
+  IF obj.pl.dead==1 THEN return
   obj.pl.dirx=1
   call EXIT_BEING("PL") 
   IF obj.pl.x==maxcol-2 THEN obj.pl.dx=1
@@ -1216,7 +1218,7 @@ IF obj.pl.dead==1 THEN return
 return
 
 MV_L:
-IF obj.pl.dead==1 THEN return
+  IF obj.pl.dead==1 THEN return
   obj.pl.dirx=-1
   call EXIT_BEING("PL") 
   IF obj.pl.x==mincol+1 THEN obj.pl.dx=-1
@@ -1241,23 +1243,43 @@ IF obj.pl.dead==1 THEN return
   call OK2MOVEPL
 return
 
-ITEM_WALL_CHECK:
-  DO i=0 TO maxitem
-    wco=item.i
-    IF COLLIDE("PL", wco)==1 & BRIDGE_COLLIDE("PL")~=1 THEN DO
-      call GRAB("PL", wco)
-      LEAVE
+PLAYER_MOVE:
+  IF obj.pl.dead==1 | (obj.pl.dirx==0 & obj.pl.diry=0) THEN return
+  call EXIT_BEING("PL") 
+  
+  IF obj.pl.dirx==-1 & obj.pl.x==mincol+1 THEN obj.pl.dx=1 
+  ELSE IF obj.pl.dirx==1 & obj.pl.x==maxcol-2 THEN obj.pl.dx=1 	
+  ELSE obj.pl.dx=2 
+  obj.pl.dy=1
+  
+  /* do player-gate collision detect */
+  IF GATE_COLLIDE("PL")==1 THEN return
+  	
+  /* do player-msg collision detect */
+  IF MSG_COLLIDE("PL")==1 THEN return
+  	
+  /* do map collision detect */
+  IF WALL("PL")==1 THEN DO
+    call ITEM_WALL_CHECK
+    IF obj.pl.dx==2 THEN DO
+      /* moving 2 char failed, lets try 1 char */
+      obj.pl.dx=1
+      IF WALL("PL")==1 THEN DO
+        call ITEM_WALL_CHECK
+        return
+      END
     END
+    ELSE return
   END
-return
-
-OK2MOVEPL:
+  
+  /* OK 2 move player */
+  
   /* do item collision detect */
   DO i=0 TO maxgrabitem
     o=item.i
     IF o=="BRIDGE" & obj.knubberrub.equip~=o & BRIDGE_COLLIDE("PL")==1 THEN NOP /* allow pl to wa lk accross bridge */
-    ELSE IF o==knub & (obj.knub.fedup==0 | obj.knub.fedup>400) & COLLIDE("PL", o)==1 THEN call GRAB("PL", o)
-    ELSE IF obj.knubberrub.equip~=o & COLLIDE("PL", o)==1 THEN call GRAB("PL", o)
+    ELSE IF o==knub & (obj.knub.fedup==0 | obj.knub.fedup>400) & WILL_COLLIDE("PL", o)==1 THEN call GRAB("PL", o)
+    ELSE IF obj.knubberrub.equip~=o & WILL_COLLIDE("PL", o)==1 THEN call GRAB("PL", o)
   END
   call ERASE_PL
   call MOVE("PL",1,1)
@@ -1267,8 +1289,8 @@ return
 MOVE:  /* moves the desired object */
   ARG mo, movex, movey
   IF TRUNC(obj.mo.dx)==0 & TRUNC(obj.mo.dy)==0 THEN return
-  IF movex THEN obj.mo.x=obj.mo.x+TRUNC(obj.mo.dx)
-  IF movey THEN obj.mo.y=obj.mo.y+TRUNC(obj.mo.dy)
+  IF movex THEN obj.mo.x=obj.mo.x+(TRUNC(obj.mo.dx)*obj.mo.dirx)
+  IF movey THEN obj.mo.y=obj.mo.y+(TRUNC(obj.mo.dy)*obj.mo.diry)
 return 
 
 GETDIR:           
@@ -1348,9 +1370,9 @@ GATE_CL:  /* close gate animation */
 
   DO i=0 to 2
     obj.g.h=obj.g.h+1
-    IF COLLIDE("PL", g)==1 THEN call ERASE_PL
+    IF WILL_COLLIDE("PL", g)==1 THEN call ERASE_PL
     se obj.g.col||"["||obj.g.y+i||";"||obj.g.x||"H"||obj.g.spr.2||"["||obj.g.y+i+1||";"||obj.g.x||"H"||obj.g.spr.3
-    IF COLLIDE("PL", g)==1 THEN DO 
+    IF WILL_COLLIDE("PL", g)==1 THEN DO 
       obj.pl.y=obj.pl.y+1
       call DRAW_PL
     END
@@ -1376,7 +1398,7 @@ MSG_COLLIDE:  /* check if object collides with msg in secret room */
   ARG o
   DO j=0 to maxmsg
     m=msg.j
-    IF COLLIDE(o, m)==1 THEN return 1
+    IF WILL_COLLIDE(o, m)==1 THEN return 1
   END
 return 0
 
@@ -1384,7 +1406,7 @@ GATE_COLLIDE:  /* check if object collides with gate */
   ARG o  
   DO j=0 TO maxgate
     g=gate.j
-    IF COLLIDE(o, g)==1 THEN DO
+    IF WILL_COLLIDE(o, g)==1 THEN DO
       IF obj.g.key==o & obj.g.locked==1 THEN DO 
         call UNLOCK(g)
         call DRAW_OBJECT(o)
@@ -1397,17 +1419,21 @@ return 0 /* no collision */
 
 BRIDGE_COLLIDE: /* check if p is on bridge */
   ARG p
-  IF COLLIDE(p, "BRIDGE")==1 & obj.p.x+obj.p.dx>=obj.bridge.x+3 & obj.p.x+obj.p.dx<=obj.bridge.x+obj.bridge.w-4 &,
-    obj.p.y+obj.p.dy>=obj.bridge.y & obj.p.y+obj.p.dy<=obj.bridge.y+obj.bridge.h THEN return 1
-return 0 /* o not on bridge */
+  obj.p.vx=obj.p.dx*obj.p.dirx
+  obj.p.vy=obj.p.dy*obj.p.diry
+  IF WILL_COLLIDE(p, "BRIDGE")==1 & obj.p.x+(obj.p.vx)>=obj.bridge.x+3 & obj.p.x+(obj.p.vx)<=obj.bridge.x+obj.bridge.w-4 &,
+    obj.p.y+(obj.p.vy)>=obj.bridge.y & obj.p.y+(obj.p.vy)<=obj.bridge.y+obj.bridge.h THEN return 1
+return 0 /* p not on bridge */
 
-COLLIDE:  /* detect if object1 and object2 will collide (with object 1 in motion) */
+WILL_COLLIDE:  /* detect if object1 and object2 will collide (with object 1 in motion) */
   ARG o1, o2
-  IF obj.o1.room==obj.o2.room &,                            /* o1 and o2 are in same room and   */ 
-     obj.o2.x+obj.o2.w >= obj.o1.x+obj.o1.dx &,             /* o2 right edge > o1 left edge and */
-     obj.o2.y+obj.o2.h >= obj.o1.y+obj.o1.dy &,             /* o2 bottom edge > o1 top edge and */
-     obj.o2.x <= obj.o1.x+obj.o1.w+obj.o1.dx &,             /* o2 left edge < o1 right edge and */
-     obj.o2.y <= obj.o1.y+obj.o1.h+obj.o1.dy THEN return 1  /* o2 top edge < o1 bottom edge     */
+  obj.o1.vx=obj.o1.dx*obj.o1.dirx
+  obj.o1.vy=obj.o1.dy*obj.o1.diry
+  IF obj.o1.room==obj.o2.room &,                              /* o1 and o2 are in same room and   */ 
+     obj.o2.x+obj.o2.w >= obj.o1.x+(obj.o1.vx) &,             /* o2 right edge > o1 left edge and */
+     obj.o2.y+obj.o2.h >= obj.o1.y+(obj.o1.vy) &,             /* o2 bottom edge > o1 top edge and */
+     obj.o2.x <= obj.o1.x+obj.o1.w+(obj.o1.vx) &,             /* o2 left edge < o1 right edge and */
+     obj.o2.y <= obj.o1.y+obj.o1.h+(obj.o1.vy) THEN return 1  /* o2 top edge < o1 bottom edge     */
   ELSE return 0
 return 0
 
@@ -1424,11 +1450,14 @@ return 0
 WALL: /* detect collision with wall or barrier */
   ARG wo
   IF wo=="PL" & obj.pl.equip~="BRIDGE" & BRIDGE_COLLIDE("PL")==1 THEN return 0 /* allow player to walk over walls */
+  rm=obj.pl.room
   mp=k.rm.map
-  IF obj.wo.x+obj.wo.dx-1<=0 THEN return 0 /* hacky fix to left exit bug */
-  DO l= obj.wo.y+obj.o.dy TO obj.wo.y+obj.wo.dy+obj.wo.h
+  obj.wo.vx=obj.wo.dx*obj.wo.dirx
+  obj.wo.vy=obj.wo.dy*obj.wo.diry
+  IF obj.wo.x+(obj.wo.vx)-1<=0 THEN return 0 /* hacky fix to left exit bug */
+  DO l=obj.wo.y+(obj.wo.vy) TO obj.wo.y+obj.wo.h+(obj.wo.vy)
     /* for each line of the object, check map chars under object */
-    str= SUBSTR(k.mp.l, obj.wo.x+obj.wo.dx-1, obj.wo.w+1)  /* -1 for map shift, +1 due to how obj.o.w is indexed */
+    str= SUBSTR(k.mp.l, obj.wo.x+(obj.wo.vx)-1, obj.wo.w+1)  /* -1 for map shift, +1 due to how obj.o.w is indexed */
     IF INDEX(str, "Û") ~=0 THEN DO
       /* wall found */
       bufferflush
@@ -1436,13 +1465,23 @@ WALL: /* detect collision with wall or barrier */
     END
     ELSE IF INDEX(str, "M") ~=0 THEN DO
       /* barrier found */
-      IF SECRET()==1 THEN return 0
+      IF SECRET()==1 THEN return 0  /* TODO: is this line needed? */
       IF obj.pl.room == obj.dot.room THEN return 0
       bufferflush
       return 1
     END 
   END
 return 0 /* wall or barrier not found, return 0 */
+
+ITEM_WALL_CHECK:
+  DO i=0 TO maxitem
+    wco=item.i
+    IF WILL_COLLIDE("PL", wco)==1 & BRIDGE_COLLIDE("PL")~=1 THEN DO
+      call GRAB("PL", wco)
+      LEAVE
+    END
+  END
+return
 
 /* in main loop */
 /* TODO: fix magnet only wants highest pri item, need to compare with original */
@@ -1472,8 +1511,8 @@ MAGNETISM:  /* move wanted object toward magnet */
     ELSE DO /* move item to magnet */
       obj.mwo.dirx= GETDIR(obj.magnet.x, obj.mwo.x)
       obj.mwo.diry= GETDIR(obj.magnet.y+obj.magnet.h+1, obj.mwo.y)
-      obj.mwo.dx=obj.mwo.dx+(obj.mwo.spdx*obj.mwo.dirx)
-      obj.mwo.dy=obj.mwo.dy+(obj.mwo.spdy*obj.mwo.diry)
+      obj.mwo.dx=obj.mwo.dx+obj.mwo.spdx
+      obj.mwo.dy=obj.mwo.dy+obj.mwo.spdy
       IF ABS(obj.mwo.dx)>=1 & ABS(obj.mwo.dy)>=1 THEN DO
         call ERASE_OBJECT(mwo)
         call MOVE(mwo,1,1)  /* move x and y */
@@ -1544,10 +1583,10 @@ return
 
 /* in main loop */
 BAT_MOVE:  /* TODO:  fix item interaction */
-  obj.knub.dx=obj.knub.dx+(obj.knub.spdx*obj.knub.dirx)
-  obj.knub.dy=obj.knub.dy+(obj.knub.spdy*obj.knub.diry)
+  obj.knub.dx=obj.knub.dx+obj.knub.spdx
+  obj.knub.dy=obj.knub.dy+obj.knub.spdy
   /* added a small window where knubberrub is not grabbable by the player */
-  /* IF (obj.knub.fedup==0 | obj.knub.fedup>400) & obj.pl.equip~=knub & COLLIDE(knub, "PL")==1 THEN call GRAB("PL", knub) */ 
+  /* IF (obj.knub.fedup==0 | obj.knub.fedup>400) & obj.pl.equip~=knub & WILL_COLLIDE(knub, "PL")==1 THEN call GRAB("PL", knub) */ 
   IF ABS(obj.knub.dx)>=1 & ABS(obj.knub.dy)>=1 THEN DO
     IF obj.pl.equip~=knub THEN DO 
       call ERASE_BAT
@@ -1590,7 +1629,7 @@ BAT_STEAL:
       obj.knub.diry=tdiry
     END 
   END
-  IF COLLIDE(knub, kswo)==1 THEN DO
+  IF WILL_COLLIDE(knub, kswo)==1 THEN DO
     IF obj.pl.equip==kswo THEN obj.pl.equip="NONE"
     call GRAB(knub, kswo)
     obj.knub.seek=0; obj.knub.want="NONE"; obj.knub.fedup=1
@@ -1646,8 +1685,8 @@ DRAGON_MOVE:  /* TODO: finish */
       obj.drago.diry=tdiry
     /* END */
   END
-  obj.drago.dx=obj.drago.dx+(obj.drago.spdx*obj.drago.dirx)
-  obj.drago.dy=obj.drago.dy+(obj.drago.spdy*obj.drago.diry)
+  obj.drago.dx=obj.drago.dx+obj.drago.spdx
+  obj.drago.dy=obj.drago.dy+obj.drago.spdy
   IF ABS(obj.drago.dx)>=1 & ABS(obj.drago.dy)>=1 THEN DO
     IF obj.knub.equip~=drago THEN DO 
       /* call ERASE_DRAGON(drago) */

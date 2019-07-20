@@ -27,8 +27,8 @@ changewhere "BBS Adventure "||ver
 debug=0         /* 0 = disable debug mode,   1 = enable debug mode   */
 debug_flash=0   /* 0 = disable flash debug,  1 = enable flash debug  */
 debug_magnet=0  /* 0 = disable magnet debug, 1 = enable magnet debug */
-debug_bat=0     /* 0 = disable bat debug,    1 = enable bat debug    */
-debug_dragon=1  /* 0 = disable dragon debug, 1 = enable dragon debug */
+debug_bat=1     /* 0 = disable bat debug,    1 = enable bat debug    */
+debug_dragon=0  /* 0 = disable dragon debug, 1 = enable dragon debug */
 
 transparent_items=1 /* 0 = disaled, 1 = enabled */
 flashlight=0  /* 0=disabled, 1=small, 2=medium, 3=large */
@@ -910,6 +910,100 @@ DRAW_OBJECT:  /* TODO: fix item interactions */
   END
 return
 
+/* TODO: fix flashlight interaction */
+DRAW_OBJECT_WITH_MOTION: /* draw object in motion (erase where its been) */
+  ARG dro
+  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
+  rm=obj.pl.room
+  mp=k.rm.map
+  
+  erasex=0
+  outerloopstart=0
+  outerloopend=obj.dro.h
+  mapstart=obj.dro.x-1   /* -1 for map shift */
+  maplength=obj.dro.w+1  /* +1 for how obj width is indexed */ 
+  
+  /* check for movement in x direction */
+  IF obj.dro.dirx==-1 & obj.dro.x+obj.dro.w<maxcol THEN DO
+    /* dro is moving left and not at right edge of screen bounds */
+    /* we will need to erase one char position to the right of dro */
+    erasex=1 
+  END
+  ELSE IF obj.dro.dirx==1 & obj.dro.x>mincol THEN DO
+    /* dro is moving right and not at left edge of screen bounds */
+    /* we will need to erase one char position to the left of dro */
+    erasex=-1  
+  END
+  
+  /* check for movement in y direction */
+  IF obj.dro.diry==-1 & obj.dro.y+obj.dro.h<maxline THEN DO
+    /* dro is moving up and not at bottom edge of screen bounds */
+    /* we will need to erase one line below dro */
+    outerloopend=obj.dro.h+1
+  END
+  ELSE IF obj.dro.diry==1 & obj.dro.y>minline THEN DO
+    /* dro is moving down and not at top edge of screen bounds */ 
+    /* we will need to erase one line above dro */
+    outerloopstart=-1
+  END
+       
+  /* outer loop goes through each line of sprite */ 
+  DO j=outerloopstart TO outerloopend BY 1
+    line=obj.dro.y+(j)
+    drawxpos=obj.dro.x
+    /* IF line<minline | line>maxline THEN ITERATE */ /* skip loop iteration if line is out of bounds */
+    
+    /* get current line of sprite to work on */
+    IF j==-1 | j==obj.dro.h+1 THEN DO
+      /* this is either 1 line above or 1 line below dro sprite, so we are "erasing" on y */
+      spr_line=COPIES("E", obj.dro.w+1)
+    END
+    ELSE spr_line=obj.dro.spr.j
+                
+    /* check if we need to erase 1 char to left of sprite */
+    IF erasex==-1 THEN DO
+      drawxpos=drawxpos-1
+      spr_line= "E"||spr_line
+      mapstart=(obj.dro.x-1)-1   /* (original value)-1, due to being inside loop */
+      maplength=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
+    END
+    /* check if we need to erase 1 char to right of sprite */
+    ELSE IF erasex==1 THEN DO
+      spr_line=spr_line||"E"
+      maplength=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
+    END 
+    
+    /* get map data that is layered "undeneath" the sprite line */  
+    map_str= SUBSTR(k.mp.line, mapstart, maplength) 
+      
+    /* inner loop goes through each character of the sprite string and
+       inserts bg color based on map character data found underneath  */
+    result_str="" /*obj.dro.col*/
+    DO k=1 TO maplength 
+      spr_char = SUBSTR(spr_line, k, 1)
+      map_char = SUBSTR(map_str, k, 1)
+      SELECT
+        WHEN map_char==" " THEN DO
+        	IF spr_char=="E" THEN result_str=result_str||k.rm.c||map_char
+          ELSE result_line=result_line||k.rm.bc||spr_char
+        END
+        WHEN map_char=="€" THEN DO 
+        	IF spr_char=="E" THEN result_str=result_str||k.rm.c||map_char
+          ELSE result_line=result_line||k.rm.bc2||spr_char
+        END
+        WHEN map_char=="M" THEN DO
+        	IF spr_char=="E" THEN result_str=result_str||"[22;30;47m€"||k.rm.c
+          ELSE result_line=result_line||"[22;40m"||spr_char
+        END
+        OTHERWISE NOP
+      END
+    END
+    
+    se "["||obj.dro.y+(j)||";"||drawxpos||"H"||result_str||k.rm.fc          
+  END
+return
+
+/* TODO: fix flashlight interaction */
 DRAW_INVERSE_OBJECT: /* draw object whose bg is fg. what if C A T really spelled DOG? */
   ARG dro
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
@@ -950,6 +1044,7 @@ DRAW_INVERSE_OBJECT: /* draw object whose bg is fg. what if C A T really spelled
   END
 return
 
+/* TODO: fix flashlight interaction */
 DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T really spelled DOG? */
   ARG dro
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
@@ -1230,11 +1325,13 @@ GETDIR:
   ELSE IF hop==1 & pos1==pos2 THEN return 1
   ELSE NOP
 return 0
-  
+
+/* TODO optimize erasing the object */  
 EQUIP:
   ARG being
   IF obj.being.equip=="NONE" THEN return
   eo=obj.being.equip
+  call ERASE_OBJECT(eo)
   obj.eo.room=obj.being.room
   obj.eo.x=obj.being.x+obj.eo.offset.x
   obj.eo.y=obj.being.y+obj.eo.offset.y
@@ -1477,6 +1574,7 @@ MAGNETISM:  /* move wanted object toward magnet */
 return
 
 /* in main loop */
+/* TODO: fix bat/equiped object interaction after long player hold and release */
 BAT_SEEK:
   IF obj.knub.fedup==0 THEN obj.knub.seek=1 
   ELSE DO

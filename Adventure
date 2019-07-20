@@ -52,7 +52,7 @@ park="f0" /* returns cursor to home position without clearing screen */
 
 menu_yadv=1  /* menu y advance */
 
-obj.pl.rm=0  /* splash screen */
+obj.pl.room=0  /* splash screen */
 call INIT_KINGDOM
 call DRAW_BG
  
@@ -838,8 +838,8 @@ DRAW_OBJS:  /* draw objects (not in the main loop) */
   END
   /* draw dead dragons */
   DO i=0 TO maxdragon
-  	d=dragon.i
-  	IF obj.d.dead==1 THEN call DRAW_DRAGON(d)
+    d=dragon.i
+    IF obj.d.dead==1 THEN call DRAW_DRAGON(d)
   END
 return
 
@@ -963,62 +963,62 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
   maplength=obj.dro.w+1  /* +1 for how obj width is indexed */ 
   
   /* check for movement in x direction */
-	IF obj.dro.dirx==-1 & obj.dro.x+obj.dro.w<maxcol THEN DO
-		/* dro is moving left and not at right edge of screen bounds */
-		/* we will need to erase one char position to the right of dro */
-		erasex=1 
-	END
-	ELSE IF obj.dro.dirx==1 & obj.dro.x>mincol THEN DO
-		/* dro is moving right and not at left edge of screen bounds */
-		/* we will need to erase one char position to the left of dro */
-		erasex=-1  
-	END
-	
-	/* check for movement in y direction */
-	IF obj.dro.diry==-1 & obj.dro.y+obj.dro.h<maxline THEN DO
-		/* dro is moving up and not at bottom edge of screen bounds */
-		/* we will need to erase one line below dro */
-		outerloopend=obj.dro.h+1
-	END
-	ELSE IF obj.dro.diry==1 & obj.dro.y>minline THEN DO
-		/* dro is moving down and not at top edge of screen bounds */ 
-	  /* we will need to erase one line above dro */
-		outerloopstart=-1
-	END
-		   
+  IF obj.dro.dirx==-1 & obj.dro.x+obj.dro.w<maxcol THEN DO
+    /* dro is moving left and not at right edge of screen bounds */
+    /* we will need to erase one char position to the right of dro */
+    erasex=1 
+  END
+  ELSE IF obj.dro.dirx==1 & obj.dro.x>mincol THEN DO
+    /* dro is moving right and not at left edge of screen bounds */
+    /* we will need to erase one char position to the left of dro */
+    erasex=-1  
+  END
+  
+  /* check for movement in y direction */
+  IF obj.dro.diry==-1 & obj.dro.y+obj.dro.h<maxline THEN DO
+    /* dro is moving up and not at bottom edge of screen bounds */
+    /* we will need to erase one line below dro */
+    outerloopend=obj.dro.h+1
+  END
+  ELSE IF obj.dro.diry==1 & obj.dro.y>minline THEN DO
+    /* dro is moving down and not at top edge of screen bounds */ 
+    /* we will need to erase one line above dro */
+    outerloopstart=-1
+  END
+       
   /* outer loop goes through each line of sprite */ 
   DO j=outerloopstart TO outerloopend BY 1
     line=obj.dro.y+(j)
     drawxpos=obj.dro.x
     /* IF line<minline | line>maxline THEN ITERATE */ /* skip loop iteration if line is out of bounds */
-  	
-  	/* get current line of sprite to work on */
-  	IF j==-1 | j==obj.dro.h+1 THEN DO
-  		/* this is either 1 line above or 1 line below dro sprite, so we are "erasing" on y */
-  		spr_line=COPIES("Û", obj.dro.w+1)
-  	END
-  	ELSE DO
-	    IF (dro=="YORGLE" | dro=="GRUNDLE" | dro=="RHINDLE") & obj.dro.dirx==1 THEN DO
-	      spr_line=REVERSE(obj.dro.spr.j) 
-	    END
-	    ELSE spr_line=obj.dro.spr.j
-	  END
-	    	    	  
-  	/* check if we need to erase 1 char to left of sprite */
+    
+    /* get current line of sprite to work on */
+    IF j==-1 | j==obj.dro.h+1 THEN DO
+      /* this is either 1 line above or 1 line below dro sprite, so we are "erasing" on y */
+      spr_line=COPIES("Û", obj.dro.w+1)
+    END
+    ELSE DO
+      IF (dro=="YORGLE" | dro=="GRUNDLE" | dro=="RHINDLE") & obj.dro.dirx==1 THEN DO
+        spr_line=REVERSE(obj.dro.spr.j) 
+      END
+      ELSE spr_line=obj.dro.spr.j
+    END
+                
+    /* check if we need to erase 1 char to left of sprite */
     IF erasex==-1 THEN DO
-    	drawxpos=drawxpos-1
-    	spr_line= "Û"||spr_line
-    	mapstart=(obj.dro.x-1)-1   /* (original value)-1, due to being inside loop */
-    	maplength=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
+      drawxpos=drawxpos-1
+      spr_line= "Û"||spr_line
+      mapstart=(obj.dro.x-1)-1   /* (original value)-1, due to being inside loop */
+      maplength=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
     END
     /* check if we need to erase 1 char to right of sprite */
     ELSE IF erasex==1 THEN DO
-    	spr_line=spr_line||"Û"
-    	maplength=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
+      spr_line=spr_line||"Û"
+      maplength=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
     END 
     
-    /* get map data that is layered "undeneath" the sprite line */	
-  	map_str= SUBSTR(k.mp.line, mapstart, maplength) 
+    /* get map data that is layered "undeneath" the sprite line */  
+    map_str= SUBSTR(k.mp.line, mapstart, maplength) 
    
     /* inner loop goes through each character of the sprite string and
        inserts bg color based on map character data found underneath  */
@@ -1157,7 +1157,7 @@ return
 DRAW_BAT:  /* called by BAT_MOVE in main loop */
   IF OK2DRAWOBJ(knub)==0 | obj.knub.room~=obj.pl.room THEN return
   call EQUIP(knub)
-  call DRAW_INVERSE_OBJECT(knub)
+  call DRAW_INVERSE_OBJECT_WITH_MOTION(knub)
   se park
 return
 
@@ -1173,16 +1173,16 @@ PLAYER_MOVE:
   call EXIT_BEING("PL") 
   
   IF obj.pl.dirx==-1 & obj.pl.x==mincol+1 THEN obj.pl.dx=1 
-  ELSE IF obj.pl.dirx==1 & obj.pl.x==maxcol-2 THEN obj.pl.dx=1 	
+  ELSE IF obj.pl.dirx==1 & obj.pl.x==maxcol-2 THEN obj.pl.dx=1  
   ELSE obj.pl.dx=2 
   obj.pl.dy=1
   
   /* do player-gate collision detect */
   IF GATE_COLLIDE("PL")==1 THEN return
-  	
+    
   /* do player-msg collision detect */
   IF MSG_COLLIDE("PL")==1 THEN return
-  	
+    
   /* do map collision detect */
   IF WALL("PL")==1 THEN DO
     call ITEM_WALL_CHECK
@@ -1423,8 +1423,7 @@ return
 
 /* in main loop */ 
 MAGNETISM:  /* move wanted object toward magnet */ 
-  IF obj.magnet.want=="NONE" THEN return
-    
+  IF obj.magnet.want=="NONE" THEN return   
   mwo=obj.magnet.want
   IF obj.magnet.busy==1 & obj.mwo.room==obj.magnet.room & obj.pl.equip~=mwo & obj.knubberrub.equip~=mwo THEN DO
     IF obj.mwo.x==obj.magnet.x & obj.mwo.y==obj.magnet.y+obj.magnet.h+1 THEN DO  /* wanted item is on magnet */
@@ -1514,7 +1513,6 @@ BAT_MOVE:  /* TODO:  fix item interaction */
   /* IF (obj.knub.fedup==0 | obj.knub.fedup>400) & obj.pl.equip~=knub & WILL_COLLIDE(knub, "PL")==1 THEN call GRAB("PL", knub) */ 
   IF ABS(obj.knub.dx)>=1 & ABS(obj.knub.dy)>=1 THEN DO
     IF obj.pl.equip~=knub THEN DO 
-      call ERASE_BAT
       call EXIT_BEING(knub)
       call MOVE(knub,1,1)  /* move x and y */
       call DRAW_BAT
@@ -1523,7 +1521,6 @@ BAT_MOVE:  /* TODO:  fix item interaction */
   END
   ELSE IF ABS(obj.knub.dx)>=1 THEN DO
     IF obj.pl.equip~=knub THEN DO
-      call ERASE_BAT
       call EXIT_BEING(knub)
       call MOVE(knub,1,0)  /* move x only */
       call DRAW_BAT
@@ -1532,7 +1529,6 @@ BAT_MOVE:  /* TODO:  fix item interaction */
   END
   ELSE IF ABS(obj.knub.dy)>=1 THEN DO
     IF obj.pl.equip~=knub THEN DO
-      call ERASE_BAT
       call EXIT_BEING(knub)
       call MOVE(knub,0,1)  /* move y only */
       call DRAW_BAT
@@ -1542,6 +1538,7 @@ BAT_MOVE:  /* TODO:  fix item interaction */
   IF debug==1 THEN call DEBUG_BAT
 return
 
+/* in main loop */
 BAT_STEAL:
   IF obj.knub.want=="NONE" THEN return
   kswo=obj.knub.want  /* eg. "SWORD" */
@@ -1614,7 +1611,6 @@ DRAGON_MOVE:  /* TODO: finish */
   obj.drago.dy=obj.drago.dy+obj.drago.spdy
   IF ABS(obj.drago.dx)>=1 & ABS(obj.drago.dy)>=1 THEN DO
     IF obj.knub.equip~=drago THEN DO 
-      /* call ERASE_DRAGON(drago) */
       call EXIT_BEING(drago)
       call MOVE(drago,1,1)  /* move x and y */
       call DRAW_DRAGON(drago)
@@ -1623,7 +1619,6 @@ DRAGON_MOVE:  /* TODO: finish */
   END
   ELSE IF ABS(obj.drago.dx)>=1 THEN DO
     IF obj.knub.equip~=drago THEN DO
-      /* call ERASE_DRAGON(drago) */
       call EXIT_BEING(drago)
       call MOVE(drago,1,0)  /* move x only */
       call DRAW_DRAGON(drago)
@@ -1632,7 +1627,6 @@ DRAGON_MOVE:  /* TODO: finish */
   END
   ELSE IF ABS(obj.drago.dy)>=1 THEN DO
     IF obj.knub.equip~=drago THEN DO
-      /* call ERASE_DRAGON(drago) */
       call EXIT_BEING(drago)
       call MOVE(drago,0,1)  /* move y only */
       call DRAW_DRAGON(drago)
@@ -1644,9 +1638,9 @@ return
 
 SECRET:  /* TODO: fix trigger/untrigger with bat (fixed? need to test) */
   IF obj.pl.room==3 & obj.dot.room==3 THEN DO
-  	/* player and dot are both in room 3, we just need any other item or a dragon */
-  	
-  	/* check for any other item also in room 3 */
+    /* player and dot are both in room 3, we just need any other item or a dragon */
+    
+    /* check for any other item also in room 3 */
     DO s=0 TO maxsecretitem
       o=item.s
       IF obj.o.room==3 THEN DO
@@ -1686,17 +1680,47 @@ return
 EXIT_BEING:  /* perform exit on a being with motion */
   ARG exo
   exorm=obj.exo.room
-  IF obj.exo.dirx>0 & obj.exo.x+obj.exo.w>=maxcol THEN call RIGHT_EXIT(exo, 1) 
-  ELSE IF obj.exo.dirx<0 & obj.exo.x<=mincol THEN call LEFT_EXIT(exo, 1)
+  IF obj.exo.dirx>0 & obj.exo.x+obj.exo.w>=maxcol THEN DO
+    IF exo==knub THEN call ERASE_BAT
+    ELSE IF obj.exo.type=="dragon" THEN call ERASE_DRAGON(exo)
+    call RIGHT_EXIT(exo, 1)
+    return 1
+  END
+  ELSE IF obj.exo.dirx<0 & obj.exo.x<=mincol THEN DO
+    IF exo==knub THEN call ERASE_BAT
+    ELSE IF obj.exo.type=="dragon" THEN call ERASE_DRAGON(exo)
+    call LEFT_EXIT(exo, 1)
+    return 1
+  END
   ELSE IF obj.exo.diry<0 THEN DO
-     IF obj.exo.y<=minline THEN call TOP_EXIT(exo)
-     ELSE IF k.exorm.ci~=0 & obj.exo.x>37 & obj.exo.x<43 & obj.exo.y==castleline THEN call CASTLE_ENTRANCE(exo)
+     IF obj.exo.y<=minline THEN DO
+       IF exo==knub THEN call ERASE_BAT
+       ELSE IF obj.exo.type=="dragon" THEN call ERASE_DRAGON(exo)
+       call TOP_EXIT(exo)
+       return 1
+     END
+     ELSE IF k.exorm.ci~=0 & obj.exo.x>37 & obj.exo.x<43 & obj.exo.y==castleline THEN DO
+       IF exo==knub THEN call ERASE_BAT
+       ELSE IF obj.exo.type=="dragon" THEN call ERASE_DRAGON(exo)
+       call CASTLE_ENTRANCE(exo)
+       return 1
+     END
   END
   ELSE IF obj.exo.diry>0 & obj.exo.y+obj.exo.h>=maxline THEN DO   
-    IF k.exorm.co==0 THEN call BOTTOM_EXIT(exo)
-    ELSE call CASTLE_EXIT(exo)
+    IF k.exorm.co==0 THEN DO
+      IF exo==knub THEN call ERASE_BAT
+      ELSE IF obj.exo.type=="dragon" THEN call ERASE_DRAGON(exo)
+      call BOTTOM_EXIT(exo)
+      return 1
+    END
+    ELSE DO
+      IF exo==knub THEN call ERASE_BAT
+      ELSE IF obj.exo.type=="dragon" THEN call ERASE_DRAGON(exo)
+      call CASTLE_EXIT(exo)
+      return 1 
+    END
   END   
-return
+return 0
 
 TOP_EXIT:
   ARG exo
@@ -3149,6 +3173,7 @@ INIT_OBJECTS:
   want.knubberrub.8="GRUNDLE"
   want.knubberrub.9="MAGNET"
   
+  obj.yorgle.type="dragon"
   obj.yorgle.room=30 /* TODO: fix */
   obj.yorgle.x=1 /* TODO: fix */
   obj.yorgle.y=1 /* TODO: fix */
@@ -3187,6 +3212,7 @@ INIT_OBJECTS:
   want.yorgle.0="PL"
   want.yorgle.1="CHALICE"
   
+  obj.grundle.type="dragon"
   obj.grundle.room=30 /* TODO: fix */
   obj.grundle.x=1 /* TODO: fix */
   obj.grundle.y=1 /* TODO: fix */
@@ -3227,6 +3253,7 @@ INIT_OBJECTS:
   want.grundle.3="MAGNET"
   want.grundle.4="BKEY"
   
+  obj.rhindle.type="dragon"
   obj.rhindle.room=30 /* TODO: fix */
   obj.rhindle.x=1 /* TODO: fix */
   obj.rhindle.y=1 /* TODO: fix */

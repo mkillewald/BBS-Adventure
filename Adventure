@@ -995,10 +995,10 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
     /* get current line of sprite to work on */
     IF j==-1 | j==obj.dro.h+1 THEN DO
       /* this is either 1 line above or 1 line below dro sprite, so we are "erasing" on y */
-      spr_line=COPIES("€", obj.dro.w+1)
+      spr_line=COPIES("E", obj.dro.w+1)
     END
     ELSE DO
-      IF (dro=="YORGLE" | dro=="GRUNDLE" | dro=="RHINDLE") & obj.dro.dirx==1 THEN DO
+      IF obj.dro.type=="dragon" & obj.dro.dirx==1 THEN DO
         spr_line=REVERSE(obj.dro.spr.j) 
       END
       ELSE spr_line=obj.dro.spr.j
@@ -1007,13 +1007,13 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
     /* check if we need to erase 1 char to left of sprite */
     IF erasex==-1 THEN DO
       drawxpos=drawxpos-1
-      spr_line= "€"||spr_line
+      spr_line= "E"||spr_line
       mapstart=(obj.dro.x-1)-1   /* (original value)-1, due to being inside loop */
       maplength=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
     END
     /* check if we need to erase 1 char to right of sprite */
     ELSE IF erasex==1 THEN DO
-      spr_line=spr_line||"€"
+      spr_line=spr_line||"E"
       maplength=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
     END 
     
@@ -1027,16 +1027,21 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
       spr_char = SUBSTR(spr_line, k, 1)
       map_char = SUBSTR(map_str, k, 1)
       SELECT
-        WHEN map_char==" " THEN result_str=result_str||obj.dro.col||spr_char
-        WHEN map_char=="€" THEN DO 
-          IF spr_char==" " THEN result_str=result_str||obj.dro.col||spr_char
+        WHEN map_char==" " THEN DO
+        	IF spr_char=="E" THEN result_str=result_str||k.rm.c||map_char
+          ELSE result_str=result_str||obj.dro.col||spr_char
+        END
+        WHEN map_char=="€" THEN DO /* fix flashlight interaction */
+        	IF spr_char=="E" THEN result_str=result_str||k.rm.c||map_char
+          ELSE IF spr_char==" " THEN result_str=result_str||obj.dro.col||spr_char
           ELSE DO
             IF k.rm.dark==1 & flashlight==0 THEN result_str=result_str||k.rm.c||spr_char
             ELSE result_str=result_str||k.rm.fc||spr_char
           END
         END
         WHEN map_char=="M" THEN DO
-          IF spr_char==" " THEN result_str=result_str||obj.dro.col||spr_char
+        	IF spr_char=="E" THEN result_str=result_str||"[22;30;47m€"||k.rm.c
+          ELSE IF spr_char==" " THEN result_str=result_str||obj.dro.col||spr_char
           ELSE result_str=result_str||"[22;30m"||spr_char
         END
         OTHERWISE NOP

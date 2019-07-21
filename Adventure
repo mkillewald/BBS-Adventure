@@ -653,11 +653,11 @@ START:
       call BAT_MOVE
     END
     
-    DO i=0 TO maxdragon
+    /* DO i=0 TO maxdragon
       call DRAGON_GUARD(dragon.i)
       call DRAGON_FLEE(dragon.i)
       call DRAGON_MOVE(dragon.i)
-    END
+    END */
        
     call CHECK
   END
@@ -914,6 +914,20 @@ return
 DRAW_OBJECT_WITH_MOTION: /* draw object in motion (erase where its been) */
   ARG dro
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
+  IF dro=="BRIDGE" THEN DO
+    call DRAW_BRIDGE
+    return
+  END
+  ELSE IF dro=="CHALICE" | dro=="MAGNET" THEN DO
+    call DRAW_INVERSE_OBJECT_WITH_MOTION(dro)
+    return
+  END
+  ELSE IF dro=="KNUBBERRUB" THEN DO 
+    call DRAW_BAT
+    call EQUIP("KNUBBERRUB")
+    return
+  END
+  
   rm=obj.pl.room
   mp=k.rm.map
   
@@ -978,29 +992,30 @@ DRAW_OBJECT_WITH_MOTION: /* draw object in motion (erase where its been) */
       
     /* inner loop goes through each character of the sprite string and
        inserts bg color based on map character data found underneath  */
-    result_str="" /*obj.dro.col*/
+    result_str=""
     DO k=1 TO maplength 
       spr_char = SUBSTR(spr_line, k, 1)
       map_char = SUBSTR(map_str, k, 1)
       SELECT
         WHEN map_char==" " THEN DO
         	IF spr_char=="E" THEN result_str=result_str||k.rm.c||map_char
-          ELSE result_line=result_line||k.rm.bc||spr_char
+          ELSE result_str=result_str||obj.dro.col||k.rm.bc||spr_char
         END
         WHEN map_char=="Û" THEN DO 
         	IF spr_char=="E" THEN result_str=result_str||k.rm.c||map_char
-          ELSE result_line=result_line||k.rm.bc2||spr_char
+          ELSE result_str=result_str||obj.dro.col||k.rm.bc2||spr_char
         END
         WHEN map_char=="M" THEN DO
         	IF spr_char=="E" THEN result_str=result_str||"[22;30;47mÛ"||k.rm.c
-          ELSE result_line=result_line||"[22;40m"||spr_char
+          ELSE result_str=result_str||"[22;40m"||spr_char
         END
         OTHERWISE NOP
       END
     END
-    
+   
     se "["||obj.dro.y+(j)||";"||drawxpos||"H"||result_str||k.rm.fc          
   END
+  se park
 return
 
 /* TODO: fix flashlight interaction */
@@ -1042,6 +1057,7 @@ DRAW_INVERSE_OBJECT: /* draw object whose bg is fg. what if C A T really spelled
     END       
     se "["||obj.dro.y+j||";"||obj.dro.x||"H"||obj.dro.col||result_line||k.rm.fc
   END
+  se park
 return
 
 /* TODO: fix flashlight interaction */
@@ -1126,13 +1142,10 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
         	IF spr_char=="E" THEN result_str=result_str||k.rm.c||map_char
           ELSE result_str=result_str||obj.dro.col||spr_char
         END
-        WHEN map_char=="Û" THEN DO /* fix flashlight interaction */
+        WHEN map_char=="Û" THEN DO
         	IF spr_char=="E" THEN result_str=result_str||k.rm.c||map_char
           ELSE IF spr_char==" " THEN result_str=result_str||obj.dro.col||spr_char
-          ELSE DO
-            IF k.rm.dark==1 & flashlight==0 THEN result_str=result_str||k.rm.c||spr_char
-            ELSE result_str=result_str||k.rm.fc||spr_char
-          END
+          ELSE result_str=result_str||obj.dro.col||k.rm.fc||spr_char
         END
         WHEN map_char=="M" THEN DO
         	IF spr_char=="E" THEN result_str=result_str||"[22;30;47mÛ"||k.rm.c
@@ -1143,8 +1156,9 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
       END
     END
     
-    se "["||obj.dro.y+(j)||";"||drawxpos||"H"||result_str||k.rm.fc          
+    se "["||obj.dro.y+(j)||";"||drawxpos||"H"||result_str /* ||k.rm.fc */         
   END
+  se park
 return
 
 ERASE_OBJECT:
@@ -1539,24 +1553,24 @@ MAGNETISM:  /* move wanted object toward magnet */
       obj.mwo.diry= GETDIR(obj.magnet.y+obj.magnet.h+1, obj.mwo.y)
       obj.mwo.dx=obj.mwo.dx+obj.mwo.spdx
       obj.mwo.dy=obj.mwo.dy+obj.mwo.spdy
-      IF ABS(obj.mwo.dx)>=1 & ABS(obj.mwo.dy)>=1 THEN DO
-        call ERASE_OBJECT(mwo)
+      IF obj.mwo.dx>=1 & obj.mwo.dy>=1 THEN DO
+        /* call ERASE_OBJECT(mwo) */
         call MOVE(mwo,1,1)  /* move x and y */
-        call DRAW_OBJECT(mwo)
+        call DRAW_OBJECT_WITH_MOTION(mwo)
         obj.mwo.dx=0; obj.mwo.dy=0
         obj.mwo.dirx=0; obj.mwo.diry=0
       END
-      ELSE IF ABS(obj.mwo.dx)>=1 THEN DO
-        call ERASE_OBJECT(mwo)
+      ELSE IF obj.mwo.dx>=1 THEN DO
+        /* call ERASE_OBJECT(mwo) */
         call MOVE(mwo,1,0)  /* move x only */
-        call DRAW_OBJECT(mwo)
+        call DRAW_OBJECT_WITH_MOTiON(mwo)
         obj.o.dx=0
         obj.mwo.dirx=0
       END
-      ELSE IF ABS(obj.mwo.dy)>=1 THEN DO
-        call ERASE_OBJECT(mwo)
+      ELSE IF obj.mwo.dy>=1 THEN DO
+        /* call ERASE_OBJECT(mwo) */
         call MOVE(mwo,0,1)  /* move y only */
-        call DRAW_OBJECT(mwo) 
+        call DRAW_OBJECT_WITH_MOTION(mwo) 
         obj.mwo.dy=0
         obj.mwo.diry=0
       END
@@ -1614,7 +1628,7 @@ BAT_MOVE:  /* TODO:  fix item interaction */
   obj.knub.dy=obj.knub.dy+obj.knub.spdy
   /* added a small window where knubberrub is not grabbable by the player */
   /* IF (obj.knub.fedup==0 | obj.knub.fedup>400) & obj.pl.equip~=knub & WILL_COLLIDE(knub, "PL")==1 THEN call GRAB("PL", knub) */ 
-  IF ABS(obj.knub.dx)>=1 & ABS(obj.knub.dy)>=1 THEN DO
+  IF obj.knub.dx>=1 & obj.knub.dy>=1 THEN DO
     IF obj.pl.equip~=knub THEN DO 
       call EXIT_BEING(knub)
       call MOVE(knub,1,1)  /* move x and y */
@@ -1622,7 +1636,7 @@ BAT_MOVE:  /* TODO:  fix item interaction */
     END
     obj.knub.dx=0; obj.knub.dy=0
   END
-  ELSE IF ABS(obj.knub.dx)>=1 THEN DO
+  ELSE IF obj.knub.dx>=1 THEN DO
     IF obj.pl.equip~=knub THEN DO
       call EXIT_BEING(knub)
       call MOVE(knub,1,0)  /* move x only */
@@ -1630,7 +1644,7 @@ BAT_MOVE:  /* TODO:  fix item interaction */
     END
     obj.knub.dx=0
   END
-  ELSE IF ABS(obj.knub.dy)>=1 THEN DO
+  ELSE IF obj.knub.dy>=1 THEN DO
     IF obj.pl.equip~=knub THEN DO
       call EXIT_BEING(knub)
       call MOVE(knub,0,1)  /* move y only */
@@ -1712,7 +1726,7 @@ DRAGON_MOVE:  /* TODO: finish */
   END
   obj.drago.dx=obj.drago.dx+obj.drago.spdx
   obj.drago.dy=obj.drago.dy+obj.drago.spdy
-  IF ABS(obj.drago.dx)>=1 & ABS(obj.drago.dy)>=1 THEN DO
+  IF obj.drago.dx>=1 & obj.drago.dy>=1 THEN DO
     IF obj.knub.equip~=drago THEN DO 
       call EXIT_BEING(drago)
       call MOVE(drago,1,1)  /* move x and y */
@@ -1720,7 +1734,7 @@ DRAGON_MOVE:  /* TODO: finish */
     END
     obj.drago.dx=0; obj.drago.dy=0
   END
-  ELSE IF ABS(obj.drago.dx)>=1 THEN DO
+  ELSE IF obj.drago.dx>=1 THEN DO
     IF obj.knub.equip~=drago THEN DO
       call EXIT_BEING(drago)
       call MOVE(drago,1,0)  /* move x only */
@@ -1728,7 +1742,7 @@ DRAGON_MOVE:  /* TODO: finish */
     END
     obj.drago.dx=0
   END
-  ELSE IF ABS(obj.drago.dy)>=1 THEN DO
+  ELSE IF obj.drago.dy>=1 THEN DO
     IF obj.knub.equip~=drago THEN DO
       call EXIT_BEING(drago)
       call MOVE(drago,0,1)  /* move y only */
@@ -3116,7 +3130,7 @@ INIT_OBJECTS:
   obj.bkey.diry=0
   obj.bkey.offset.x=0
   obj.bkey.offset.y=0
-  obj.bkey.col="[0;47;30m"
+  obj.bkey.col="[0;30m"
   obj.bkey.spr.0=_key.0
   obj.bkey.lvl3.0=1   /* random room lower limit */
   obj.bkey.lvl3.1=18  /* random room upper limit */

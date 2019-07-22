@@ -3,7 +3,7 @@
 \**************************************************************************/
 options results;signal on SYNTAX;signal on ERROR;signal on IOERR
 a=sourceline(2);parse var a . ", "ver" ("vdate")" .
-tr=transmit;se=sendstring;gc=getchar;gu=getuser;gs=getscratch; mg=maygetchar
+tr=transmit;se=sendstring;gc=getchar;gu=getuser;gs=getscratch;mg=maygetchar
 parse source . . fp .; df=left(fp,max(lastpos('/',fp),lastpos(':',fp)))
 changewhere "BBS Adventure "||ver
 /**************************************************************************\
@@ -25,13 +25,13 @@ changewhere "BBS Adventure "||ver
 **                                                                        **
 \**************************************************************************/
 debug=0         /* 0 = disable debug mode,   1 = enable debug mode   */
-debug_flash=0   /* 0 = disable flash debug,  1 = enable flash debug  */
+debug_flash=1   /* 0 = disable flash debug,  1 = enable flash debug  */
 debug_magnet=0  /* 0 = disable magnet debug, 1 = enable magnet debug */
-debug_bat=1     /* 0 = disable bat debug,    1 = enable bat debug    */
+debug_bat=0     /* 0 = disable bat debug,    1 = enable bat debug    */
 debug_dragon=0  /* 0 = disable dragon debug, 1 = enable dragon debug */
 
 transparent_items=1 /* 0 = disaled, 1 = enabled */
-flashlight=0  /* 0=disabled, 1=small, 2=medium, 3=large */
+flashlight=3  /* 0=disabled, 1=small, 2=medium, 3=large */
 
 /* default options */
 difficulty=1  /* 1 = leve 1, 2 = level 2, 3 = level 3 */
@@ -311,6 +311,7 @@ DIFFBAR:
   IF game_running=0 THEN row=8
   ELSE row=7
   se "[" || mpos.y + row || ";" || mpos.x + 4 || "H[1;40;30m[" || diffbar || "[1;30m]"
+  se park
 return
 
 QUIP_SELECT:
@@ -381,7 +382,6 @@ OPTIONS0:  /* difficulty */
   se "[" || mpos.y + 2 || ";" || mpos.x + 20 || "H[" || intensity || ";36m" || difficulty
   call DIFFQUIP
   call DIFFBAR
-  se park
 return
 
 OPTIONS1:  /* dragon attack */
@@ -393,7 +393,6 @@ OPTIONS1:  /* dragon attack */
   se "[" || mpos.y + 3 || ";" || mpos.x + 14 || "H[" || intensity || ";36m" || attack_items.attack
   call ATTACKQUIP
   call DIFFBAR
-  se park
 return
 
 OPTIONS2:  /* sword fear */
@@ -405,7 +404,6 @@ OPTIONS2:  /* sword fear */
   se "[" || mpos.y + 4 || ";" || mpos.x + 18 || "H[" || intensity || ";36m" || fear_items.fear
   call FEARQUIP
   call DIFFBAR
-  se park
 return
 
 CONTROLS:
@@ -558,20 +556,7 @@ return
 START:
   game_running=1
   
-  /* init flashlight (keep even numbers here) */
-  SELECT
-    WHEN flashlight==1 THEN flash_width=10  /* small flashlight */
-    WHEN flashlight==2 THEN flash_width=14  /* medium flashlight */
-    WHEN flashlight==3 THEN flash_width=18  /* large flashlight */
-    OTHERWISE NOP
-  END
-  
-  IF flashlight ~= 0 THEN DO
-    flash_height=flash_width/2
-    flash_dx=(flash_width-2)/2
-    flash_dy=(flash_height-1)/2
-  END
-  
+  call INIT_FLASHLIGHT /* init flashlight */
   call INIT_OBJECTS  /* init objects */
   
   IF difficulty==1 THEN DO
@@ -738,57 +723,26 @@ DRAW_PL:  /* draw player */
   IF rm==0 THEN return
   IF OK2DRAWOBJ("PL")==0 THEN return
   
-  IF flashlight>0 & k.rm.dark==1 THEN DO
-    light.x=obj.pl.x-flash_dx; light.y=obj.pl.y-flash_dy; light.w=flash_width; light.h=flash_height
-
-    /* handle left screen edge */
-    IF light.x<mincol THEN DO
-      light.x=mincol
-      light.w=light.w-(flash_dx-(obj.pl.x-light.x))
-    END
-    
-    /* handle top screen edge */
-    IF light.y<1 THEN DO 
-      light.y=1
-      light.h=light.h-(flash_dy-(obj.pl.y-light.y))
-    END
-    
-    /* handle right screen edge */
-    IF light.x+light.w-1>maxcol THEN light.w=light.w-((light.x+light.w-1)-maxcol)
-    
-    /* handle bottom screen edge */
-    IF light.y+light.h-1>maxline THEN light.h=light.h-((light.y+light.h-1)-maxline)
-      
-    row=0
-    mp=k.rm.map
-    DO i=light.y TO light.y+light.h-1
-      se "[" || light.y + row || ";" || light.x || "H[43m" || SUBSTR(k.mp.i, light.x-1, light.w)
-      row = row + 1
-    END 
-  END
+  call DRAW_FLASHLIGHT
   
   call EQUIP("PL")  /* handle any equipped object */
-
+  
+  /* draw player */
   se "["||obj.pl.y||";"||obj.pl.x||"H"||k.rm.fc||"ÛÛ"
-  IF debug==1 THEN call DEBUG_PL   
+  
+  IF debug==1 THEN call DEBUG_PL  	
   se park
 return
 
 ERASE_PL:
   rm=obj.pl.room
   IF rm==0 THEN return
-  mp=k.rm.map  
-  /* erase flashlight */
-  IF flashlight>0 & k.rm.dark==1 THEN DO
-    row=0
-    DO i=light.y TO light.y+light.h-1
-      se "[" || light.y + row || ";" || light.x || "H[47m" || SUBSTR(k.mp.i, light.x-1, light.w)
-      row= row + 1
-    END
-  END
+  mp=k.rm.map 
+  
+  call ERASE_FLASHLIGHT
   
   /* erase equipped object */
-  /* TODO: optimize this by moving this into ERASE_OBJECT */
+  /* TODO: clarify this by moving this into ERASE_OBJECT */
   IF obj.pl.equip~="NONE" THEN call ERASE_OBJECT(obj.pl.equip)
   IF obj.pl.equip=="KNUBBERRUB" & obj.knubberrub.equip~="NONE" THEN call ERASE_OBJECT(obj.knubberrub.equip)
    
@@ -810,6 +764,129 @@ ERASE_PL:
     str = newstr
   END
   se "["||obj.pl.y||";"||obj.pl.x||"H"||k.rm.c||str
+return
+
+GET_FLASHLIGHT_SIZE:
+  obj.light.offx=flash_offx
+  obj.light.offy=flash_offy
+  obj.light.x=obj.pl.x-obj.light.offx
+  obj.light.y=obj.pl.y-obj.light.offy
+  obj.light.w=flash_width-1  /* -1 to align with how other obj w is indexed */
+  obj.light.h=flash_height-1  /* -1 to align with how other obj h is indexed */
+
+  /* handle left screen edge */
+  IF obj.light.x<mincol THEN DO
+  	obj.light.dw=mincol-(obj.light.x)
+  	obj.light.w=obj.light.w-(obj.light.dw)
+    obj.light.x=mincol
+  END
+  
+  /* handle top screen edge */
+  IF obj.light.y<minline THEN DO 
+  	obj.light.dh=minline-(obj.light.y)
+  	obj.light.h=obj.light.h-(obj.light.dh)
+    obj.light.y=minline
+  END
+  
+  /* handle right screen edge */
+  IF obj.light.x+obj.light.w>maxcol THEN DO
+  	obj.light.dw=obj.light.x+obj.light.w-maxcol
+  	obj.light.w=obj.light.w-obj.light.dw
+  ENd
+  
+  /* handle bottom screen edge */
+  IF obj.light.y+obj.light.h>maxline THEN DO
+  	obj.light.dh=obj.light.y+obj.light.h-maxline
+  	obj.light.h=obj.light.h-obj.light.dh
+  END
+return
+
+DRAW_FLASHLIGHT:
+  rm=obj.pl.room
+  mp=k.rm.map
+  IF flashlight==0 | k.rm.dark==0 THEN return
+  
+  call GET_FLASHLIGHT_SIZE
+
+  DO i=0 TO obj.light.h
+  	line=obj.light.y+i
+    se "["||line||";"||obj.light.x||"H[43m"|| SUBSTR(k.mp.line, obj.light.x-1, obj.light.w+1)
+  END 
+return
+
+DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been) */
+  rm=obj.pl.room
+  mp=k.rm.map
+  IF flashlight==0 | k.rm.dark==0 THEN return
+  
+  call GET_FLASHLIGHT_SIZE
+  
+  drawx=0
+  erasex=0
+  drawy=0
+  erasey=0
+  loopstart=0
+  loopend=light.h
+  mapstart=light.x-1   /* -1 for map shift */
+  maplength=light.w+1  /* +1 for how obj width is indexed  */
+
+  /* check for movement in x direction */
+  IF obj.pl.dirx==-1 THEN DO
+  	/* flashlight is moving left */
+  	IF light.x>mincol THEN drawx=-1  /* not at left edge of screen */
+  	IF light.x+light.w<maxcol THEN erasex=1  /* not at right edge of screen */
+  END
+  ELSE IF obj.pl.dirx==1 THEN DO
+  	/* flashlight is moving right */
+  	IF light.x>mincol THEN erasex=-1  /* not at left edge of screen */
+    IF light.x+light.w<maxcol THEN drawx=1 /* not at right edge of screen */  
+  END
+  
+  /* check for movement in y direction */
+  IF obj.pl.diry==-1 THEN DO
+    /* flashlight is moving up */
+    IF light.y>minline THEN drawy=-1 /* not at the top edge of screen */
+    IF lighty.y+light.h<maxline THEN erasey=1  /* not at bottom edge of screen */
+    /* loopend=light.h+1 */
+  END
+  ELSE IF obj.pl.diry==1 THEN DO
+    /* dro is moving down */ 
+    IF light.y>minline THEN erasey=-1  /* not at the top edte of screen */
+    IF lighty.y+light.h<maxline THEN drawy=1  /* not at bottom edge of screen */
+    /* loopstart=-1 */
+  END
+  
+  /* loop goes through each line of flashlight */
+  DO i=loopstart TO loopend BY 1
+  	line=light.y+(i)
+  	drawxpos=light.x 
+  	IF line<minline | line>maxline THEN ITERATE  /* skip loop iteration if line is out of bounds */
+  	result_str=""
+  	
+  	/* check if need to erase top line or bottom line */
+  	IF i==-1 | i==light.h+1 THEN DO
+  		IF erasex==-1 THEN result_str=""/*finish*/
+  			
+  		result_str=result_str||k.rm.c|| SUBSTR(k.mp.line, mapstart, maplength) 
+    END
+    ELSE DO
+    	result_str="[43m"|| SUBSTR(k.mp.line, mapstart, maplength)
+    END
+    se "["||line||";"||drawxpos||"H"||result_str
+  END 
+return
+
+ERASE_FLASHLIGHT:
+  rm=obj.pl.room
+  mp=k.rm.map
+  IF flashlight==0 | k.rm.dark==0 THEN return
+  
+  call GET_FLASHLIGHT_SIZE
+
+  DO i=0 TO obj.light.h
+  	line=obj.light.y+i
+    se "["||line||";"||obj.light.x||"H[47m"|| SUBSTR(k.mp.line, obj.light.x-1, obj.light.w+1)
+  END
 return
 
 DRAW_OBJS:  /* draw objects (not in the main loop) */
@@ -858,6 +935,7 @@ DRAW_MSG:
   DO l=0 TO obj.m.h
     se "["||obj.m.y+l||";"||obj.m.x||"H"||obj.m.col||obj.m.spr.l||k.rm.fc
   END
+  se park
 return
 
 DRAW_OBJECT:  /* TODO: fix item interactions */
@@ -895,7 +973,7 @@ DRAW_OBJECT:  /* TODO: fix item interactions */
         SELECT
           WHEN map_char==" " THEN result_line=result_line||k.rm.bc||spr_char
           WHEN map_char=="Û" THEN result_line=result_line||k.rm.bc2||spr_char
-          WHEN map_char=="M" THEN result_line=result_line||"[22;40m"||spr_char
+          WHEN map_char=="M" THEN result_line=result_line||"[40m"||spr_char
           OTHERWISE NOP
         END
       END       
@@ -908,6 +986,7 @@ DRAW_OBJECT:  /* TODO: fix item interactions */
       se "["||obj.dro.y+j||";"||obj.dro.x||"H"||obj.dro.col||obj.dro.spr.j||k.rm.fc
     END
   END
+  se park
 return
 
 /* TODO: fix flashlight interaction */
@@ -1013,7 +1092,7 @@ DRAW_OBJECT_WITH_MOTION: /* draw object in motion (erase where its been) */
       END
     END
    
-    se "["||obj.dro.y+(j)||";"||drawxpos||"H"||result_str||k.rm.fc          
+    se "["||line||";"||drawxpos||"H"||result_str||k.rm.fc          
   END
   se park
 return
@@ -1156,7 +1235,7 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
       END
     END
     
-    se "["||obj.dro.y+(j)||";"||drawxpos||"H"||result_str /* ||k.rm.fc */         
+    se "["||line||";"||drawxpos||"H"||result_str /* ||k.rm.fc */         
   END
   se park
 return
@@ -1180,6 +1259,7 @@ ERASE_OBJECT:
     END
     se "["||j||";"||obj.dro.x||"H"||k.rm.c||str
   END
+  se park
 return
 
 DRAW_BRIDGE: /* TODO: fix item interactions */
@@ -1224,6 +1304,7 @@ DRAW_BRIDGE: /* TODO: fix item interactions */
     END       
     se "["||obj.dro.y+j||";"||obj.dro.x||"H"||obj.dro.col||result_line||k.rm.fc
   END
+  se park
 return
 
 ERASE_BRIDGE:
@@ -1248,6 +1329,7 @@ ERASE_BRIDGE:
     END
     se "["||j||";"||obj.dro.x||"H"||k.rm.c||str1||"[6C"||str2
   END
+  se park
 return
 
 DRAW_GATE:    
@@ -1256,6 +1338,7 @@ DRAW_GATE:
   DO j=0 TO obj.dro.h
     se "["||obj.dro.y+j||";"||obj.dro.x||"H"||obj.dro.col||obj.dro.spr.j
   END
+  se park
 return
 
 DRAW_DRAGON:  /* TODO: finish */
@@ -1272,7 +1355,6 @@ DRAW_BAT:  /* called by BAT_MOVE in main loop */
   IF OK2DRAWOBJ(knub)==0 | obj.knub.room~=obj.pl.room THEN return
   call EQUIP(knub)
   call DRAW_INVERSE_OBJECT_WITH_MOTION(knub)
-  se park
 return
 
 ERASE_BAT:
@@ -2775,6 +2857,22 @@ INIT_PLAYER:
   obj.pl.equip="NONE"
   obj.pl.dead=0
 return  
+
+INIT_FLASHLIGHT:
+  /* init flashlight (keep even numbers here) */
+  SELECT
+    WHEN flashlight==1 THEN flash_width=10  /* small flashlight */
+    WHEN flashlight==2 THEN flash_width=14  /* medium flashlight */
+    WHEN flashlight==3 THEN flash_width=18  /* large flashlight */
+    OTHERWISE NOP
+  END
+  
+  IF flashlight ~= 0 THEN DO
+    flash_height=flash_width/2
+    flash_offx=(flash_width-2)/2   /* -2 due to player width */
+    flash_offy=(flash_height-1)/2  /* -1 due to player height */
+  END
+return
   
 INIT_OBJECTS:
   _gate.0="××××"
@@ -3211,8 +3309,8 @@ INIT_OBJECTS:
   obj.chalice.lvl3.1=26  /* random room upper limit */
   
   obj.bridge.room=4
-  obj.bridge.x=20 /* TODO: fix */
-  obj.bridge.y=14 /* TODO: fix */
+  obj.bridge.x=20 
+  obj.bridge.y=14 
   obj.bridge.w=11
   obj.bridge.h=5
   obj.bridge.dx=0

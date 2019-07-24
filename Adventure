@@ -765,7 +765,9 @@ ERASE_PL:
     newstr = LEFT(str,m_index-1) || "[0;30;47m€" || k.rm.c || RIGHT(str,length(str)-m_index)
     str = newstr
   END
-  se "["||obj.pl.y||";"||obj.pl.x||"H"||k.rm.c||str
+  IF flashlight~=0 & k.rm.dark==1 THEN erasecolor="[43m"
+  ELSE erasecolor=k.rm.c
+  se "["||obj.pl.y||";"||obj.pl.x||"H"||erasecolor||str
 return
 
 GET_FLASHLIGHT_SIZE:
@@ -814,6 +816,7 @@ DRAW_FLASHLIGHT:
   END 
 return
 
+/* TODO: clean this up */
 DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been) */
   rm=obj.pl.room
   mp=k.rm.map
@@ -876,9 +879,18 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
 	  	result_str=""
 	  	
 	  	/* handle start of line */ 
-	  	IF erasex==-1 THEN DO
-	  		drawxpos=obj.light.x-obj.pl.dx
-	  		result_str=result_str||k.rm.c|| SUBSTR(k.mp.line, mapstart-obj.pl.dx, obj.pl.dx)
+	  	IF erasex==-1 THEN DO  		
+	  		IF mapstart-obj.pl.dx < mincol-1 THEN DO
+	  			drawxpos=mincol
+	  			emapstart=mincol
+	  			elength=1
+	  		END
+	  		ELSE DO
+	  			drawxpos=obj.light.x-obj.pl.dx
+	  			emapstart=mapstart-obj.pl.dx
+	  			elength=obj.pl.dx
+	  		END
+	  		result_str=result_str||"[47;37m"|| SUBSTR(k.mp.line, emapstart, elength)
 	    END
 	    ELSE IF drawx==-1 THEN DO
 	    	drawxpos=obj.light.x
@@ -890,7 +902,7 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
 	  		/* this is a line above the flashlight */
 	  		/* check if need to erase top line */
 	  		IF erasey==-1 THEN DO
-	  			result_str=result_str||k.rm.c|| SUBSTR(k.mp.line, mapstart, maplength)
+	  			result_str=result_str||"[47;37m"|| SUBSTR(k.mp.line, mapstart, maplength)
 	  		END
 	  		ELSE ITERATE i  /* skip this loop iteration */
 	    END
@@ -898,7 +910,7 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
 	    	/* this is a line below the flashlight */
 	    	/* check if need to erase bottom line */
 	    	IF erasey==1 THEN DO
-	    		result_str=result_str||k.rm.c|| SUBSTR(k.mp.line, mapstart, maplength)
+	    		result_str=result_str||"[47;37m"|| SUBSTR(k.mp.line, mapstart, maplength)
 	    	END
 	    	ELSE ITERATE i  /* skip this loop iteration */
 	    END
@@ -910,26 +922,28 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
 	    	END
 	    	ELSE DO
 	    		/* skip over already drawn portion of flashlight */
-	    		/* result_str=result_str||"["||maplength||"C" */
 	    		IF drawx==-1 THEN DO
-	    			newmapstart=mapstart+obj.pl.dx
-	    			newmaplength=maplength-obj.pl.dx
+	    			/* skipstart=mapstart+obj.pl.dx */
+	    			skiplength=maplength-obj.pl.dx
 	    		END
 	    		ELSE IF drawx==1 THEN DO
-	    			newmapstart=mapstart
-	    			newmaplength=maplength-obj.pl.dx
+	    			/* skipstart=mapstart */
+	    			skiplength=maplength-obj.pl.dx
 	    		END
 	    		ELSE DO
-	    			newmapstart=mapstart
-	    			newmaplength=maplength
+	    			/* skipstart=mapstart */
+	    			skiplength=maplength
 	    		END
-	    		result_str=result_str||"[43m"|| SUBSTR(k.mp.line, newmapstart, newmaplength)
+	    		result_str=result_str||"["||skiplength||"C"
+	    		/*result_str=result_str||"[43m"|| SUBSTR(k.mp.line, skipstart, skiplength)*/
 	    	END
 	    END
 	    
 	    /* handle end of line */
 	    IF erasex==1 THEN DO
-	    	result_str=result_str||k.rm.c|| SUBSTR(k.mp.line, mapstart+maplength, obj.pl.dx)
+	    	IF obj.light.x+obj.light.w < maxcol-1 THEN elength=obj.pl.dx
+	    	ELSE elength=1
+	      result_str=result_str||"[47;37m"|| SUBSTR(k.mp.line, mapstart+maplength, elength)
 	    END
 	    ELSE IF drawx==1 THEN DO
 	    	result_str=result_str||"[43m"|| SUBSTR(k.mp.line, mapstart+maplength-obj.pl.dx, obj.pl.dx)
@@ -1035,7 +1049,11 @@ DRAW_OBJECT:  /* TODO: fix item interactions */
         spr_char = SUBSTR(spr_line, m, 1)
         map_char = SUBSTR(map_str, m, 1)
         SELECT
-          WHEN map_char==" " THEN result_line=result_line||k.rm.bc||spr_char
+          WHEN map_char==" " THEN DO
+          	IF obj.pl.equip==dro & flashlight~=0 & k.rm.dark==1 THEN bgcolor="[43m"
+            ELSE bgcolor=k.rm.bc
+          	result_line=result_line||bgcolor||spr_char
+          END
           WHEN map_char=="€" THEN result_line=result_line||k.rm.bc2||spr_char
           WHEN map_char=="M" THEN result_line=result_line||"[40m"||spr_char
           OTHERWISE NOP
@@ -1321,7 +1339,9 @@ ERASE_OBJECT:
       newstr = LEFT(str,m_index-1) || "[0;30;47m€" || k.rm.c || RIGHT(str,length(str)-m_index)
       str = newstr
     END
-    se "["||j||";"||obj.dro.x||"H"||k.rm.c||str
+    IF obj.pl.equip==dro & flashlight~=0 & k.rm.dark==1 THEN erasecolor="[43m"
+    ELSE erasecolor=k.rm.c
+    se "["||j||";"||obj.dro.x||"H"||erasecolor||str
   END
   se park
 return

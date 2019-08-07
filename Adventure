@@ -666,8 +666,8 @@ return
 DEBUG_PL:
   IF game_running~=1 THEN return
   se "[3;2HPL.X:"||obj.pl.x||" PL.Y:"||obj.pl.y||" PL.DIRX:"||obj.pl.dirx||" PL.DIRY:"||obj.pl.diry||"  "
-  IF flashlight>0 THEN se "[43;30m[4;2HFlash X:"||obj.light.x||" Y:"||obj.light.y||" W:"||obj.light.w||" H:"||obj.light.h||"        " 
-  se "[5;2HYK.R:"||obj.ykey.room||" YK.X:"||obj.ykey.x||" YK.Y:"||obj.ykey.y||" YK.DIRX:"||obj.ykey.dirx||" YK.DIRY:"||obj.ykey.diry||"     "
+  IF flashlight>0 THEN se "[43m[4;2HFlash X:"||obj.light.x||" Y:"||obj.light.y||" W:"||obj.light.w||" H:"||obj.light.h||"        " 
+  /*se "[5;2HYK.R:"||obj.ykey.room||" YK.X:"||obj.ykey.x||" YK.Y:"||obj.ykey.y||" YK.DIRX:"||obj.ykey.dirx||" YK.DIRY:"||obj.ykey.diry||"     "*/
 return
 
 DEBUG_MAGNET:
@@ -968,6 +968,7 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
         result_str=result_str||"[43m"|| SUBSTR(k.mp.line, mapstart+maplength-obj.pl.dx, obj.pl.dx)
       END
       
+      IF line==maxline THEN result_str=result_str||park  /* fix for flashlight wrapping on last line */
       se "["||line||";"||drawxpos||"H"||result_str
     END
   END

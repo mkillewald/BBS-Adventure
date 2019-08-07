@@ -9,7 +9,8 @@ changewhere "BBS Adventure "||ver
 /**************************************************************************\
 **                                                                        **
 **  BBS Adventure                              -X-caliber BBS             **
-**    by k1ds3ns4t10n (Mike Killewald)           bbs.aholix.net:6800      **
+**    a PHENOM PRODUCTIONS release               bbs.aholix.net:6800      **
+**    by k1ds3ns4t10n (Mike Killewald)                                    **
 **                                                                        **
 **  A tribute to Adventure for the Atari 2600                             **
 **    by Warren Robinett                                                  **
@@ -56,9 +57,11 @@ park="f0" /* returns cursor to home position without clearing screen */
 menu_yadv=1  /* menu y advance */
 
 obj.pl.room=0  /* splash screen */
+call PHENOM
 call INIT_KINGDOM
 call DRAW_BG
- 
+call DELAY(25)
+
 /* option items text */
 attack_items.0="delayed"
 attack_items.1="instant"
@@ -467,13 +470,13 @@ ABOUT:
   item.cur=0; item.tot=1  /* current item, total items */
   se "[" || mpos.y + 0|| ";" || mpos.x || "H[0;1;40;30m€ﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂ[0;43;30m [1;33mAbout [40;30mﬂ€"
   se "[" || mpos.y + 1|| ";" || mpos.x || "H€[1;33m BBS Adventure       " || ver || " [30m€"
-  se "[" || mpos.y + 2|| ";" || mpos.x || "H€[0;32m by: [1mk1ds3ns4t10n         [30m€"
-  se "[" || mpos.y + 3|| ";" || mpos.x || "H€[1;32m     ([0;32mMike Killewald[1m)     [30m€"
-  se "[" || mpos.y + 4|| ";" || mpos.x || "H€[1;32m     -X-[0;32mcaliber BBS       [1;30m€"
-  se "[" || mpos.y + 5|| ";" || mpos.x || "H€[1;32m     bbs[22m.[1;32maholix[22m.[1;32mnet[22m:[1;32m6800  [30m€"
-  se "[" || mpos.y + 6|| ";" || mpos.x || "H€[1;32m                          [1;30m€"
-  se "[" || mpos.y + 7|| ";" || mpos.x || "H€[0;36m A tribute to Adventure   [1;30m€"
-  se "[" || mpos.y + 8|| ";" || mpos.x || "H€[0;36m by: [1mWarren Robinett      [30m€"
+  se "[" || mpos.y + 2|| ";" || mpos.x || "H€[0;36m a [1;37mPHENOM PRODUCTIONS     [1;30m€"
+  se "[" || mpos.y + 3|| ";" || mpos.x || "H€[0;36m release by [1;37mk1ds3ns4t10n  [1;30m€"
+  se "[" || mpos.y + 4|| ";" || mpos.x || "H€[0;36m of: [1;36m-X-[0;36mcaliber BBS       [1;30m€"
+  se "[" || mpos.y + 5|| ";" || mpos.x || "H€[0;36m     bbs.aholix.net:6800  [1;30m€"
+  se "[" || mpos.y + 6|| ";" || mpos.x || "H€[0;36m much love and respect to [1;30m€"
+  se "[" || mpos.y + 7|| ";" || mpos.x || "H€[0;36m Adventure on the Atari   [1;30m€"
+  se "[" || mpos.y + 8|| ";" || mpos.x || "H€[0;36m 2600 by: [1;36mWarren Robinett [1;30m€"
   se "[" || mpos.y + 9|| ";" || mpos.x || "H€[1;37m   < [32mB[37mack to Main Menu    [30m€"
   se park
   
@@ -710,7 +713,7 @@ DRAW_ROOM:
   DO i=1 TO maxline
     line="[40m "k.rm.c||k.mp.i
     m_index = INDEX(line,"M")
-    IF m_index ~=0 THEN DO
+    IF m_index ~=0 & rm~=0 THEN DO
       newline = LEFT(line,m_index-1) || "[0;30;47m€"k.rm.c || RIGHT(line,length(line)-m_index)
       line = newline
     END
@@ -720,6 +723,19 @@ DRAW_ROOM:
     END
     ELSE tr line
   END
+return
+
+PHENOM:
+  se clear_scr
+  se "[7;1H"
+  CALL PHENOM_LOGO
+  DO i=1 TO phenommaxline
+  	tr phenom.i
+  END
+  tr
+  se "[27C[1;40;30mPress [0;40;37mANY KEY[1;40;30m to continue"
+  se park
+  gc
 return
 
 /* TODO: fix equipped object being drawn in wrong room on castle exit if grap/drop occurs on exit */
@@ -2284,8 +2300,8 @@ INIT_KINGDOM:
    k.SPLASH_MAP.2="[1;47;33m€€€€€€€€€€€€€€€€€€€€€  €€  €€  €€            €€  €€  €€  €€€€€€€€€€€€€€€€€€€€€[0m"
    k.SPLASH_MAP.3="[1;47;33m€€€                €€€€€€€€€€€€€€            €€€€€€€€€€€€€€                €€€[0m"
    k.SPLASH_MAP.4="[1;47;33m€€€                €€€€€€€€€€€€€€            €€€€€€€€€€€€€€                €€€[0m"
-   k.SPLASH_MAP.5="[1;47;33m€€€            [0;40m [47;37m€€€[1;33m€€€[40m [47m€€€€€€€€€€            €€€€€€€€€€€€€€                [1;33m€€€[0m"
-   k.SPLASH_MAP.6="[1;47;33m€€€            [0;40m  [47;37m€€[1;33m€€[40m  [47m€€€€€€€€€€            [1;33m€€€€€€€€€€€€€€                [1;33m€€€[0m"
+   k.SPLASH_MAP.5="[1;47;33m€€€            [0;40m [47;37m€€€[1;33m€€€[40m [47m€€€€€€€€€€            €€€€€€€€€€€€€€                €€€[0m"
+   k.SPLASH_MAP.6="[1;47;33m€€€            [0;40m  [47;37m€€[1;33m€€[40m  [47m€€€€€€€€€€            [1;33m€€€€€€€€€€€€€€                €€€[0m"
    k.SPLASH_MAP.7="[1;47;33m€€€            [0;47;37m‹[40m ‹ [1;40;33m ‹ ‹[47m€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€                [1;33m€€€[0m"
    k.SPLASH_MAP.8="[1;47;33m€€€            [0;47;30m ﬂﬂ [1;40;33m€‹‹€[47m€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€                [1;33m€€€[0m"
    k.SPLASH_MAP.9="[1;47;33m€€€                €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€                [1;33m€€€[0m"
@@ -2301,7 +2317,7 @@ INIT_KINGDOM:
   k.SPLASH_MAP.19="[1;47;33m€€€                                                   [0;42;37m  ‹[47;37m€€€[42m  [1;47;33m             [1;33m€€€[0m"
   k.SPLASH_MAP.20="[1;47;33m€€€                                   [1;33m€€               [0;42;37m  [47;37m€€€[42mﬂ  [1;47;33m             [1;33m€€€[0m"
   k.SPLASH_MAP.21="[1;47;33m€€€   [0;45;30m   [1;47;33m      [45;35m   [47;33m                                    [0;42;37m‹‹    ‹‹[1;47;33m             [1;33m€€€[0m"
-  k.SPLASH_MAP.22="[1;47;33m€€€     [45;35m [47;33m      [45;35m [47;33m                                      [0;42;37mﬂ[47;37m€€€[42m ﬂﬂﬂ[1;47;33m             [1;33m€€€[0m"
+  k.SPLASH_MAP.22="[1;47;33m€€€     [45;35m [47;33m      [45;35m [47;33m                                      [0;42;37mﬂ[47;37m€€€[42m ﬂﬂﬂ[1;47;33m [1;47;30mP H E N O M [1;33m€€€[0m"
   k.SPLASH_MAP.23="[1;47;33m€€€€€€€€[45;35m [47;33m€€€€€€[45;35m [47;33m€€€€€€€€€€€€€€€                €€€€€€€[42m‹‹ ﬂﬂﬂﬂ [47m€€€€€€€€€€€€€€€€[0m"
   k.SPLASH_MAP.24="[1;47;33m€€€€€€€€[45;35m [47;33m€€€€€€[45;35m [47;33m€€€€€€€€€€€€€€€                €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€[0m"
 
@@ -3597,6 +3613,21 @@ INIT_OBJECTS:
   want.rhindle.0="PL"
   want.rhindle.1="CHALICE"
   want.rhindle.2="WKEY"
+return
+
+PHENOM_LOGO:
+   phenommaxline=11
+   phenom.1="[0;40;30m[8C[1m‹[0m€[1m€€€€€€‹  [47m [40m€€   €€€  [47m∞‹[40m‹[47m‹[40m€€[47m‹[40m [47m∞‹[40m€€   €€[0m€[1;30mﬂ  [0m‹[1;47m‹‹[40m€[47m‹‹[0m‹ [1;30mﬂ[0m€[1m€€[47m‹[40m ..€€€[0m€[1;30mﬂ"
+   phenom.2="[10C[37m€€€[0mﬂ[1;30mﬂ[37m€€›-ﬂ€€   €€€  [47m±[40m€€ﬂﬂﬂﬂ ﬁ€€€€  €€›_ [47m‹[40m€€ﬂﬂﬂ€€[47m‹[40m∞ﬁ€€€[47m‹[40m‹€€€€[0mƒ[1m˙ ˙"
+   phenom.3="[6C[30m∞ [37m˙[0m-[1m€€€‹‹€€› [47m≤[40m€€€€€€€€  [47m≤[40m€€€€[47m±∞[40m ﬁ€€›€€ €€[47mﬂ[40m ﬁ€€›   ﬁ€€›ﬁ€[47m‹[40mﬂ€€[47m€[40mﬂ€€  [30m∞"
+   phenom.4="  ∞ ∞∞∞∞  [37m€€€ﬂﬂﬂﬂ  [47m≤[40m€€ﬂﬂﬂ€€€  [47m≤[40m€€‹‹‹‹ ﬁ€€› €€€[47m€[40m›  €€€   €€€ ﬁ€[47mﬂ[40mﬂﬁ€[0mﬂ[1mﬁ€€ [30m∞∞∞∞ ∞"
+   phenom.5="[10C[47;37m±[40m€€[0m›    ‹€[1m€€[0m› ﬁ[1;47mﬂ[40m€€  [47m±±≤≤≤ﬂﬂ[40m ﬁ€€›  €[47m≤≤ﬂ[0m‹  ﬂ[1;47mﬂ€[40m€€[47m±ﬂ[0mﬂ [1mﬁ[47m≤±[0m‹   [1mﬁ€€[0m‹[1;30m‹"
+   phenom.6="[15C∞[26C∞[16C∞[7C[0mﬂ"
+   phenom.7=" [1m‹‹‹‹[0m‹[1;30m‹[0mƒ[1m-‹‹‹[0m‹[1;30m‹   [0m‹[1m‹‹[0m‹[1;30m‹  [37m‹‹‹[0m‹[1;30m‹   [37m‹‹  ‹‹   ‹‹‹ ‹‹‹‹‹ ‹‹[0m‹[1;30m‹ [0m‹[1m‹‹[0m‹   [1m‹‹  [30m‹[37m‹‹ -[0m‹[1m‹[0m‹"
+   phenom.8=" [1;47m≤[40m€€ﬂ€€[30m‹ [47;37m≤[40m€ﬂ€[47m‹[40m [30m‹[47;37m‹[40m€ﬂﬂ€€[47m‹[40m €€ﬂ[47mﬂ[40m€[0m‹  [1;47m≤[40m€[30mﬂ[0mﬂ[1;47mﬂ[40m€ ﬁ€€ﬂ[0mﬂ [1mﬂ[47m≤[40m€ﬂ..[47m≤≤[40m [30m‹[47;37m‹[40m€ﬂﬂ€[47m€‹[40m €€[47m‹[0m‹[1;30m‹[47;37m±[40m€ [47m‹[40m€ﬂﬂ[47mﬂ[40m-˙"
+   phenom.9="-[47m±[40m€€‹€€[30mﬂ [37m€€‹€€[30mﬂ[37mﬁ€›˙˙-€[47m€[40m €€ [30m€[37m€€[0m› [1m€€  €€ €€[5C[47m±[40m€-  €€ [0mﬁ[1m€›   [47m≤≤[0m›[1m€€€€›€€ ﬂ[47mﬂ[40m€[47m‹[0m‹[1;30m‹"
+  phenom.10=" [37m€€[47mﬂ[40mﬂ[0mﬂ[1;30mﬂ  [37m€€€[47m‹[40m . €€‹‹€€[47mﬂ[40m €€‹[47m‹[40m€€[30mﬂ [37m€€[47m‹‹[40m€€ ﬁ€€‹[0m‹[1;30m‹ [37m€€   €€  €€‹‹€€[47mﬂ[40m €€ [47mﬂ[40m€[47m€[40m€ €‹‹€€[47m±[0m"
+  phenom.11="[1m ﬂﬂ[30mﬂ  sM [37mﬂﬂ ﬂﬂ   [0mﬂ[1mﬂﬂ[0mﬂ[1;30mﬂ  [37mﬂﬂﬂﬂ[0mﬂ    ﬂ[1mﬂﬂ[0mﬂ   ﬂ[1mﬂﬂ[0mﬂ ﬂ[1mﬂ[0mﬂ  [1;30mﬂ[0mﬂ[1mﬂ   [0mﬂ[1mﬂﬂ[0mﬂ[1;30mﬂ  [0mﬂ[1mﬂ  [0mﬂ[1mﬂﬂ [30mﬂ[0mﬂ[1mﬂﬂ[0mﬂ"
 return
 
 /* background colors *** foreground colors */

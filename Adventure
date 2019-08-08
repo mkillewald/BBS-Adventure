@@ -55,12 +55,13 @@ clear_scr="[40mf1@4" /* black background, clear screen, disable more */
 park="f0" /* returns cursor to home position without clearing screen */
 
 menu_yadv=1  /* menu y advance */
-
 obj.pl.room=0  /* splash screen */
-call PHENOM
+
+call RANDOM(,,time('s'))  /* seed random number generator */
+call DRAW_PHENOM
 call INIT_KINGDOM
 call DRAW_BG
-call DELAY(25)
+call DELAY(15)
 
 /* option items text */
 attack_items.0="delayed"
@@ -700,6 +701,32 @@ REFRESH:  /* redraw entire screen */
   call DRAW_OBJS
 return
 
+DRAW_PHENOM:
+  se clear_scr
+  CALL PHENOM_LOGO
+  displayed=":"
+  count=0
+  s= time('r')
+  DO WHILE count<phenommaxline
+    line= RANDOM(1, phenommaxline)
+    IF INDEX(displayed, ":"||line||":")==0 THEN DO
+      displayed=displayed||line||":"
+      count=count+1
+      se "["||7+line||";1H"||phenom.line
+    END
+    IF time('e') > 0.6 THEN DO
+    	se "[8;1H"
+      DO i=1 TO phenommaxline
+        tr phenom.i
+      END
+      count=999
+    END
+    call CHECK
+  END
+  se park
+  call DELAY(75)
+return
+
 DRAW_BG:  /* draw background (not in main loop) */
   /* draw layer 0 */
   call DRAW_ROOM
@@ -723,19 +750,6 @@ DRAW_ROOM:
     END
     ELSE tr line
   END
-return
-
-PHENOM:
-  se clear_scr
-  se "[7;1H"
-  CALL PHENOM_LOGO
-  DO i=1 TO phenommaxline
-  	tr phenom.i
-  END
-  tr
-  se "[27C[1;40;30mPress [0;40;37mANY KEY[1;40;30m to continue"
-  se park
-  gc
 return
 
 /* TODO: fix equipped object being drawn in wrong room on castle exit if grap/drop occurs on exit */
@@ -835,7 +849,7 @@ DRAW_FLASHLIGHT:
   END 
 return
 
-/* TODO: clean this up */
+/* TODO: clean this up, fix bug with intensity */
 DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been) */
   rm=obj.pl.room
   mp=k.rm.map
@@ -2318,7 +2332,7 @@ INIT_KINGDOM:
   k.SPLASH_MAP.19="[1;47;33m€€€                                                   [0;42;37m  ‹[47;37m€€€[42m  [1;47;33m             [1;33m€€€[0m"
   k.SPLASH_MAP.20="[1;47;33m€€€                                   [1;33m€€               [0;42;37m  [47;37m€€€[42mﬂ  [1;47;33m             [1;33m€€€[0m"
   k.SPLASH_MAP.21="[1;47;33m€€€   [0;45;30m   [1;47;33m      [45;35m   [47;33m                                    [0;42;37m‹‹    ‹‹[1;47;33m             [1;33m€€€[0m"
-  k.SPLASH_MAP.22="[1;47;33m€€€     [45;35m [47;33m      [45;35m [47;33m                                      [0;42;37mﬂ[47;37m€€€[42m ﬂﬂﬂ[1;47;33m [1;47;30mP H E N O M [1;33m€€€[0m"
+  k.SPLASH_MAP.22="[1;47;33m€€€     [45;35m [47;33m      [45;35m [47;33m                                      [0;42;37mﬂ[47;37m€€€[42m ﬂﬂﬂ[1;47;33m             [1;33m€€€[0m"
   k.SPLASH_MAP.23="[1;47;33m€€€€€€€€[45;35m [47;33m€€€€€€[45;35m [47;33m€€€€€€€€€€€€€€€                €€€€€€€[42m‹‹ ﬂﬂﬂﬂ [47m€€€€€€€€€€€€€€€€[0m"
   k.SPLASH_MAP.24="[1;47;33m€€€€€€€€[45;35m [47;33m€€€€€€[45;35m [47;33m€€€€€€€€€€€€€€€                €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€[0m"
 
@@ -3617,18 +3631,19 @@ INIT_OBJECTS:
 return
 
 PHENOM_LOGO:
-   phenommaxline=11
-   phenom.1="[0;40;30m[8C[1m‹[0m€[1m€€€€€€‹  [47m [40m€€   €€€  [47m∞‹[40m‹[47m‹[40m€€[47m‹[40m [47m∞‹[40m€€   €€[0m€[1;30mﬂ  [0m‹[1;47m‹‹[40m€[47m‹‹[0m‹ [1;30mﬂ[0m€[1m€€[47m‹[40m ..€€€[0m€[1;30mﬂ"
-   phenom.2="[10C[37m€€€[0mﬂ[1;30mﬂ[37m€€›-ﬂ€€   €€€  [47m±[40m€€ﬂﬂﬂﬂ ﬁ€€€€  €€›_ [47m‹[40m€€ﬂﬂﬂ€€[47m‹[40m∞ﬁ€€€[47m‹[40m‹€€€€[0mƒ[1m˙ ˙"
-   phenom.3="[6C[30m∞ [37m˙[0m-[1m€€€‹‹€€› [47m≤[40m€€€€€€€€  [47m≤[40m€€€€[47m±∞[40m ﬁ€€›€€ €€[47mﬂ[40m ﬁ€€›   ﬁ€€›ﬁ€[47m‹[40mﬂ€€[47m€[40mﬂ€€  [30m∞"
-   phenom.4="  ∞ ∞∞∞∞  [37m€€€ﬂﬂﬂﬂ  [47m≤[40m€€ﬂﬂﬂ€€€  [47m≤[40m€€‹‹‹‹ ﬁ€€› €€€[47m€[40m›  €€€   €€€ ﬁ€[47mﬂ[40mﬂﬁ€[0mﬂ[1mﬁ€€ [30m∞∞∞∞ ∞"
-   phenom.5="[10C[47;37m±[40m€€[0m›    ‹€[1m€€[0m› ﬁ[1;47mﬂ[40m€€  [47m±±≤≤≤ﬂﬂ[40m ﬁ€€›  €[47m≤≤ﬂ[0m‹  ﬂ[1;47mﬂ€[40m€€[47m±ﬂ[0mﬂ [1mﬁ[47m≤±[0m‹   [1mﬁ€€[0m‹[1;30m‹"
-   phenom.6="[15C∞[26C∞[16C∞[7C[0mﬂ"
-   phenom.7=" [1m‹‹‹‹[0m‹[1;30m‹[0mƒ[1m-‹‹‹[0m‹[1;30m‹   [0m‹[1m‹‹[0m‹[1;30m‹  [37m‹‹‹[0m‹[1;30m‹   [37m‹‹  ‹‹   ‹‹‹ ‹‹‹‹‹ ‹‹[0m‹[1;30m‹ [0m‹[1m‹‹[0m‹   [1m‹‹  [30m‹[37m‹‹ -[0m‹[1m‹[0m‹"
-   phenom.8=" [1;47m≤[40m€€ﬂ€€[30m‹ [47;37m≤[40m€ﬂ€[47m‹[40m [30m‹[47;37m‹[40m€ﬂﬂ€€[47m‹[40m €€ﬂ[47mﬂ[40m€[0m‹  [1;47m≤[40m€[30mﬂ[0mﬂ[1;47mﬂ[40m€ ﬁ€€ﬂ[0mﬂ [1mﬂ[47m≤[40m€ﬂ..[47m≤≤[40m [30m‹[47;37m‹[40m€ﬂﬂ€[47m€‹[40m €€[47m‹[0m‹[1;30m‹[47;37m±[40m€ [47m‹[40m€ﬂﬂ[47mﬂ[40m-˙"
-   phenom.9="-[47m±[40m€€‹€€[30mﬂ [37m€€‹€€[30mﬂ[37mﬁ€›˙˙-€[47m€[40m €€ [30m€[37m€€[0m› [1m€€  €€ €€[5C[47m±[40m€-  €€ [0mﬁ[1m€›   [47m≤≤[0m›[1m€€€€›€€ ﬂ[47mﬂ[40m€[47m‹[0m‹[1;30m‹"
-  phenom.10=" [37m€€[47mﬂ[40mﬂ[0mﬂ[1;30mﬂ  [37m€€€[47m‹[40m . €€‹‹€€[47mﬂ[40m €€‹[47m‹[40m€€[30mﬂ [37m€€[47m‹‹[40m€€ ﬁ€€‹[0m‹[1;30m‹ [37m€€   €€  €€‹‹€€[47mﬂ[40m €€ [47mﬂ[40m€[47m€[40m€ €‹‹€€[47m±[0m"
-  phenom.11="[1m ﬂﬂ[30mﬂ  sM [37mﬂﬂ ﬂﬂ   [0mﬂ[1mﬂﬂ[0mﬂ[1;30mﬂ  [37mﬂﬂﬂﬂ[0mﬂ    ﬂ[1mﬂﬂ[0mﬂ   ﬂ[1mﬂﬂ[0mﬂ ﬂ[1mﬂ[0mﬂ  [1;30mﬂ[0mﬂ[1mﬂ   [0mﬂ[1mﬂﬂ[0mﬂ[1;30mﬂ  [0mﬂ[1mﬂ  [0mﬂ[1mﬂﬂ [30mﬂ[0mﬂ[1mﬂﬂ[0mﬂ"
+   phenommaxline=12
+   phenom.1=" [0;40;30m[8C[1m‹[0m€[1m€€€€€€‹  [47m [40m€€   €€€  [47m∞‹[40m‹[47m‹[40m€€[47m‹[40m [47m∞‹[40m€€   €€[0m€[1;30mﬂ  [0m‹[1;47m‹‹[40m€[47m‹‹[0m‹ [1;30mﬂ[0m€[1m€€[47m‹[40m ..€€€[0m€[1;30mﬂ"
+   phenom.2=" [10C[1;37m€€€[0mﬂ[1;30mﬂ[37m€€›-ﬂ€€   €€€  [47m±[40m€€ﬂﬂﬂﬂ ﬁ€€€€  €€›_ [47m‹[40m€€ﬂﬂﬂ€€[47m‹[40m∞ﬁ€€€[47m‹[40m‹€€€€[0mƒ[1m˙ ˙"
+   phenom.3=" [6C[1;30;40m∞ [1;37m˙[0m-[1m€€€‹‹€€› [47m≤[40m€€€€€€€€  [47m≤[40m€€€€[47m±∞[40m ﬁ€€›€€ €€[47mﬂ[40m ﬁ€€›   ﬁ€€›ﬁ€[47m‹[40mﬂ€€[47m€[40mﬂ€€  [30m∞"
+   phenom.4="   [1;30;40m∞ ∞∞∞∞  [1;37m€€€ﬂﬂﬂﬂ  [47m≤[40m€€ﬂﬂﬂ€€€  [47m≤[40m€€‹‹‹‹ ﬁ€€› €€€[47m€[40m›  €€€   €€€ ﬁ€[47mﬂ[40mﬂﬁ€[0mﬂ[1mﬁ€€ [30m∞∞∞∞ ∞"
+   phenom.5=" [10C[1;47;37m±[40m€€[0m›    ‹€[1m€€[0m› ﬁ[1;47mﬂ[40m€€  [47m±±≤≤≤ﬂﬂ[40m ﬁ€€›  €[47m≤≤ﬂ[0m‹  ﬂ[1;47mﬂ€[40m€€[47m±ﬂ[0mﬂ [1mﬁ[47m≤±[0m‹   [1mﬁ€€[0m‹[1;30m‹"
+   phenom.6=" [15C[1;30;40m∞[26C∞[16C∞[7C[0mﬂ"
+   phenom.7="  [1;37;47m‹‹‹‹[0m‹[1;30m‹[0mƒ[1m-‹‹‹[0m‹[1;30m‹   [0m‹[1m‹‹[0m‹[1;30m‹  [37m‹‹‹[0m‹[1;30m‹   [37m‹‹  ‹‹   ‹‹‹ ‹‹‹‹‹ ‹‹[0m‹[1;30m‹ [0m‹[1m‹‹[0m‹   [1m‹‹  [30m‹[37m‹‹ -[0m‹[1m‹[0m‹"
+   phenom.8="  [1;37;47m≤[40m€€ﬂ€€[30m‹ [47;37m≤[40m€ﬂ€[47m‹[40m [30m‹[47;37m‹[40m€ﬂﬂ€€[47m‹[40m €€ﬂ[47mﬂ[40m€[0m‹  [1;47m≤[40m€[30mﬂ[0mﬂ[1;47mﬂ[40m€ ﬁ€€ﬂ[0mﬂ [1mﬂ[47m≤[40m€ﬂ..[47m≤≤[40m [30m‹[47;37m‹[40m€ﬂﬂ€[47m€‹[40m €€[47m‹[0m‹[1;30m‹[47;37m±[40m€ [47m‹[40m€ﬂﬂ[47mﬂ[40m-˙"
+   phenom.9=" -[1;37;47m±[40m€€‹€€[30mﬂ [37m€€‹€€[30mﬂ[37mﬁ€›˙˙-€[47m€[40m €€ [30m€[37m€€[0m› [1m€€  €€ €€[5C[47m±[40m€-  €€ [0mﬁ[1m€›   [47m≤≤[0m›[1m€€€€›€€ ﬂ[47mﬂ[40m€[47m‹[0m‹[1;30m‹"
+  phenom.10="  [1;37m€€[47mﬂ[40mﬂ[0mﬂ[1;30mﬂ  [37m€€€[47m‹[40m . €€‹‹€€[47mﬂ[40m €€‹[47m‹[40m€€[30mﬂ [37m€€[47m‹‹[40m€€ ﬁ€€‹[0m‹[1;30m‹ [37m€€   €€  €€‹‹€€[47mﬂ[40m €€ [47mﬂ[40m€[47m€[40m€ €‹‹€€[47m±[0m"
+  phenom.11=" [1;37m ﬂﬂ[30mﬂ  sM [37mﬂﬂ ﬂﬂ   [0mﬂ[1mﬂﬂ[0mﬂ[1;30mﬂ  [37mﬂﬂﬂﬂ[0mﬂ    ﬂ[1mﬂﬂ[0mﬂ   ﬂ[1mﬂﬂ[0mﬂ ﬂ[1mﬂ[0mﬂ  [1;30mﬂ[0mﬂ[1mﬂ   [0mﬂ[1mﬂﬂ[0mﬂ[1;30mﬂ  [0mﬂ[1mﬂ  [0mﬂ[1mﬂﬂ [30mﬂ[0mﬂ[1mﬂﬂ[0mﬂ"
+  phenom.12="[49C[1;30;40mhttps://www.phenomprod.com"
 return
 
 /* background colors *** foreground colors */

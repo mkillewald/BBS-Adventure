@@ -713,8 +713,9 @@ DRAW_PHENOM:
       displayed=displayed||line||":"
       count=count+1
       se "["||6+line||";1H"||phenom.line
+      call DELAY(2)
     END
-    IF time('e') > 0.6 THEN DO
+    IF time('e') > 1.3 THEN DO
     	se "[7;1H"
       DO i=1 TO phenommaxline
         tr phenom.i

@@ -587,7 +587,7 @@ START:
     /* randomize item locations */
     DO i=0 TO maxitem  
       o=item.i
-      IF obj.o.lvl3.0 ~=0 THEN obj.o.room = random(obj.o.lvl3.0, obj.o.lvl3.1, time('s'))
+      IF obj.o.lvl3.0 ~=0 THEN obj.o.room = RANDOM(obj.o.lvl3.0, obj.o.lvl3.1)
     END
     /* randomize creature locations */
     /* DO i=0 TO maxcreature  
@@ -601,6 +601,14 @@ START:
       drago=dragon.i
       obj.drago.atkwait=instantattack
     END
+  END
+  
+  IF fear==1 THEN DO  /* dragons fear SWORD */
+  	fear.yorgle.max=1
+    fear.yorgle.0="SWORD"
+    fear.yorgle.1="YKEY"
+    fear.grundle.0="SWORD" 
+    fear.rhindle.0="SWORD"
   END
     
   REINCARNATE:
@@ -645,11 +653,11 @@ START:
       call BAT_MOVE
     END
     
-    /* DO i=0 TO maxdragon
+     DO i=0 TO maxdragon
       call DRAGON_GUARD(dragon.i)
       call DRAGON_FLEE(dragon.i)
       call DRAGON_MOVE(dragon.i)
-    END */
+    END
        
     call CHECK
   END
@@ -3542,9 +3550,8 @@ INIT_OBJECTS:
   obj.yorgle.lvl3.1=29  /* random room upper limit */
   obj.yorgle.dead=0
   
-  fear.yorgle.max=1
-  fear.yorgle.0="SWORD"
-  fear.yorgle.1="YKEY"
+  fear.yorgle.max=0
+  fear.yorgle.0="YKEY"
   
   want.yorgle.max=1
   want.yorgle.0="PL"
@@ -3582,7 +3589,7 @@ INIT_OBJECTS:
   obj.grundle.dead=0
   
   fear.grundle.max=0
-  fear.grundle.0="SWORD"  
+  fear.grundle.0="NONE"  
 
   want.grundle.max=4
   want.grundle.0="PL"
@@ -3623,7 +3630,7 @@ INIT_OBJECTS:
   obj.rhindle.dead=0
   
   fear.rhindle.max=0
-  fear.rhindle.0="SWORD"
+  fear.rhindle.0="NONE"
   
   want.rhindle.max=2
   want.rhindle.0="PL"

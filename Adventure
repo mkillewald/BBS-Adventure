@@ -29,9 +29,9 @@ changewhere "BBS Adventure "||ver
 **                                                                        **
 \**************************************************************************/
 debug=0         /* 0 = disable debug mode,   1 = enable debug mode   */
-debug_flash=1   /* 0 = disable flash debug,  1 = enable flash debug  */
+debug_flash=0   /* 0 = disable flash debug,  1 = enable flash debug  */
 debug_magnet=0  /* 0 = disable magnet debug, 1 = enable magnet debug */
-debug_bat=0     /* 0 = disable bat debug,    1 = enable bat debug    */
+debug_bat=1     /* 0 = disable bat debug,    1 = enable bat debug    */
 debug_dragon=0  /* 0 = disable dragon debug, 1 = enable dragon debug */
 
 transparent_items=1 /* 0 = disaled, 1 = enabled */
@@ -613,6 +613,7 @@ START:
     
   REINCARNATE:
   call INIT_PLAYER  /* init player */
+  call RESET_DRAGONS
 
   call DRAW_BG
   call DRAW_PL
@@ -647,16 +648,18 @@ START:
     call MAGNET_SEEK
     call MAGNETISM
     
-    IF difficulty~=1 THEN DO
+    /*IF difficulty~=1 THEN DO
       call BAT_SEEK
       call BAT_ANIM
       call BAT_MOVE
-    END
+    END */
     
-     DO i=0 TO maxdragon
-      call DRAGON_GUARD(dragon.i)
-      call DRAGON_FLEE(dragon.i)
-      call DRAGON_MOVE(dragon.i)
+    DO i=0 TO maxdragon
+     	d=dragon.i
+     	IF obj.d.state==2 THEN ITERATE i
+      call DRAGON_GUARD(d)
+      call DRAGON_FLEE(d)
+      call DRAGON_MOVE(d)
     END
        
     call CHECK
@@ -675,7 +678,7 @@ return
 DEBUG_PL:
   IF game_running~=1 THEN return
   se "[3;2HPL.X:"||obj.pl.x||" PL.Y:"||obj.pl.y||" PL.DIRX:"||obj.pl.dirx||" PL.DIRY:"||obj.pl.diry||"  "
-  IF flashlight>0 THEN se "[43m[4;2HFlash X:"||obj.light.x||" Y:"||obj.light.y||" W:"||obj.light.w||" H:"||obj.light.h||"        " 
+  IF flashlight>0 & debug_flashl==1 THEN se "[43m[4;2HFlash X:"||obj.light.x||" Y:"||obj.light.y||" W:"||obj.light.w||" H:"||obj.light.h||"        " 
   /*se "[5;2HYK.R:"||obj.ykey.room||" YK.X:"||obj.ykey.x||" YK.Y:"||obj.ykey.y||" YK.DIRX:"||obj.ykey.dirx||" YK.DIRY:"||obj.ykey.diry||"     "*/
 return
 
@@ -688,7 +691,7 @@ return
 
 DEBUG_BAT:  /* TODO: finish */
   IF game_running~=1 | debug_bat~=1 THEN return
-  se "[5;2H"||k.rm.c||"B.R:"||obj.knub.room||" B.X:"||obj.knub.x||" B.Y:"||obj.knub.y||" B.W:"||obj.knub.want||" B.FU:"||obj.knub.fedup||" B.S:"||obj.knub.seek||" B.E:"||obj.knub.equip||"     " 
+  se "[5;2H"||k.rm.c||"B.R:"||obj.knub.room||" B.X:"||obj.knub.x||" B.Y:"||obj.knub.y||" B.W:"||obj.knub.want||" B.FU:"||obj.knub.fedup||" B.S:"||obj.knub.seek||" B.E:"||obj.knub.equip||" B.DY:"||obj.knub.dy||"     " 
 return
 
 DEBUG_DRAGON:  /* TODO: finish */
@@ -1037,7 +1040,7 @@ DRAW_OBJS:  /* draw objects (not in the main loop) */
   /* draw dead dragons */
   DO i=0 TO maxdragon
     d=dragon.i
-    IF obj.d.dead==1 THEN call DRAW_DRAGON(d)
+    IF obj.d.state==2 & obj.knubberrub.equip~=d THEN call DRAW_DRAGON(d)
   END
 return
 
@@ -1915,6 +1918,15 @@ DRAGON_MOVE:  /* TODO: finish */
   ARG drago
   dfo=obj.drago.fear
   dwo=obj.drago.want
+  IF COLLIDE_NOW(drago, "SWORD") THEN DO
+  	obj.drago.state=2  /* deceased */
+  	frame = obj.drago.state
+  	DO i=0 TO obj.drago.h
+      obj.drago.spr.i=_dragon.frame.i
+    END
+    call DRAW_INVERSE_OBJECT(drago)
+    return
+  END
   IF dfo~="NONE" & obj.dfo.room==obj.drago.room  THEN DO    
     tdirx=GETDIR(obj.drago.x, obj.dfo.x)
     tdiry=GETDIR(obj.drago.y, obj.dfo.y)
@@ -2985,7 +2997,7 @@ INIT_PLAYER:
   obj.pl.diry=0
   obj.pl.equip="NONE"
   obj.pl.dead=0
-return  
+return
 
 INIT_FLASHLIGHT:  
   /* set default flashlight height and width (keep even numbers here) */
@@ -3544,11 +3556,10 @@ INIT_OBJECTS:
   obj.yorgle.spr.7=_dragon.0.7
   obj.yorgle.fear="NONE"
   obj.yorgle.want="NONE"
-  obj.yorgle.atk=0
   obj.yorgle.atkwait=delayedattack
   obj.yorgle.lvl3.0=1   /* random room lower limit */
   obj.yorgle.lvl3.1=29  /* random room upper limit */
-  obj.yorgle.dead=0
+  obj.yorgle.state=0  /* 0=alive, 1=attack, 2=deceased */
   
   fear.yorgle.max=0
   fear.yorgle.0="YKEY"
@@ -3571,7 +3582,7 @@ INIT_OBJECTS:
   obj.grundle.diry=0
   obj.grundle.offset.x=0
   obj.grundle.offset.y=0
-  obj.grundle.col="[1;32m"
+  obj.grundle.col="[0;42;37m"
   obj.grundle.spr.0=_dragon.0.0
   obj.grundle.spr.1=_dragon.0.1
   obj.grundle.spr.2=_dragon.0.2
@@ -3582,11 +3593,10 @@ INIT_OBJECTS:
   obj.grundle.spr.7=_dragon.0.7
   obj.grundle.fear="NONE"
   obj.grundle.want="NONE"
-  obj.grundle.atk=0
   obj.grundle.atkwait=delayedattack
   obj.grundle.lvl3.0=1   /* random room lower limit */
   obj.grundle.lvl3.1=29  /* random room upper limit */
-  obj.grundle.dead=0
+  obj.grundle.state=0  /* 0=alive, 1=attack, 2=deceased */
   
   fear.grundle.max=0
   fear.grundle.0="NONE"  
@@ -3612,7 +3622,7 @@ INIT_OBJECTS:
   obj.rhindle.diry=0
   obj.rhindle.offset.x=0
   obj.rhindle.offset.y=0
-  obj.rhindle.col="[1;31m" /* TODO: fix */
+  obj.rhindle.col="[0;41;37m"
   obj.rhindle.spr.0=_dragon.0.0
   obj.rhindle.spr.1=_dragon.0.1
   obj.rhindle.spr.2=_dragon.0.2
@@ -3623,11 +3633,10 @@ INIT_OBJECTS:
   obj.rhindle.spr.7=_dragon.0.7
   obj.rhindle.fear="NONE"
   obj.rhindle.want="NONE"
-  obj.rhindle.atk=0
   obj.rhindle.atkwait=delayedattack 
   obj.rhindle.lvl3.0=1   /* random room lower limit */
   obj.rhindle.lvl3.1=29  /* random room upper limit */
-  obj.rhindle.dead=0
+  obj.rhindle.state=0  /* 0=alive, 1=attack, 2=deceased */
   
   fear.rhindle.max=0
   fear.rhindle.0="NONE"
@@ -3636,6 +3645,17 @@ INIT_OBJECTS:
   want.rhindle.0="PL"
   want.rhindle.1="CHALICE"
   want.rhindle.2="WKEY"
+return
+
+RESET_DRAGONS:
+  DO i=0 TO maxdragon
+    d=dragon.i
+    obj.d.state=0  /* born again! */
+    frame = obj.d.state
+  	DO j=0 TO obj.d.h
+      obj.d.spr.j=_dragon.frame.j
+    END
+  END
 return
 
 PHENOM_LOGO:

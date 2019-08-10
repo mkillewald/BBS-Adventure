@@ -1700,10 +1700,10 @@ return 0 /* p not on bridge */
 
 WILL_COLLIDE:  /* detect if object1 and object2 will collide (with object 1 in motion) */
   ARG o1, o2
-  /* obj.o1.vx=obj.o1.dx*obj.o1.dirx */ 
-  /* obj.o1.vy=obj.o1.dy*obj.o1.diry */
-  obj.o1.vx=obj.o1.dirx
-  obj.o1.vy=obj.o1.diry
+  IF obj.o1.dx>1 THEN obj.o1.vx=obj.o1.dx*obj.o1.dirx
+  ELSE obj.o1.vx=obj.o1.dirx
+  IF obj.o1.dy>1 THEN obj.o1.vy=obj.o1.dy*obj.o1.diry
+  ELSE obj.o1.vy=obj.o1.diry
   IF obj.o1.room==obj.o2.room &,                              /* o1 and o2 are in same room and   */ 
      obj.o2.x+obj.o2.w >= obj.o1.x+(obj.o1.vx) &,             /* o2 right edge > o1 left edge and */
      obj.o2.y+obj.o2.h >= obj.o1.y+(obj.o1.vy) &,             /* o2 bottom edge > o1 top edge and */

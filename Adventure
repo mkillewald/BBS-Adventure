@@ -1,5 +1,5 @@
 /**************************************************************************\
-    $VER: BBS Adventure, v0.4 (Jul-11-2019) by k1ds3ns4t10n of -X-caliber 
+    $VER: BBS Adventure, v0.4 (Jul-11-2019) by k1ds3ns4t10n of P H E N O M 
 \**************************************************************************/
 options results;signal on SYNTAX;signal on ERROR;signal on IOERR
 a=sourceline(2);parse var a . ", "ver" ("vdate")" .
@@ -37,19 +37,19 @@ debug_bat=0     /* 0 = disable bat debug,    1 = enable bat debug    */
 debug_dragon=0  /* 0 = disable dragon debug, 1 = enable dragon debug */
 
 /* system options */
-transparent_items=1 /* 0 = disaled, 1 = enabled(default) */
-flashlight=3  /* 0=disabled, 1=small, 2=medium, 3=large(default) */
-bat_enable=0  /* 0=bat disabled, 1=bat enabled(default) */
-dragon_enable=1  /* 0=dragons disabled, 1=dragons enabled(default) */
+transparent_items=1  /* 0=disaled, 1=enabled (default) */
+flashlight=3         /* 0=disabled, 1=small, 2=medium, 3=large (default) */
+bat_enable=0         /* 0=bat disabled, 1=bat enabled (default) */
+dragon_enable=1      /* 0=dragons disabled, 1=dragons enabled (default) */
 
 /* default game settings */
-difficulty=1  /* 1=level 1(default), 2=level 2, 3=level 3 */
-attack=0  /* 0=dragons delay before attack(default), 1=dragons attack instantly */
-fear=0  /* 0=dragons do not fear sword(default), 1=dragons fear sword */ 
+difficulty=1  /* 1=level 1 (default), 2=level 2, 3=level 3 */
+attack=0      /* 0=dragons delay before attack (default), 1=dragons attack instantly */
+fear=0        /* 0=dragons do not fear sword (default), 1=dragons fear sword */ 
 
 /* dragon attack delay */
-instantattack=6   /* about 1.5 seconds */
-delayedattack=15  /* about 3 seconds */
+instantattack=1.5   /* 1.5 seconds */
+delayedattack=3     /* 3 seconds */
 
 /* player state constants */
 PL_ALIVE=0
@@ -3782,5 +3782,5 @@ SYNTAX:;ERROR:;IOERR:;e1="n1 Error: "rc" ("errortext(rc)")"
   logentry e1;logentry e2;e=strip(translate(sourceline(sigl),"\{",""))
   do while e~="";e3="Source: "left(e,37);tr e3;logentry e3;e=substr(e,38);end
   bufferflush
-/**************************************************************************\
+/******************************** PHENOM PRODUCTIONS www.phenomprod.com  **\
 \**************************************** -X-caliber bbs.aholix.net:6800 **/

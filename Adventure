@@ -40,7 +40,7 @@ debug_dragon=0  /* 0 = disable dragon debug, 1 = enable dragon debug */
 transparent_items=1  /* 0=disaled, 1=enabled (default) */
 flashlight=3         /* 0=disabled, 1=small, 2=medium, 3=large (default) */
 bat_enable=0         /* 0=bat disabled, 1=bat enabled (default) */
-dragon_enable=1      /* 0=dragons disabled, 1=dragons enabled (default) */
+dragon_enable=0      /* 0=dragons disabled, 1=dragons enabled (default) */
 
 /* default game settings */
 difficulty=1  /* 1=level 1 (default), 2=level 2, 3=level 3 */
@@ -901,7 +901,7 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
     /* draw flashlight upon entering room */
     DO i=0 TO obj.light.h
       line=obj.light.y+(i)
-      se "["||line||";"||obj.light.x||"H[43m"|| SUBSTR(k.mp.line, mapstart, maplength)
+      se "["||line||";"||obj.light.x||"H[0;43;37m"|| SUBSTR(k.mp.line, mapstart, maplength)
     END
     obj.light.drawn=1
   END
@@ -953,11 +953,11 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
           emapstart=mapstart-obj.pl.dx
           elength=obj.pl.dx
         END
-        result_str=result_str||"[47;37m"|| SUBSTR(k.mp.line, emapstart, elength)
+        result_str=result_str||"[0;47;37m"|| SUBSTR(k.mp.line, emapstart, elength)
       END
       ELSE IF drawx==-1 THEN DO
         drawxpos=obj.light.x
-        result_str=result_str||"[43m"|| SUBSTR(k.mp.line, mapstart, obj.pl.dx)
+        result_str=result_str||"[0;43;37m"|| SUBSTR(k.mp.line, mapstart, obj.pl.dx)
       END
       
       /* handle line */
@@ -965,7 +965,7 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
         /* this is a line above the flashlight */
         /* check if need to erase top line */
         IF erasey==-1 THEN DO
-          result_str=result_str||"[47;37m"|| SUBSTR(k.mp.line, mapstart, maplength)
+          result_str=result_str||"[0;47;37m"|| SUBSTR(k.mp.line, mapstart, maplength)
         END
         ELSE ITERATE i  /* skip this loop iteration */
       END
@@ -973,7 +973,7 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
         /* this is a line below the flashlight */
         /* check if need to erase bottom line */
         IF erasey==1 THEN DO
-          result_str=result_str||"[47;37m"|| SUBSTR(k.mp.line, mapstart, maplength)
+          result_str=result_str||"[0;47;37m"|| SUBSTR(k.mp.line, mapstart, maplength)
         END
         ELSE ITERATE i  /* skip this loop iteration */
       END
@@ -981,7 +981,7 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
         /* this is a flashlight line */
         IF (i==0 & drawy==-1) | (i==obj.light.h & drawy==1) THEN DO
           /* add new flashlight line */
-          result_str=result_str||"[43m"|| SUBSTR(k.mp.line, mapstart, maplength)
+          result_str=result_str||"[0;43;37m"|| SUBSTR(k.mp.line, mapstart, maplength)
         END
         ELSE DO
           /* skip over already drawn portion of flashlight */
@@ -1006,10 +1006,10 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
       IF erasex==1 THEN DO
         IF obj.light.x+obj.light.w < maxcol-1 THEN elength=obj.pl.dx
         ELSE elength=1
-        result_str=result_str||"[47;37m"|| SUBSTR(k.mp.line, mapstart+maplength, elength)
+        result_str=result_str||"[0;47;37m"|| SUBSTR(k.mp.line, mapstart+maplength, elength)
       END
       ELSE IF drawx==1 THEN DO
-        result_str=result_str||"[43m"|| SUBSTR(k.mp.line, mapstart+maplength-obj.pl.dx, obj.pl.dx)
+        result_str=result_str||"[0;43;37m"|| SUBSTR(k.mp.line, mapstart+maplength-obj.pl.dx, obj.pl.dx)
       END
       
       IF line==maxline THEN result_str=result_str||park  /* fix for flashlight wrapping on last line */
@@ -2461,7 +2461,7 @@ INIT_OBJECTS:
   dragon.2="RHINDLE"
   
   /* want lists */ 
-  want.knubberrub.max=5 /* TODO: fix this. limited for now */
+  want.knubberrub.max=5  /* TODO: fix this. limited for now */
   want.knubberrub.0="CHALICE"
   want.knubberrub.1="SWORD"
   want.knubberrub.2="BRIDGE"

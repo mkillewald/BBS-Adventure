@@ -875,7 +875,7 @@ DRAW_FLASHLIGHT:
 
   DO i=0 TO obj.light.h
     line=obj.light.y+i
-    se "["||line||";"||obj.light.x||"H[43m"|| SUBSTR(k.mp.line, obj.light.x-1, obj.light.w+1)
+    se "["||line||";"||obj.light.x||"H[0;43;37m"|| SUBSTR(k.mp.line, obj.light.x-1, obj.light.w+1)
   END 
 return
 

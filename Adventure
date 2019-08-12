@@ -793,7 +793,7 @@ DRAW_PL:  /* draw player */
   call EQUIP("PL")  /* handle any equipped object */
   
   /* draw player */
-  se "["||obj.pl.y||";"||obj.pl.x||"H"||k.rm.fc||"лл"
+  se "["||obj.pl.y||";"||obj.pl.x||"H"||k.rm.c||"лл"
   
   IF debug==1 THEN call DEBUG_PL    
   se park

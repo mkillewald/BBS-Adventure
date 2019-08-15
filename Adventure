@@ -67,18 +67,18 @@ D_FULL=3
 minline=1; maxline=24; mincol=2; maxcol=79; castleline=16
 
 clear_scr="[40mf1@4" /* black background, clear screen, disable more */
-park="f0" /* returns cursor to home position without clearing screen */
+park="f0" /* RETURNs cursor to home position without clearing screen */
 
 menu_yadv=1  /* menu y advance */
 obj.pl.room=0  /* splash screen */
 game_running=0;
 difftotal=0 
 
-call RANDOM(,,time('s'))  /* seed random number generator */
-call DRAW_PHENOM
-call INIT_KINGDOM
-call DRAW_BG
-call DELAY(15)
+CALL RANDOM(,,time('s'))  /* seed random number generator */
+CALL DRAW_PHENOM
+CALL INIT_KINGDOM
+CALL DRAW_BG
+CALL DELAY(15)
 
 /* option items text */
 attack_items.0="delayed"
@@ -99,8 +99,8 @@ MAIN_MENU:
   item.hc="[40;37;1m"  /* item highight color */
   item.nc="[0;40;37m "  /* item normal color */
   
-  IF game_running==0 THEN call MAIN_ITEMS
-  ELSE call IN_GAME_ITEMS
+  IF game_running==0 THEN CALL MAIN_ITEMS
+  ELSE CALL IN_GAME_ITEMS
 
   se "[" || mpos.y + 0|| ";" || mpos.x || "H[1;40;30m€ﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂ€[0m"
   se "[" || mpos.y + 1|| ";" || mpos.x || "H[1;40;30m€ [33mBBS Adventure       " || ver || " [30m€[0m"
@@ -121,38 +121,38 @@ MAIN_MENU:
     IF result~="NOCHAR" THEN d=C2D(result)
     ELSE d=-999
     SELECT
-      WHEN d==113 THEN signal QUIT               /* q */
-      WHEN d==111 THEN signal OPTIONS            /* o */
-      WHEN d==99 THEN signal CONTROLS            /* c */
-      WHEN d==98 THEN signal ABOUT               /* b */
+      WHEN d==113 THEN SIGNAL QUIT               /* q */
+      WHEN d==111 THEN SIGNAL OPTIONS            /* o */
+      WHEN d==99 THEN SIGNAL CONTROLS            /* c */
+      WHEN d==98 THEN SIGNAL ABOUT               /* b */
       WHEN d==103 THEN DO 
-        IF game_running==0 THEN signal START   /* g  Start Game  */
+        IF game_running==0 THEN SIGNAL START   /* g  Start Game  */
         ELSE DO                                /* g  Resume Game */
-          call REFRESH
-          signal RESUME
+          CALL REFRESH
+          SIGNAL RESUME
         END                    
       END
-      WHEN game_running==1 & d==114 THEN signal REINCARNATE  /* r */
+      WHEN game_running==1 & d==114 THEN SIGNAL REINCARNATE  /* r */
       WHEN d==32 | d==13 THEN DO                 /* Space or Enter */
-        IF game_running==0 THEN call MAIN_SELECT
-        ELSE call IN_GAME_SELECT
+        IF game_running==0 THEN CALL MAIN_SELECT
+        ELSE CALL IN_GAME_SELECT
       END
-      WHEN d==97 | d==68 THEN call PREV_TAB  /* a or <-- "D" */
-      WHEN d==100 | d==67 THEN call NEXT_TAB /* d or --> "C" */
+      WHEN d==97 | d==68 THEN CALL PREV_TAB  /* a or <-- "D" */
+      WHEN d==100 | d==67 THEN CALL NEXT_TAB /* d or --> "C" */
       WHEN d==119 | d==65 THEN DO  /* w or up arrow "A" */
         IF item.cur==4 THEN indicator.cur=indicator.f         
-        call PREV_ITEM
+        CALL PREV_ITEM
       END
       WHEN d==115 | d==66 THEN DO  /* s or down arrow "B" */
         IF item.cur==3 THEN indicator.cur=indicator.b
-        call NEXT_ITEM
+        CALL NEXT_ITEM
       END
       OTHERWISE NOP
     END
   
-    call CHECK
+    CALL CHECK
   END                           
-return 
+RETURN 
 
 MAIN_ITEMS:
   mitem.0=" Start [32mG[37mame        "  
@@ -160,18 +160,18 @@ MAIN_ITEMS:
   mitem.2=" [32mC[37montrols          "  
   mitem.3=" A[32mb[37mout             "  
   mitem.4=" [32mQ[37muit to BBS       "  
-return
+RETURN
 
 MAIN_SELECT:
   SELECT
-    WHEN item.cur==0 THEN signal START
-    WHEN item.cur==1 THEN signal OPTIONS
-    WHEN item.cur==2 THEN signal CONTROLS
-    WHEN item.cur==3 THEN signal ABOUT
-    WHEN item.cur==4 THEN signal QUIT
+    WHEN item.cur==0 THEN SIGNAL START
+    WHEN item.cur==1 THEN SIGNAL OPTIONS
+    WHEN item.cur==2 THEN SIGNAL CONTROLS
+    WHEN item.cur==3 THEN SIGNAL ABOUT
+    WHEN item.cur==4 THEN SIGNAL QUIT
     OTHERWISE NOP
   END
-return
+RETURN
 
 IN_GAME_ITEMS:
   mitem.0=" Back to [32mG[37mame      "  
@@ -179,21 +179,21 @@ IN_GAME_ITEMS:
   mitem.2=" [32mC[37montrols          "  
   mitem.3=" [32mR[37meincarnate       "  
   mitem.4=" [32mQ[37muit to BBS       "  
-return
+RETURN
 
 IN_GAME_SELECT:
   SELECT
     WHEN item.cur==0 THEN DO
-      call REFRESH
-      signal RESUME
+      CALL REFRESH
+      SIGNAL RESUME
     END
-    WHEN item.cur==1 THEN signal OPTIONS
-    WHEN item.cur==2 THEN signal CONTROLS
-    WHEN item.cur==3 THEN signal REINCARNATE
-    WHEN item.cur==4 THEN signal QUIT
+    WHEN item.cur==1 THEN SIGNAL OPTIONS
+    WHEN item.cur==2 THEN SIGNAL CONTROLS
+    WHEN item.cur==3 THEN SIGNAL REINCARNATE
+    WHEN item.cur==4 THEN SIGNAL QUIT
     OTHERWISE NOP
   END
-return
+RETURN
 
 OPTIONS:
   tab.cur=1
@@ -208,7 +208,7 @@ OPTIONS:
   indicator.cur = indicator.f
   item.hc="[40;37;1m"  /* item highight color */
   item.nc="[0;40;37m "  /* item normal color */ 
-  call OPTIONS_ITEMS  
+  CALL OPTIONS_ITEMS  
   se "[" || mpos.y + 0|| ";" || mpos.x || "H[0;1;40;30m€ﬂ[43m [33mOptions [40;30mﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂﬂ€"
   se "[" || mpos.y + 1|| ";" || mpos.x || "H[1;40;30m€                          €"  
   IF game_running==0 THEN se "[" || mpos.y + 2|| ";" || mpos.x || "H[1;40;30m€   "||item.hc||indicator.cur||mitem.0||"   [1;30m€[0m"
@@ -223,9 +223,9 @@ OPTIONS:
   ELSE se "[" || mpos.y + 9|| ";" || mpos.x || "H[1;40;30m€   "||item.hc||indicator.b||mitem.3||"  [1;30m€"
   se "[" || mpos.y + 10|| ";" || mpos.x || "H[1;40;30m€‹‹‹‹‹‹‹‹‹‹‹‹‹‹‹‹‹‹‹‹‹‹‹‹‹‹€"
   if game_running==0 THEN DO 
-    call DIFFQUIP
+    CALL DIFFQUIP
   END
-  call DIFFBAR
+  CALL DIFFBAR
   se park
   
   /* options menu loop */
@@ -234,28 +234,28 @@ OPTIONS:
     IF result~="NOCHAR" THEN d=C2D(result)
     ELSE d=-999
     SELECT
-      WHEN d==113 | d==98 THEN signal MAIN_MENU  /* q or b (Back to main) */
+      WHEN d==113 | d==98 THEN SIGNAL MAIN_MENU  /* q or b (Back to main) */
       WHEN d==103 THEN DO 
-        IF game_running==0 THEN signal START   /* g  Start Game  */
+        IF game_running==0 THEN SIGNAL START   /* g  Start Game  */
         ELSE DO                                /* g  Resume Game */
-          call REFRESH
-          signal RESUME
+          CALL REFRESH
+          SIGNAL RESUME
         END 
       END
-      WHEN game_running==0 & d==105 THEN call SHORTCUT_OPTIONS_SELECT(0,2) /* i (Difficulty)   */
-      WHEN game_running==0 & d==107 THEN call SHORTCUT_OPTIONS_SELECT(1,3) /* k (Attack)       */
-      WHEN game_running==0 & d==102 THEN call SHORTCUT_OPTIONS_SELECT(2,4) /* f (Sword Fear)   */
-      WHEN d==32 | d==13 THEN call OPTIONS_SELECT  /* Space or Enter */
-      WHEN d==97 | d==68 THEN call PREV_TAB  /* a or <-- "D" */
-      WHEN d==100 | d==67 THEN call NEXT_TAB  /* d or --> "C" */
+      WHEN game_running==0 & d==105 THEN CALL SHORTCUT_OPTIONS_SELECT(0,2) /* i (Difficulty)   */
+      WHEN game_running==0 & d==107 THEN CALL SHORTCUT_OPTIONS_SELECT(1,3) /* k (Attack)       */
+      WHEN game_running==0 & d==102 THEN CALL SHORTCUT_OPTIONS_SELECT(2,4) /* f (Sword Fear)   */
+      WHEN d==32 | d==13 THEN CALL OPTIONS_SELECT  /* Space or Enter */
+      WHEN d==97 | d==68 THEN CALL PREV_TAB  /* a or <-- "D" */
+      WHEN d==100 | d==67 THEN CALL NEXT_TAB  /* d or --> "C" */
       WHEN game_running==0 & (d==119 | d==65) THEN DO  /* w or up arrow "A"*/
         indicator.cur=indicator.f
         IF item.cur==3 THEN DO
           menu_yadv=5
         END  
-        call OPTIONS_ITEMS
-        call PREV_ITEM
-        call QUIP_SELECT
+        CALL OPTIONS_ITEMS
+        CALL PREV_ITEM
+        CALL QUIP_SELECT
       END
       WHEN game_running==0 & (d==115 | d==66) THEN DO  /* s or down arrow "B" */
         IF item.cur==2 THEN DO
@@ -263,15 +263,15 @@ OPTIONS:
           indicator.cur=indicator.b
         END
         ELSE indicator.cur=indicator.f
-        call OPTIONS_ITEMS
-        call NEXT_ITEM
-        call QUIP_SELECT
+        CALL OPTIONS_ITEMS
+        CALL NEXT_ITEM
+        CALL QUIP_SELECT
       END
       OTHERWISE NOP
     END 
-    call CHECK
+    CALL CHECK
   END
-return
+RETURN
 
 OPTIONS_ITEMS:
   IF game_running==0 THEN DO
@@ -286,7 +286,7 @@ OPTIONS_ITEMS:
     mitem.2=" [37mSword Fear: [36m" || fear_items.fear || "   "
     mitem.3=" [32mB[37mack to Main Menu  "
   END
-return
+RETURN
 
 SHORTCUT_OPTIONS_SELECT:
   ARG item_to_activate, item_y_pos
@@ -295,18 +295,18 @@ SHORTCUT_OPTIONS_SELECT:
   item.cur=item_to_activate; item.x=mpos.x+4; item.y=mpos.y+item_y_pos;
   i = item.cur; indicator.cur=indicator.f
   se "["||item.y||";"||item.x||"H"||item.hc||indicator.cur||mitem.i
-  call OPTIONS_SELECT
-return
+  CALL OPTIONS_SELECT
+RETURN
 
 OPTIONS_SELECT:
   SELECT
-    WHEN item.cur==0 THEN call OPTIONS0
-    WHEN item.cur==1 THEN call OPTIONS1
-    WHEN item.cur==2 THEN call OPTIONS2
-    WHEN item.cur==3 THEN signal MAIN_MENU
+    WHEN item.cur==0 THEN CALL OPTIONS0
+    WHEN item.cur==1 THEN CALL OPTIONS1
+    WHEN item.cur==2 THEN CALL OPTIONS2
+    WHEN item.cur==3 THEN SIGNAL MAIN_MENU
     OTHERWISE NOP
   END
-return
+RETURN
 
 DIFFBAR:
   difftotal=0
@@ -333,22 +333,22 @@ DIFFBAR:
   ELSE row=7
   se "[" || mpos.y + row || ";" || mpos.x + 4 || "H[1;40;30m[" || diffbar || "[1;30m]"
   se park
-return
+RETURN
 
 QUIP_SELECT:
   SELECT
-    WHEN item.cur==0 THEN call DIFFQUIP
-    WHEN item.cur==1 THEN call ATTACKQUIP
-    WHEN item.cur==2 THEN call FEARQUIP
-    OTHERWISE call CLEARQUIP
+    WHEN item.cur==0 THEN CALL DIFFQUIP
+    WHEN item.cur==1 THEN CALL ATTACKQUIP
+    WHEN item.cur==2 THEN CALL FEARQUIP
+    OTHERWISE CALL CLEARQUIP
   END
-return
+RETURN
 
 CLEARQUIP:
   se "[" || mpos.y + 6 || ";" || mpos.x + 4 || "H" || "                    "
   se "[" || mpos.y + 7 || ";" || mpos.x + 4 || "H" || "                    "
   se park
-return
+RETURN
 
 DIFFQUIP:
   diffquip.1="2 castles, 2 dragons,"
@@ -364,7 +364,7 @@ DIFFQUIP:
   se "[" || mpos.y + 6 || ";" || mpos.x + 4 || "H" || diffquip.i
   se "[" || mpos.y + 7 || ";" || mpos.x + 4 || "H" || diffquip.j
   se park
-return
+RETURN
 
 ATTACKQUIP:  
   attackquip.0="dragons wait a bit   "
@@ -378,7 +378,7 @@ ATTACKQUIP:
   se "[" || mpos.y + 6 || ";" || mpos.x + 4 || "H" || attackquip.i
   se "[" || mpos.y + 7 || ";" || mpos.x + 4 || "H" || attackquip.j
   se park
-return
+RETURN
 
 FEARQUIP:  
   fearquip.0="dragons do not fear  "
@@ -392,40 +392,40 @@ FEARQUIP:
   se "[" || mpos.y + 6 || ";" || mpos.x + 4 || "H" || fearquip.i
   se "[" || mpos.y + 7 || ";" || mpos.x + 4 || "H" || fearquip.j
   se park
-return
+RETURN
 
 OPTIONS0:  /* difficulty */
-  IF game_running==1 THEN return
+  IF game_running==1 THEN RETURN
   IF difficulty==3 THEN difficulty=1 
   ELSE difficulty=difficulty+1
   IF item.cur==0 THEN intensity=1
   ELSE intensity=0    
   se "[" || mpos.y + 2 || ";" || mpos.x + 20 || "H[" || intensity || ";36m" || difficulty
-  call DIFFQUIP
-  call DIFFBAR
-return
+  CALL DIFFQUIP
+  CALL DIFFBAR
+RETURN
 
 OPTIONS1:  /* dragon attack */
-  IF game_running==1 THEN return
+  IF game_running==1 THEN RETURN
   IF attack==1 THEN attack=0
   ELSE attack=attack+1
   IF item.cur==1 THEN intensity=1
   ELSE intensity=0
   se "[" || mpos.y + 3 || ";" || mpos.x + 14 || "H[" || intensity || ";36m" || attack_items.attack
-  call ATTACKQUIP
-  call DIFFBAR
-return
+  CALL ATTACKQUIP
+  CALL DIFFBAR
+RETURN
 
 OPTIONS2:  /* sword fear */
-  IF game_running==1 THEN return
+  IF game_running==1 THEN RETURN
   IF fear==1 THEN fear=0
   ELSE fear=fear+1
   IF item.cur==2 THEN intensity=1
   ELSE intensity=0    
   se "[" || mpos.y + 4 || ";" || mpos.x + 18 || "H[" || intensity || ";36m" || fear_items.fear
-  call FEARQUIP
-  call DIFFBAR
-return
+  CALL FEARQUIP
+  CALL DIFFBAR
+RETURN
 
 CONTROLS:
   tab.cur=2
@@ -451,32 +451,32 @@ CONTROLS:
     IF result~="NOCHAR" THEN d=C2D(result)
     ELSE d=-999
     SELECT
-      WHEN d==113 | d==98 THEN signal MAIN_MENU  /* q or b Back to Main Menu */
+      WHEN d==113 | d==98 THEN SIGNAL MAIN_MENU  /* q or b Back to Main Menu */
       WHEN d==103 THEN DO 
-        IF game_running==0 THEN signal START   /* g  Start Game  */
+        IF game_running==0 THEN SIGNAL START   /* g  Start Game  */
         ELSE DO                                /* g  Resume Game */
-          call REFRESH
-          signal RESUME
+          CALL REFRESH
+          SIGNAL RESUME
         END 
       END
-      WHEN d==32 | d==13 THEN call CONTROLS_SELECT  /* Space or Enter */
-      WHEN d==97 | d==68 THEN call PREV_TAB   /* a or <-- "D" */
-      WHEN d==100 | d==67 THEN call NEXT_TAB  /* d or --> "C" */
-      WHEN d==119 | d==65 THEN call PREV_ITEM  /* w or up arrow "A" */
-      WHEN d==115 | d==66 THEN call NEXT_ITEM  /* s or down arrow "B" */
+      WHEN d==32 | d==13 THEN CALL CONTROLS_SELECT  /* Space or Enter */
+      WHEN d==97 | d==68 THEN CALL PREV_TAB   /* a or <-- "D" */
+      WHEN d==100 | d==67 THEN CALL NEXT_TAB  /* d or --> "C" */
+      WHEN d==119 | d==65 THEN CALL PREV_ITEM  /* w or up arrow "A" */
+      WHEN d==115 | d==66 THEN CALL NEXT_ITEM  /* s or down arrow "B" */
       OTHERWISE NOP
     END
   
-    call CHECK
+    CALL CHECK
   END
-return
+RETURN
 
 CONTROLS_SELECT:
   SELECT
-    WHEN item.cur==0 THEN signal MAIN_MENU
+    WHEN item.cur==0 THEN SIGNAL MAIN_MENU
     OTHERWISE NOP
   END
-return
+RETURN
 
 ABOUT:
   tab.cur=3
@@ -501,77 +501,77 @@ ABOUT:
     IF result~="NOCHAR" THEN d=C2D(result)
     ELSE d=-999
     SELECT
-      WHEN d==113 | d==98 THEN signal MAIN_MENU  /* q or b Back to Main Menu */
+      WHEN d==113 | d==98 THEN SIGNAL MAIN_MENU  /* q or b Back to Main Menu */
       WHEN d==103 THEN DO 
-        IF game_running==0 THEN signal START   /* g  Start Game  */
+        IF game_running==0 THEN SIGNAL START   /* g  Start Game  */
         ELSE DO                                /* g  Resume Game */
-          call REFRESH
-          signal RESUME
+          CALL REFRESH
+          SIGNAL RESUME
         END  
       END
-      WHEN d==32 | d==13 THEN call ABOUT_SELECT  /* Space or Enter */ 
-      WHEN d==97 | d==68 THEN call PREV_TAB  /* a or <-- "D" */
-      WHEN d==100 | d==67 THEN call NEXT_TAB  /* d or --> "C" */
-      WHEN d==119 | d==65 THEN call PREV_ITEM  /* w or up arrow "A" */
-      WHEN d==115 | d==66 THEN call NEXT_ITEM  /* s or down arrow "B" */
+      WHEN d==32 | d==13 THEN CALL ABOUT_SELECT  /* Space or Enter */ 
+      WHEN d==97 | d==68 THEN CALL PREV_TAB  /* a or <-- "D" */
+      WHEN d==100 | d==67 THEN CALL NEXT_TAB  /* d or --> "C" */
+      WHEN d==119 | d==65 THEN CALL PREV_ITEM  /* w or up arrow "A" */
+      WHEN d==115 | d==66 THEN CALL NEXT_ITEM  /* s or down arrow "B" */
       OTHERWISE NOP
     END 
-    call CHECK
+    CALL CHECK
   END
-return
+RETURN
 
 ABOUT_SELECT:
   SELECT
-    WHEN item.cur==0 THEN signal MAIN_MENU
+    WHEN item.cur==0 THEN SIGNAL MAIN_MENU
     OTHERWISE NOP
   END
-return
+RETURN
 
 NEXT_ITEM:
-  IF item.cur==item.tot-1 THEN return  
+  IF item.cur==item.tot-1 THEN RETURN  
   i = item.cur  
   se "["||item.y||";"||item.x||"H"||item.nc||mitem.i
   item.cur = item.cur + 1
   item.y = item.y + menu_yadv
-  menu_yadv=1  /* after using menu_yadv, return it to default value */ 
+  menu_yadv=1  /* after using menu_yadv, RETURN it to default value */ 
   i = item.cur
   se "["||item.y||";"||item.x||"H"||item.hc||indicator.cur||mitem.i
   se park
-return
+RETURN
 
 PREV_ITEM:
-  IF item.cur==0 THEN return  
+  IF item.cur==0 THEN RETURN  
   i = item.cur  
   se "["||item.y||";"||item.x||"H"||item.nc||mitem.i
   item.cur = item.cur - 1
   item.y = item.y - menu_yadv
-  menu_yadv=1  /* after using menu_yadv, return it to default value */
+  menu_yadv=1  /* after using menu_yadv, RETURN it to default value */
   i = item.cur
   se "["||item.y||";"||item.x||"H"||item.hc||indicator.cur||mitem.i
   se park
-return
+RETURN
 
 NEXT_TAB:
-  IF tab.cur==3 THEN return  
+  IF tab.cur==3 THEN RETURN  
   tab.cur = tab.cur + 1
-  call TAB_JUMP
-return
+  CALL TAB_JUMP
+RETURN
 
 PREV_TAB:
-  IF tab.cur==0 THEN return;  
+  IF tab.cur==0 THEN RETURN;  
   tab.cur = tab.cur - 1
-  call TAB_JUMP
-return
+  CALL TAB_JUMP
+RETURN
 
 TAB_JUMP:
   SELECT
-    WHEN tab.cur==0 THEN signal MAIN_MENU
-    WHEN tab.cur==1 THEN signal OPTIONS
-    WHEN tab.cur==2 THEN signal CONTROLS
-    WHEN tab.cur==3 THEN signal ABOUT
+    WHEN tab.cur==0 THEN SIGNAL MAIN_MENU
+    WHEN tab.cur==1 THEN SIGNAL OPTIONS
+    WHEN tab.cur==2 THEN SIGNAL CONTROLS
+    WHEN tab.cur==3 THEN SIGNAL ABOUT
     OTHERWISE NOP
   END
-return
+RETURN
 
 DRAW_PHENOM:
   se clear_scr
@@ -585,7 +585,7 @@ DRAW_PHENOM:
       displayed=displayed||line||":"
       count=count+1
       se "["||6+line||";1H"||phenom.line
-      call DELAY(2)
+      CALL DELAY(2)
     END
     IF time('e') > 1.3 THEN DO
     	se "[7;1H"
@@ -594,19 +594,19 @@ DRAW_PHENOM:
       END
       count=999
     END
-    call CHECK
+    CALL CHECK
   END
   se park
-  call DELAY(75)
-return
+  CALL DELAY(75)
+RETURN
 
 /** GAME START **/
 START:
   start= time('r') /* reset interval timer */
   game_running=1
 
-  call INIT_FLASHLIGHT /* init flashlight */
-  call INIT_OBJECTS  /* init objects */
+  CALL INIT_FLASHLIGHT /* init flashlight */
+  CALL INIT_OBJECTS  /* init objects */
   
   IF difficulty==1 THEN DO
     obj.knub.room=0
@@ -614,7 +614,7 @@ START:
     obj.rhindle.room=0
   END
   ELSE IF difficulty==2 THEN DO
-    call EXPAND_KINGDOM
+    CALL EXPAND_KINGDOM
     /* set level 2 item locations */
     obj.ykey.room=9  /* orig 9, test 3 */
     obj.bkey.room=25
@@ -625,7 +625,7 @@ START:
     obj.magnet.room=14
   END
   ELSE IF difficulty==3 THEN DO
-    call EXPAND_KINGDOM
+    CALL EXPAND_KINGDOM
     /* randomize item locations */
     DO i=0 TO maxitem  
       o=item.i
@@ -654,12 +654,12 @@ START:
   END
     
   REINCARNATE:
-  call INIT_PLAYER  /* init player */
-  call RESET_DRAGONS
+  CALL INIT_PLAYER  /* init player */
+  CALL RESET_DRAGONS
 
-  call DRAW_BG
-  call DRAW_PL
-  call DRAW_OBJS
+  CALL DRAW_BG
+  CALL DRAW_PL
+  CALL DRAW_OBJS
   
   /* main loop */
   RESUME:
@@ -670,43 +670,43 @@ START:
     IF result~="NOCHAR" THEN d=C2D(result)
     ELSE d=-999
     SELECT
-      WHEN d==113 | d==109 THEN call MAIN_MENU /* q or m */
-      WHEN d==32 | d==13 THEN call DROP(1)     /* Space or Enter */
-      WHEN d==119 | d==65 THEN obj.pl.diry=-1  /* call MV_U */  /* w or up arrow (A) */
-      WHEN d==115 | d==66 THEN obj.pl.diry=1   /* call MV_D */ /* s or down arrow (B) */
-      WHEN d==100 | d==67 THEN obj.pl.dirx=1   /* call MV_R */ /* d or --> (C) */
-      WHEN d==97 | d==68 THEN obj.pl.dirx=-1   /* call MV_L */  /* a or <-- (D) */
-      WHEN d==114 THEN call REFRESH            /* r */
+      WHEN d==113 | d==109 THEN CALL MAIN_MENU /* q or m */
+      WHEN d==32 | d==13 THEN CALL DROP(1)     /* Space or Enter */
+      WHEN d==119 | d==65 THEN obj.pl.diry=-1  /* CALL MV_U */  /* w or up arrow (A) */
+      WHEN d==115 | d==66 THEN obj.pl.diry=1   /* CALL MV_D */ /* s or down arrow (B) */
+      WHEN d==100 | d==67 THEN obj.pl.dirx=1   /* CALL MV_R */ /* d or --> (C) */
+      WHEN d==97 | d==68 THEN obj.pl.dirx=-1   /* CALL MV_L */  /* a or <-- (D) */
+      WHEN d==114 THEN CALL REFRESH            /* r */
       WHEN d==112 THEN DO                      /* p */
         IF debug==1 THEN debug=0
         ELSE debug=1
-        call REFRESH
+        CALL REFRESH
       END
       OTHERWISE NOP
     END
     
-    call PLAYER_MOVE
+    CALL PLAYER_MOVE
     
-    call MAGNET_SEEK
-    call MAGNETISM
+    CALL MAGNET_SEEK
+    CALL MAGNETISM
     
     IF difficulty~=1 & bat_enable==1 THEN DO
-      call BAT_SEEK
-      call BAT_ANIM
-      call BAT_MOVE
+      CALL BAT_SEEK
+      CALL BAT_ANIM
+      CALL BAT_MOVE
     END
     
     IF dragon_enable>0 THEN DO
 	    DO i=0 TO maxdragon
 	     	d=dragon.i
 	     	IF obj.d.state>=D_DEAD THEN ITERATE i
-	      call DRAGON_GUARD(d)
-	      call DRAGON_FLEE(d)
-	      call DRAGON_MOVE(d)
+	      CALL DRAGON_GUARD(d)
+	      CALL DRAGON_FLEE(d)
+	      CALL DRAGON_MOVE(d)
 	    END
 	  END
        
-    call CHECK
+    CALL CHECK
   END
 
 QUIT:
@@ -714,54 +714,54 @@ QUIT:
   exit
   
 DEBUG:
-  IF game_running~=1 THEN return
+  IF game_running~=1 THEN RETURN
   se "[1;2HRoom:"|| rm || " Gates W:" || obj.wgate.locked || " B:" || obj.bgate.locked || " Y:" || obj.ygate.locked
   se "[2;2HExits T:" || k.rm.te || " R:" || k.rm.re || " B:" || k.rm.be || " L:" || k.rm.le || " CI:" || k.rm.ci || " CO:" || k.rm.co
-return
+RETURN
 
 DEBUG_PL:
-  IF game_running~=1 THEN return
+  IF game_running~=1 THEN RETURN
   se "[3;2HPL.X:"||obj.pl.x||" PL.Y:"||obj.pl.y||" PL.DIRX:"||obj.pl.dirx||" PL.DIRY:"||obj.pl.diry||" PL.S:"||obj.pl.state"  "
   IF flashlight>0 & debug_flashl==1 THEN se "[43m[4;2HFlash X:"||obj.light.x||" Y:"||obj.light.y||" W:"||obj.light.w||" H:"||obj.light.h||"        " 
   /*se "[5;2HYK.R:"||obj.ykey.room||" YK.X:"||obj.ykey.x||" YK.Y:"||obj.ykey.y||" YK.DIRX:"||obj.ykey.dirx||" YK.DIRY:"||obj.ykey.diry||"     "*/
-return
+RETURN
 
 DEBUG_MAGNET:
-  IF game_running~=1 | debug_magnet~=1 THEN return
+  IF game_running~=1 | debug_magnet~=1 THEN RETURN
   dbmwo=obj.magnet.want
   se "[5;2HM.W:" || dbmwo || " M.BUSY:" || obj.magnet.busy|| "             " 
   IF dbmwo~="NONE" THEN se " owDX:" || obj.dbmwo.dx || " owDY:" || obj.dbmwo.dy || "              "
-return
+RETURN
 
 DEBUG_BAT:  /* TODO: finish */
-  IF game_running~=1 | debug_bat~=1 THEN return
+  IF game_running~=1 | debug_bat~=1 THEN RETURN
   se "[5;2H"||k.rm.c||"B.R:"||obj.knub.room||" B.X:"||obj.knub.x||" B.Y:"||obj.knub.y||" B.W:"||obj.knub.want||" B.FU:"||obj.knub.fedup||" B.S:"||obj.knub.seek||" B.E:"||obj.knub.equip||" B.DY:"||obj.knub.dy||"     " 
-return
+RETURN
 
 DEBUG_DRAGON:  /* TODO: finish */
-  IF game_running~=1 | debug_dragon~=1 THEN return
+  IF game_running~=1 | debug_dragon~=1 THEN RETURN
   se "[5;2HY.R:"||obj.yorgle.room||" Y.X:"||obj.yorgle.x||" Y.Y:"||obj.yorgle.y||" Y.DIRX:"||obj.yorgle.dirx||" Y.DIRY:"||obj.yorgle.diry||" Y.W:"||obj.yorgle.want||" Y.F:"||obj.yorgle.fear||"      "
   se "[6;2HY.DX:"||obj.yorgle.dx||" Y.DY:"||obj.yorgle.dy||"        "
-return
+RETURN
 
 DEBUG_STEPPER:
   gc
   IF result=="Q" THEN exit
-return
+RETURN
 
 REFRESH:  /* redraw entire screen */
   rm=obj.pl.room
-  call DRAW_BG
-  IF flashlight~=0 & k.rm.dark==1 THEN call DRAW_FLASHLIGHT
-  call DRAW_OBJS
-  call DRAW_PL
-return
+  CALL DRAW_BG
+  IF flashlight~=0 & k.rm.dark==1 THEN CALL DRAW_FLASHLIGHT
+  CALL DRAW_OBJS
+  CALL DRAW_PL
+RETURN
 
 DRAW_BG:  /* draw background (not in main loop) */
   /* draw layer 0 */
-  call DRAW_ROOM
-  IF DEBUG==1 THEN call DEBUG
-return
+  CALL DRAW_ROOM
+  IF DEBUG==1 THEN CALL DEBUG
+RETURN
   
 DRAW_ROOM:
   se clear_scr
@@ -781,43 +781,43 @@ DRAW_ROOM:
     END
     ELSE tr line
   END
-return
+RETURN
 
 /* TODO: fix equipped object being drawn in wrong room on castle exit if grap/drop occurs on exit */
 DRAW_PL:  /* draw player */
   rm=obj.pl.room
-  IF rm==0 THEN return
-  IF OK2DRAWOBJ("PL")==0 THEN return
+  IF rm==0 THEN RETURN
+  IF OK2DRAWOBJ("PL")==0 THEN RETURN
   
-  call DRAW_FLASHLIGHT_WITH_MOTION
+  CALL DRAW_FLASHLIGHT_WITH_MOTION
   
-  call EQUIP("PL")  /* handle any equipped object */
+  CALL EQUIP("PL")  /* handle any equipped object */
   
   /* draw player */
   se "["||obj.pl.y||";"||obj.pl.x||"H"||k.rm.c||"€€"
   
-  IF debug==1 THEN call DEBUG_PL    
+  IF debug==1 THEN CALL DEBUG_PL    
   se park
-return
+RETURN
 
 ERASE_PL:
   rm=obj.pl.room
-  IF rm==0 THEN return
+  IF rm==0 THEN RETURN
   mp=k.rm.map 
   
-  /* call ERASE_FLASHLIGHT */
+  /* CALL ERASE_FLASHLIGHT */
   
   /* erase equipped object */
   /* TODO: clarify this by moving this into ERASE_OBJECT */
-  IF obj.pl.equip~="NONE" THEN call ERASE_OBJECT(obj.pl.equip)
-  IF obj.pl.equip=="KNUBBERRUB" & obj.knubberrub.equip~="NONE" THEN call ERASE_OBJECT(obj.knubberrub.equip)
+  IF obj.pl.equip~="NONE" THEN CALL ERASE_OBJECT(obj.pl.equip)
+  IF obj.pl.equip=="KNUBBERRUB" & obj.knubberrub.equip~="NONE" THEN CALL ERASE_OBJECT(obj.knubberrub.equip)
    
-  IF OK2DRAWOBJ("PL")==0 THEN return
+  IF OK2DRAWOBJ("PL")==0 THEN RETURN
     
   /* fix for castle exit player/gate interaction */
   DO j=0 to maxgate
     g=gate.j
-    IF COLLIDE_NOW("PL", g)==1 THEN return
+    IF COLLIDE_NOW("PL", g)==1 THEN RETURN
   END
   
   /* erase player */  
@@ -832,7 +832,7 @@ ERASE_PL:
   IF flashlight~=0 & k.rm.dark==1 THEN erasecolor="[43m"
   ELSE erasecolor=k.rm.c
   se "["||obj.pl.y||";"||obj.pl.x||"H"||erasecolor||str
-return
+RETURN
 
 GET_FLASHLIGHT_SIZE:
   obj.light.x=obj.pl.x-obj.light.offx
@@ -865,28 +865,28 @@ GET_FLASHLIGHT_SIZE:
     obj.light.dh=obj.light.y+obj.light.h-maxline
     obj.light.h=obj.light.h-obj.light.dh
   END
-return
+RETURN
 
 DRAW_FLASHLIGHT:
   rm=obj.pl.room
   mp=k.rm.map
-  IF flashlight==0 | k.rm.dark==0 THEN return
+  IF flashlight==0 | k.rm.dark==0 THEN RETURN
   
-  call GET_FLASHLIGHT_SIZE
+  CALL GET_FLASHLIGHT_SIZE
 
   DO i=0 TO obj.light.h
     line=obj.light.y+i
     se "["||line||";"||obj.light.x||"H[0;43;37m"|| SUBSTR(k.mp.line, obj.light.x-1, obj.light.w+1)
   END 
-return
+RETURN
 
 /* TODO: clean this up */
 DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been) */
   rm=obj.pl.room
   mp=k.rm.map
-  IF flashlight==0 | k.rm.dark==0 THEN return
+  IF flashlight==0 | k.rm.dark==0 THEN RETURN
   
-  call GET_FLASHLIGHT_SIZE
+  CALL GET_FLASHLIGHT_SIZE
   
   drawx=0
   erasex=0
@@ -1027,26 +1027,26 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
     	DO j=0 TO maxdrawitem
     		o=item.j
     		IF COLLIDE_BY_LINE("LIGHT", line, o)==1 THEN DO
-    			call DRAW_OBJ_LINE(o, line)
+    			CALL DRAW_OBJ_LINE(o, line)
     		END
     	END
     END
   END
-return
+RETURN
 
 ERASE_FLASHLIGHT:  /* TODO: delete if no longer used */
   rm=obj.pl.room
   mp=k.rm.map
-  IF flashlight==0 | k.rm.dark==0 THEN return
+  IF flashlight==0 | k.rm.dark==0 THEN RETURN
   
-  call GET_FLASHLIGHT_SIZE
+  CALL GET_FLASHLIGHT_SIZE
 
   DO i=0 TO obj.light.h
     line=obj.light.y+i
     /* se "["||line||";"||obj.light.x||"H[47m"|| SUBSTR(k.mp.line, obj.light.x-1, obj.light.w+1) */
     se "["||line||";"||obj.light.x||"H[47m"|| COPIES(" ", obj.light.w+1)
   END
-return
+RETURN
 
 DRAW_OBJS:  /* draw objects (not in the main loop) */
   /* draw items */
@@ -1054,38 +1054,38 @@ DRAW_OBJS:  /* draw objects (not in the main loop) */
     o=item.i
     /* draw objects in current room that are not equipped by player or knubberrub */ 
     IF obj.o.room==obj.pl.room & obj.pl.equip~=o & obj.knubberrub.equip~=o THEN DO
-      call DRAW_OBJECT(o)
+      CALL DRAW_OBJECT(o)
     END
   END  
   /* draw gates */
   DO i=0 TO maxgate
     o=gate.i
     IF obj.o.room==obj.pl.room THEN DO
-      call draw_gate(o)
+      CALL draw_gate(o)
     END
   END
   /* draw msg's */
   IF obj.pl.room==30 THEN DO
     IF msg_toggle==1 THEN msg_toggle=0
     ELSE msg_toggle=1
-    call DRAW_MSG(msg_toggle)
-    call DRAW_MSG(2)
-    call DRAW_MSG(3)
+    CALL DRAW_MSG(msg_toggle)
+    CALL DRAW_MSG(2)
+    CALL DRAW_MSG(3)
   END
   /* draw dead or stuffed dragons */
   DO i=0 TO maxdragon
     d=dragon.i
-    IF (obj.d.state==D_DEAD | obj.d.state=D_FULL) & obj.knubberrub.equip~=d THEN call DRAW_DRAGON(d)
+    IF (obj.d.state==D_DEAD | obj.d.state=D_FULL) & obj.knubberrub.equip~=d THEN CALL DRAW_DRAGON(d)
   END
-return
+RETURN
 
 OK2DRAWOBJ: /* check if ok to draw object */
   ARG o
-  IF obj.o.x<mincol | obj.o.x+obj.o.w>maxcol | obj.o.y<minline | obj.o.y+obj.o.h>maxline THEN return 0 /* don't draw */
-  ELSE IF o~="PL" & GATE_COLLIDE(o)==1 THEN return 0  /* dont draw */
-  ELSE IF MSG_COLLIDE(o)==1 THEN return 0  /* don't draw */
-  ELSE return 1  /* draw item */
-return
+  IF obj.o.x<mincol | obj.o.x+obj.o.w>maxcol | obj.o.y<minline | obj.o.y+obj.o.h>maxline THEN RETURN 0 /* don't draw */
+  ELSE IF o~="PL" & GATE_COLLIDE(o)==1 THEN RETURN 0  /* dont draw */
+  ELSE IF MSG_COLLIDE(o)==1 THEN RETURN 0  /* don't draw */
+  ELSE RETURN 1  /* draw item */
+RETURN
 
 DRAW_MSG:
   ARG n
@@ -1095,23 +1095,23 @@ DRAW_MSG:
     se "["||obj.m.y+l||";"||obj.m.x||"H"||obj.m.col||obj.m.spr.l||k.rm.fc
   END
   se park
-return
+RETURN
 
 DRAW_OBJECT:  /* TODO: fix item interactions */
   ARG dro
-  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
+  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
   IF dro=="BRIDGE" THEN DO
-    call DRAW_BRIDGE
-    return
+    CALL DRAW_BRIDGE
+    RETURN
   END
   ELSE IF dro=="CHALICE" | dro=="MAGNET" | obj.dro.type=="dragon" THEN DO
-    call DRAW_INVERSE_OBJECT(dro)
-    return
+    CALL DRAW_INVERSE_OBJECT(dro)
+    RETURN
   END
   ELSE IF dro=="KNUBBERRUB" THEN DO 
-    call DRAW_BAT
-    call EQUIP("KNUBBERRUB")
-    return
+    CALL DRAW_BAT
+    CALL EQUIP("KNUBBERRUB")
+    RETURN
   END
   rm=obj.pl.room
   mp=k.rm.map
@@ -1150,7 +1150,7 @@ DRAW_OBJECT:  /* TODO: fix item interactions */
     END
   END
   se park
-return
+RETURN
 
 DRAW_OBJ_LINE:
   ARG dro, drawline, start, length
@@ -1182,24 +1182,24 @@ DRAW_OBJ_LINE:
     END
   END       
   se "["||drawline||";"||obj.dro.x||"H"||obj.dro.col||result_line||k.rm.fc
-return
+RETURN
 
 /* TODO: fix flashlight interaction */
 DRAW_OBJECT_WITH_MOTION: /* draw object in motion (erase where its been) */
   ARG dro
-  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
+  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
   IF dro=="BRIDGE" THEN DO
-    call DRAW_BRIDGE
-    return
+    CALL DRAW_BRIDGE
+    RETURN
   END
   ELSE IF dro=="CHALICE" | dro=="MAGNET" THEN DO
-    call DRAW_INVERSE_OBJECT_WITH_MOTION(dro)
-    return
+    CALL DRAW_INVERSE_OBJECT_WITH_MOTION(dro)
+    RETURN
   END
   ELSE IF dro=="KNUBBERRUB" THEN DO 
-    call DRAW_BAT
-    call EQUIP("KNUBBERRUB")
-    return
+    CALL DRAW_BAT
+    CALL EQUIP("KNUBBERRUB")
+    RETURN
   END
   
   rm=obj.pl.room
@@ -1290,12 +1290,12 @@ DRAW_OBJECT_WITH_MOTION: /* draw object in motion (erase where its been) */
     se "["||line||";"||drawxpos||"H"||result_str||k.rm.fc          
   END
   se park
-return
+RETURN
 
 /* TODO: fix flashlight interaction */
 DRAW_INVERSE_OBJECT: /* draw object whose bg is fg. what if C A T really spelled DOG? */
   ARG dro
-  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
+  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
   rm=obj.pl.room
   mp=k.rm.map
   DO j=0 TO obj.dro.h
@@ -1332,12 +1332,12 @@ DRAW_INVERSE_OBJECT: /* draw object whose bg is fg. what if C A T really spelled
     se "["||obj.dro.y+j||";"||obj.dro.x||"H"||obj.dro.col||result_line||k.rm.fc
   END
   se park
-return
+RETURN
 
 /* TODO: fix flashlight interaction */
 DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T really spelled DOG? */
   ARG dro
-  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
+  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
   rm=obj.pl.room
   mp=k.rm.map
   
@@ -1433,14 +1433,14 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
     se "["||line||";"||drawxpos||"H"||result_str /* ||k.rm.fc */         
   END
   se park
-return
+RETURN
 
 ERASE_OBJECT:
   ARG dro
-  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
+  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
   IF dro=="BRIDGE" THEN DO
-    call ERASE_BRIDGE
-    return
+    CALL ERASE_BRIDGE
+    RETURN
   END
   rm=obj.pl.room
   mp=k.rm.map
@@ -1457,11 +1457,11 @@ ERASE_OBJECT:
     se "["||j||";"||obj.dro.x||"H"||erasecolor||str
   END
   se park
-return
+RETURN
 
 DRAW_BRIDGE: /* TODO: fix item interactions */
   dro="BRIDGE"
-  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
+  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
   rm=obj.pl.room
   mp=k.rm.map
   DO j=0 TO obj.dro.h
@@ -1502,11 +1502,11 @@ DRAW_BRIDGE: /* TODO: fix item interactions */
     se "["||obj.dro.y+j||";"||obj.dro.x||"H"||obj.dro.col||result_line||k.rm.fc
   END
   se park
-return
+RETURN
 
 ERASE_BRIDGE:
   o="BRIDGE"
-  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN return
+  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
   rm=obj.pl.room
   mp=k.rm.map
   DO j=obj.dro.y TO obj.dro.y+obj.dro.h
@@ -1527,7 +1527,7 @@ ERASE_BRIDGE:
     se "["||j||";"||obj.dro.x||"H"||k.rm.c||str1||"[6C"||str2
   END
   se park
-return
+RETURN
 
 DRAW_GATE:    
   ARG dro
@@ -1536,34 +1536,34 @@ DRAW_GATE:
     se "["||obj.dro.y+j||";"||obj.dro.x||"H"||obj.dro.col||obj.dro.spr.j
   END
   se park
-return
+RETURN
 
 DRAW_DRAGON:  /* TODO: finish */
   ARG dro
-  call DRAW_INVERSE_OBJECT_WITH_MOTION(dro)
-return
+  CALL DRAW_INVERSE_OBJECT_WITH_MOTION(dro)
+RETURN
 
 ERASE_DRAGON:  /* TODO: finish */
   ARG dro
-  call ERASE_OBJECT(dro)
-return
+  CALL ERASE_OBJECT(dro)
+RETURN
 
-DRAW_BAT:  /* called by BAT_MOVE in main loop */
-  IF OK2DRAWOBJ(knub)==0 | obj.knub.room~=obj.pl.room THEN return
-  call EQUIP(knub)
-  call DRAW_INVERSE_OBJECT_WITH_MOTION(knub)
-return
+DRAW_BAT:  /* CALLed by BAT_MOVE in main loop */
+  IF OK2DRAWOBJ(knub)==0 | obj.knub.room~=obj.pl.room THEN RETURN
+  CALL EQUIP(knub)
+  CALL DRAW_INVERSE_OBJECT_WITH_MOTION(knub)
+RETURN
 
 ERASE_BAT:
   /* erase equipped object */
-  IF obj.knubberrub.equip~="NONE" THEN call ERASE_OBJECT(obj.knubberrub.equip)
+  IF obj.knubberrub.equip~="NONE" THEN CALL ERASE_OBJECT(obj.knubberrub.equip)
   /* erase knubberrub */
-  call ERASE_OBJECT("KNUBBERRUB")
-return
+  CALL ERASE_OBJECT("KNUBBERRUB")
+RETURN
 
 PLAYER_MOVE:
-  IF obj.pl.state==PL_DEAD | (obj.pl.dirx==0 & obj.pl.diry==0) THEN return
-  call EXIT_BEING("PL") 
+  IF obj.pl.state==PL_DEAD | (obj.pl.dirx==0 & obj.pl.diry==0) THEN RETURN
+  CALL EXIT_BEING("PL") 
   
   IF obj.pl.dirx==-1 & obj.pl.x==mincol+1 THEN obj.pl.dx=1 
   ELSE IF obj.pl.dirx==1 & obj.pl.x==maxcol-2 THEN obj.pl.dx=1  
@@ -1571,33 +1571,33 @@ PLAYER_MOVE:
   obj.pl.dy=1
   
   /* do player-gate collision detect */
-  IF GATE_COLLIDE("PL")==1 THEN return
+  IF GATE_COLLIDE("PL")==1 THEN RETURN
     
   /* do player-msg collision detect */
-  IF MSG_COLLIDE("PL")==1 THEN return
+  IF MSG_COLLIDE("PL")==1 THEN RETURN
   	
   /* do player-dragon collision detect */
   IF DRAGON_COLLIDE("PL")==1 THEN DO
   	IF obj.pl.dx==2 THEN DO
   		/* moving 2 char failed, lets try 1 char */
   		obj.pl.dx=1
-  		IF DRAGON_COLLIDE("PL")==1 THEN return
+  		IF DRAGON_COLLIDE("PL")==1 THEN RETURN
   	END
-  	ELSE return
+  	ELSE RETURN
   END
     
   /* do map collision detect */
   IF WALL("PL")==1 THEN DO
-    call ITEM_WALL_CHECK
+    CALL ITEM_WALL_CHECK
     IF obj.pl.dx==2 THEN DO
       /* moving 2 char failed, lets try 1 char */
       obj.pl.dx=1
       IF WALL("PL")==1 THEN DO
-        call ITEM_WALL_CHECK
-        return
+        CALL ITEM_WALL_CHECK
+        RETURN
       END
     END
-    ELSE return
+    ELSE RETURN
   END
   
   /* OK 2 move player */
@@ -1606,47 +1606,47 @@ PLAYER_MOVE:
   DO i=0 TO maxgrabitem
     o=item.i
     IF o=="BRIDGE" & obj.knubberrub.equip~=o & BRIDGE_COLLIDE("PL")==1 THEN NOP /* allow pl to wa lk accross bridge */
-    ELSE IF o==knub & (obj.knub.fedup==0 | obj.knub.fedup>400) & WILL_COLLIDE("PL", o)==1 THEN call GRAB("PL", o)
-    ELSE IF obj.knubberrub.equip~=o & WILL_COLLIDE("PL", o)==1 THEN call GRAB("PL", o)
+    ELSE IF o==knub & (obj.knub.fedup==0 | obj.knub.fedup>400) & WILL_COLLIDE("PL", o)==1 THEN CALL GRAB("PL", o)
+    ELSE IF obj.knubberrub.equip~=o & WILL_COLLIDE("PL", o)==1 THEN CALL GRAB("PL", o)
   END
-  call ERASE_PL
-  call MOVE("PL",1,1)
-  call DRAW_PL
-return
+  CALL ERASE_PL
+  CALL MOVE("PL",1,1)
+  CALL DRAW_PL
+RETURN
 
 MOVE:  /* moves the desired object */
   ARG mo, movex, movey
-  IF TRUNC(obj.mo.dx)==0 & TRUNC(obj.mo.dy)==0 THEN return
+  IF TRUNC(obj.mo.dx)==0 & TRUNC(obj.mo.dy)==0 THEN RETURN
   IF movex THEN obj.mo.x=obj.mo.x+(TRUNC(obj.mo.dx)*obj.mo.dirx)
   IF movey THEN obj.mo.y=obj.mo.y+(TRUNC(obj.mo.dy)*obj.mo.diry)
-return 
+RETURN 
 
 GETDIR:           
   ARG pos1, pos2, hop
-  IF pos1<pos2 THEN return -1
-  ELSE IF pos1>pos2 THEN return 1
-  ELSE IF hop==1 & pos1==pos2 THEN return 1
+  IF pos1<pos2 THEN RETURN -1
+  ELSE IF pos1>pos2 THEN RETURN 1
+  ELSE IF hop==1 & pos1==pos2 THEN RETURN 1
   ELSE NOP
-return 0
+RETURN 0
 
 /* TODO optimize erasing the object */  
 EQUIP:
   ARG being
-  IF obj.being.equip=="NONE" THEN return
+  IF obj.being.equip=="NONE" THEN RETURN
   eo=obj.being.equip
-  call ERASE_OBJECT(eo)
+  CALL ERASE_OBJECT(eo)
   obj.eo.room=obj.being.room
   obj.eo.x=obj.being.x+obj.eo.offset.x
   obj.eo.y=obj.being.y+obj.eo.offset.y
   /* obj.eo.dirx=obj.being.dirx
   obj.eo.diry=obj.being.diry */
-  call DRAW_OBJECT(eo)
-return
+  CALL DRAW_OBJECT(eo)
+RETURN
 
 GRAB:
   ARG being, gro
-  IF obj.being.equip==gro THEN return
-  IF obj.being.equip~="NONE" THEN call DROP(0)
+  IF obj.being.equip==gro THEN RETURN
+  IF obj.being.equip~="NONE" THEN CALL DROP(0)
   obj.being.equip=gro
   obj.gro.offset.x=obj.gro.x-obj.being.x
   obj.gro.offset.y=obj.gro.y-obj.being.y
@@ -1656,18 +1656,18 @@ GRAB:
     obj.gro.offset.y=obj.gro.offset.y+obj.being.diry
   END
   IF being=="PL" THEN se "b1" /* BEEP! */
-return
+RETURN
 
 DROP:
   ARG beep
-  IF obj.pl.equip=="NONE" THEN return
+  IF obj.pl.equip=="NONE" THEN RETURN
   drpo=obj.pl.equip
   obj.drpo.offset.x=0
   obj.dro.offset.y=0
   /* obj.drpo.dirx=0
   obj.drpo.diry=0 */
   obj.pl.equip="NONE"
-  call EXIT_OBJ(dro)
+  CALL EXIT_OBJ(dro)
   
   /* fix for bug where item gets trapped under gate*/
   DO j=0 TO maxgate
@@ -1676,53 +1676,53 @@ DROP:
   END
   
   IF beep==1 THEN se "b1" /* BEEP! */
-return
+RETURN
 
 UNLOCK:
   ARG g
-  IF obj.g.locked==0 THEN return
+  IF obj.g.locked==0 THEN RETURN
   obj.g.locked=0
   obj.g.spr.0=_gate.3
-  call GATE_OP(g)
-return
+  CALL GATE_OP(g)
+RETURN
 
 LOCK:
   ARG g
-  IF obj.g.locked==1 THEN return
+  IF obj.g.locked==1 THEN RETURN
   obj.g.locked=1
   obj.g.spr.0=_gate.0
-  call GATE_CL(g)
-return
+  CALL GATE_CL(g)
+RETURN
 
 GATE_CL:  /* close gate animation */
   ARG g
-  IF debug==1 THEN call DEBUG 
+  IF debug==1 THEN CALL DEBUG 
 
   DO i=0 to 2
     obj.g.h=obj.g.h+1
-    IF WILL_COLLIDE("PL", g)==1 THEN call ERASE_PL
+    IF WILL_COLLIDE("PL", g)==1 THEN CALL ERASE_PL
     se obj.g.col||"["||obj.g.y+i||";"||obj.g.x||"H"||obj.g.spr.2||"["||obj.g.y+i+1||";"||obj.g.x||"H"||obj.g.spr.3
     IF WILL_COLLIDE("PL", g)==1 THEN DO 
       obj.pl.y=obj.pl.y+1
-      call DRAW_PL
+      CALL DRAW_PL
     END
     se park
-    IF i~=2 THEN call DELAY(5)
+    IF i~=2 THEN CALL DELAY(5)
   END
   obj.g.h=3
-return
+RETURN
 
 GATE_OP:  /* open gate animation */
   ARG g
-  IF debug==1 THEN call DEBUG   
+  IF debug==1 THEN CALL DEBUG   
   
   DO i=3 TO 1 by -1
     se obj.g.col||"["||obj.g.y+i||";"||obj.g.x||"H    ["||(obj.g.y+i)-1||";"||obj.g.x||"H"||obj.g.spr.3
     se park
-    IF i~=1 THEN call DELAY(5) 
+    IF i~=1 THEN CALL DELAY(5) 
   END
   obj.g.h=0
-return
+RETURN
 
 COLLIDE_NOW:  /* detect if object1 and object2 are colliding now */
   ARG o1, o2
@@ -1730,9 +1730,9 @@ COLLIDE_NOW:  /* detect if object1 and object2 are colliding now */
      obj.o2.x+obj.o2.w >= obj.o1.x &,             /* o2 right edge > o1 left edge and */
      obj.o2.y+obj.o2.h >= obj.o1.y &,             /* o2 bottom edge > o1 top edge and */
      obj.o2.x <= obj.o1.x+obj.o1.w &,             /* o2 left edge < o1 right edge and */
-     obj.o2.y <= obj.o1.y+obj.o1.h THEN return 1  /* o2 top edge < o1 bottom edge     */
-  ELSE return 0
-return 0
+     obj.o2.y <= obj.o1.y+obj.o1.h THEN RETURN 1  /* o2 top edge < o1 bottom edge     */
+  ELSE RETURN 0
+RETURN 0
 
 WILL_COLLIDE:  /* detect if object1 and object2 will collide (with object 1 in motion) */
   ARG o1, o2
@@ -1744,9 +1744,9 @@ WILL_COLLIDE:  /* detect if object1 and object2 will collide (with object 1 in m
      obj.o2.x+obj.o2.w >= obj.o1.x+(obj.o1.vx) &,             /* o2 right edge > o1 left edge and */
      obj.o2.y+obj.o2.h >= obj.o1.y+(obj.o1.vy) &,             /* o2 bottom edge > o1 top edge and */
      obj.o2.x <= obj.o1.x+obj.o1.w+(obj.o1.vx) &,             /* o2 left edge < o1 right edge and */
-     obj.o2.y <= obj.o1.y+obj.o1.h+(obj.o1.vy) THEN return 1  /* o2 top edge < o1 bottom edge     */
-  ELSE return 0
-return 0
+     obj.o2.y <= obj.o1.y+obj.o1.h+(obj.o1.vy) THEN RETURN 1  /* o2 top edge < o1 bottom edge     */
+  ELSE RETURN 0
+RETURN 0
 
 COLLIDE_BY_LINE:  /* detect if o2 collides with current line being drawn of o1 */
   ARG o1, drawline, o2 
@@ -1754,34 +1754,34 @@ COLLIDE_BY_LINE:  /* detect if o2 collides with current line being drawn of o1 *
   	drawline >= obj.o2.y &,
   	drawline <= obj.o2.y+obj.o2.h &,
   	obj.o2.x+obj.o1.w >= obj.o1.x &,
-  	obj.o2.x <= obj.o1.x+obj.o1.w THEN return 1
-  ELSE return 0
-return 0
+  	obj.o2.x <= obj.o1.x+obj.o1.w THEN RETURN 1
+  ELSE RETURN 0
+RETURN 0
 
 COLLIDE_BY_CHAR:  /* detect if xpos collides with current char being drawn of o1 */
   ARG o1, drawline, xpos
   IF drawline >= obj.o1.y &,
   	drawline <= obj.o1.y+obj.o1.h &,
   	xpos >= obj.o1.x &,
-  	xpos <= obj.o1.x+obj.o1.w THEN return 1
-  ELSE return 0
-return
+  	xpos <= obj.o1.x+obj.o1.w THEN RETURN 1
+  ELSE RETURN 0
+RETURN
 
 DRAGON_COLLIDE:  /* check if object collides with dead or attacking dragons */
   ARG o
   DO j=0 to maxdragon
   	d=dragon.j
-  	IF (obj.d.state==D_DEAD | obj.d.state==D_ATTACK) & WILL_COLLIDE(o, d)==1 THEN return 1
+  	IF (obj.d.state==D_DEAD | obj.d.state==D_ATTACK) & WILL_COLLIDE(o, d)==1 THEN RETURN 1
   END
-return 0
+RETURN 0
 
 MSG_COLLIDE:  /* check if object collides with msg in secret room */
   ARG o
   DO j=0 to maxmsg
     m=msg.j
-    IF WILL_COLLIDE(o, m)==1 THEN return 1
+    IF WILL_COLLIDE(o, m)==1 THEN RETURN 1
   END
-return 0
+RETURN 0
 
 GATE_COLLIDE:  /* check if object collides with gate */
   ARG o  
@@ -1789,58 +1789,58 @@ GATE_COLLIDE:  /* check if object collides with gate */
     g=gate.j
     IF WILL_COLLIDE(o, g)==1 THEN DO
       IF obj.g.key==o & obj.g.locked==1 THEN DO 
-        call UNLOCK(g)
-        call DRAW_OBJECT(o)
+        CALL UNLOCK(g)
+        CALL DRAW_OBJECT(o)
       END
-      /* ELSE IF obj.g.key==o & obj.g.locked==0 THEN call LOCK(g) */
-      return 1 /* o collides with gate */
+      /* ELSE IF obj.g.key==o & obj.g.locked==0 THEN CALL LOCK(g) */
+      RETURN 1 /* o collides with gate */
     END
   END
-return 0 /* no collision */
+RETURN 0 /* no collision */
 
 BRIDGE_COLLIDE: /* check if p is on bridge */
   ARG p
   obj.p.vx=obj.p.dx*obj.p.dirx
   obj.p.vy=obj.p.dy*obj.p.diry
   IF WILL_COLLIDE(p, "BRIDGE")==1 & obj.p.x+(obj.p.vx)>=obj.bridge.x+3 & obj.p.x+(obj.p.vx)<=obj.bridge.x+obj.bridge.w-4 &,
-    obj.p.y+(obj.p.vy)>=obj.bridge.y & obj.p.y+(obj.p.vy)<=obj.bridge.y+obj.bridge.h THEN return 1
-return 0 /* p not on bridge */
+    obj.p.y+(obj.p.vy)>=obj.bridge.y & obj.p.y+(obj.p.vy)<=obj.bridge.y+obj.bridge.h THEN RETURN 1
+RETURN 0 /* p not on bridge */
 
 WALL: /* detect collision with wall or barrier */
   ARG wo
-  IF wo=="PL" & obj.pl.equip~="BRIDGE" & BRIDGE_COLLIDE("PL")==1 THEN return 0 /* allow player to walk over walls */
+  IF wo=="PL" & obj.pl.equip~="BRIDGE" & BRIDGE_COLLIDE("PL")==1 THEN RETURN 0 /* allow player to walk over walls */
   rm=obj.pl.room
   mp=k.rm.map
   obj.wo.vx=obj.wo.dx*obj.wo.dirx
   obj.wo.vy=obj.wo.dy*obj.wo.diry
-  IF obj.wo.x+(obj.wo.vx)-1<=0 THEN return 0 /* hacky fix to left exit bug */
+  IF obj.wo.x+(obj.wo.vx)-1<=0 THEN RETURN 0 /* hacky fix to left exit bug */
   DO l=obj.wo.y+(obj.wo.vy) TO obj.wo.y+obj.wo.h+(obj.wo.vy)
     /* for each line of the object, check map chars under object */
     str= SUBSTR(k.mp.l, obj.wo.x+(obj.wo.vx)-1, obj.wo.w+1)  /* -1 for map shift, +1 due to how obj.o.w is indexed */
     IF INDEX(str, "€") ~=0 THEN DO
       /* wall found */
       bufferflush
-      return 1   
+      RETURN 1   
     END
     ELSE IF INDEX(str, "M") ~=0 THEN DO
       /* barrier found */
-      IF SECRET()==1 THEN return 0  /* TODO: is this line needed? */
-      IF obj.pl.room == obj.dot.room THEN return 0
+      IF SECRET()==1 THEN RETURN 0  /* TODO: is this line needed? */
+      IF obj.pl.room == obj.dot.room THEN RETURN 0
       bufferflush
-      return 1
+      RETURN 1
     END 
   END
-return 0 /* wall or barrier not found, return 0 */
+RETURN 0 /* wall or barrier not found, RETURN 0 */
 
 ITEM_WALL_CHECK:
   DO i=0 TO maxitem
     wco=item.i
     IF WILL_COLLIDE("PL", wco)==1 & BRIDGE_COLLIDE("PL")~=1 THEN DO
-      call GRAB("PL", wco)
+      CALL GRAB("PL", wco)
       LEAVE
     END
   END
-return
+RETURN
 
 /* in main loop */
 /* TODO: fix magnet only wants highest pri item, need to compare with original */
@@ -1853,11 +1853,11 @@ MAGNET_SEEK:  /* magnet will seek an item based on priority */
       LEAVE i
     END
   END
-return
+RETURN
 
 /* in main loop */ 
 MAGNETISM:  /* move wanted object toward magnet */ 
-  IF obj.magnet.want=="NONE" THEN return   
+  IF obj.magnet.want=="NONE" THEN RETURN   
   mwo=obj.magnet.want
   IF obj.magnet.busy==1 & obj.mwo.room==obj.magnet.room & obj.pl.equip~=mwo & obj.knubberrub.equip~=mwo THEN DO
     IF obj.mwo.x==obj.magnet.x & obj.mwo.y==obj.magnet.y+obj.magnet.h+1 THEN DO  /* wanted item is on magnet */
@@ -1872,23 +1872,23 @@ MAGNETISM:  /* move wanted object toward magnet */
       obj.mwo.dx=obj.mwo.dx+obj.mwo.spdx
       obj.mwo.dy=obj.mwo.dy+obj.mwo.spdy
       IF obj.mwo.dx>=1 & obj.mwo.dy>=1 THEN DO
-        /* call ERASE_OBJECT(mwo) */
-        call MOVE(mwo,1,1)  /* move x and y */
-        call DRAW_OBJECT_WITH_MOTION(mwo)
+        /* CALL ERASE_OBJECT(mwo) */
+        CALL MOVE(mwo,1,1)  /* move x and y */
+        CALL DRAW_OBJECT_WITH_MOTION(mwo)
         obj.mwo.dx=0; obj.mwo.dy=0
         obj.mwo.dirx=0; obj.mwo.diry=0
       END
       ELSE IF obj.mwo.dx>=1 THEN DO
-        /* call ERASE_OBJECT(mwo) */
-        call MOVE(mwo,1,0)  /* move x only */
-        call DRAW_OBJECT_WITH_MOTiON(mwo)
+        /* CALL ERASE_OBJECT(mwo) */
+        CALL MOVE(mwo,1,0)  /* move x only */
+        CALL DRAW_OBJECT_WITH_MOTiON(mwo)
         obj.o.dx=0
         obj.mwo.dirx=0
       END
       ELSE IF obj.mwo.dy>=1 THEN DO
-        /* call ERASE_OBJECT(mwo) */
-        call MOVE(mwo,0,1)  /* move y only */
-        call DRAW_OBJECT_WITH_MOTION(mwo) 
+        /* CALL ERASE_OBJECT(mwo) */
+        CALL MOVE(mwo,0,1)  /* move y only */
+        CALL DRAW_OBJECT_WITH_MOTION(mwo) 
         obj.mwo.dy=0
         obj.mwo.diry=0
       END
@@ -1902,8 +1902,8 @@ MAGNETISM:  /* move wanted object toward magnet */
     obj.mwo.dx=0; obj.mwo.dy=0
     obj.mwo.dirx=0; obj.mwo.diry=0
   END
-  IF debug==1 THEN call DEBUG_MAGNET 
-return
+  IF debug==1 THEN CALL DEBUG_MAGNET 
+RETURN
 
 /* in main loop */
 /* TODO: fix bat/equiped object interaction after long player hold and release */
@@ -1921,10 +1921,10 @@ BAT_SEEK:
         LEAVE kwi
       END
     END
-    IF obj.knub.want~="NONE" & obj.kwo.room==obj.knub.room & obj.knub.equip~=obj.knub.want THEN call BAT_STEAL
+    IF obj.knub.want~="NONE" & obj.kwo.room==obj.knub.room & obj.knub.equip~=obj.knub.want THEN CALL BAT_STEAL
     ELSE obj.knub.want="NONE"
   END
-return
+RETURN
 
 /* in main loop */
 BAT_ANIM:
@@ -1936,46 +1936,46 @@ BAT_ANIM:
     DO j=0 TO obj.knub.h
       obj.knub.spr.j=_bat.nfrm.j
     END
-    call DRAW_INVERSE_OBJECT(knub)
+    CALL DRAW_INVERSE_OBJECT(knub)
   END
-return
+RETURN
 
 /* in main loop */
 BAT_MOVE:  /* TODO:  fix item interaction */
   obj.knub.dx=obj.knub.dx+obj.knub.spdx
   obj.knub.dy=obj.knub.dy+obj.knub.spdy
   /* added a small window where knubberrub is not grabbable by the player */
-  /* IF (obj.knub.fedup==0 | obj.knub.fedup>400) & obj.pl.equip~=knub & WILL_COLLIDE(knub, "PL")==1 THEN call GRAB("PL", knub) */ 
+  /* IF (obj.knub.fedup==0 | obj.knub.fedup>400) & obj.pl.equip~=knub & WILL_COLLIDE(knub, "PL")==1 THEN CALL GRAB("PL", knub) */ 
   IF obj.knub.dx>=1 & obj.knub.dy>=1 THEN DO
     IF obj.pl.equip~=knub THEN DO 
-      call EXIT_BEING(knub)
-      call MOVE(knub,1,1)  /* move x and y */
-      call DRAW_BAT
+      CALL EXIT_BEING(knub)
+      CALL MOVE(knub,1,1)  /* move x and y */
+      CALL DRAW_BAT
     END
     obj.knub.dx=0; obj.knub.dy=0
   END
   ELSE IF obj.knub.dx>=1 THEN DO
     IF obj.pl.equip~=knub THEN DO
-      call EXIT_BEING(knub)
-      call MOVE(knub,1,0)  /* move x only */
-      call DRAW_BAT
+      CALL EXIT_BEING(knub)
+      CALL MOVE(knub,1,0)  /* move x only */
+      CALL DRAW_BAT
     END
     obj.knub.dx=0
   END
   ELSE IF obj.knub.dy>=1 THEN DO
     IF obj.pl.equip~=knub THEN DO
-      call EXIT_BEING(knub)
-      call MOVE(knub,0,1)  /* move y only */
-      call DRAW_BAT
+      CALL EXIT_BEING(knub)
+      CALL MOVE(knub,0,1)  /* move y only */
+      CALL DRAW_BAT
     END
     obj.knub.dy=0
   END 
-  IF debug==1 THEN call DEBUG_BAT
-return
+  IF debug==1 THEN CALL DEBUG_BAT
+RETURN
 
 /* in main loop */
 BAT_STEAL:
-  IF obj.knub.want=="NONE" THEN return
+  IF obj.knub.want=="NONE" THEN RETURN
   kswo=obj.knub.want  /* eg. "SWORD" */
   IF obj.pl.equip~=knub THEN DO
     tdirx=GETDIR(obj.kswo.x, obj.knub.x)
@@ -1988,10 +1988,10 @@ BAT_STEAL:
   END
   IF WILL_COLLIDE(knub, kswo)==1 THEN DO
     IF obj.pl.equip==kswo THEN obj.pl.equip="NONE"
-    call GRAB(knub, kswo)
+    CALL GRAB(knub, kswo)
     obj.knub.seek=0; obj.knub.want="NONE"; obj.knub.fedup=1
   END
-return
+RETURN
 
 /* in main loop */
 DRAGON_GUARD: 
@@ -2004,7 +2004,7 @@ DRAGON_GUARD:
     END
     ELSE obj.drago.want="NONE"
   END
-return
+RETURN
 
 /* in main loop */
 DRAGON_FLEE: 
@@ -2017,7 +2017,7 @@ DRAGON_FLEE:
     END
     ELSE obj.drago.fear="NONE"
   END
-return
+RETURN
 
 /* in main loop */
 DRAGON_MOVE:
@@ -2050,8 +2050,8 @@ DRAGON_MOVE:
   	DO i=0 TO obj.drago.h
       obj.drago.spr.i=_dragon.D_DEAD.i
     END
-    call DRAW_INVERSE_OBJECT(drago)
-    return
+    CALL DRAW_INVERSE_OBJECT(drago)
+    RETURN
   END
   
   /* should dragon attack? */
@@ -2061,8 +2061,8 @@ DRAGON_MOVE:
       obj.drago.spr.i=_dragon.D_ATTACK.i
     END
     obj.drago.atkstart= time('s')
-    call DRAW_INVERSE_OBJECT(drago)
-    return
+    CALL DRAW_INVERSE_OBJECT(drago)
+    RETURN
   END
   
   /* was player eaten? */
@@ -2071,7 +2071,7 @@ DRAGON_MOVE:
   atkwindow=now-obj.drago.atkstart
   IF obj.drago.state==D_ATTACK & atkwindow>1 & atkwindow<3 & WILL_COLLIDE(drago, "PL") THEN DO
   	obj.pl.state=PL_DEAD
-  	call ERASE_PL
+  	CALL ERASE_PL
   	obj.pl.x=obj.drago.x+1
   	obj.pl.y=obj.drago.y+4
   	obj.drago.state=D_FULL
@@ -2079,9 +2079,9 @@ DRAGON_MOVE:
   	DO i=0 TO obj.drago.h
       obj.drago.spr.i=_dragon.D_ALIVE.i
     END
-  	call DRAW_INVERSE_OBJECT(drago)
-  	call DRAW_PL
-  	return
+  	CALL DRAW_INVERSE_OBJECT(drago)
+  	CALL DRAW_PL
+  	RETURN
   END
   ELSE IF obj.drago.state==D_ATTACK & atkwindow>2 THEN DO
   	obj.drago.state=D_ALIVE
@@ -2090,7 +2090,7 @@ DRAGON_MOVE:
       obj.drago.spr.i=_dragon.D_ALIVE.i
     END
   END
-  ELSE IF obj.drago.state==D_ATTACK THEN return
+  ELSE IF obj.drago.state==D_ATTACK THEN RETURN
   	
   /* OK 2 move dragon */
 
@@ -2098,30 +2098,30 @@ DRAGON_MOVE:
   obj.drago.dy=obj.drago.dy+obj.drago.spdy
   IF obj.drago.dx>=1 & obj.drago.dy>=1 THEN DO
     IF obj.knub.equip~=drago THEN DO 
-      call EXIT_BEING(drago)
-      call MOVE(drago,1,1)  /* move x and y */
-      call DRAW_DRAGON(drago)
+      CALL EXIT_BEING(drago)
+      CALL MOVE(drago,1,1)  /* move x and y */
+      CALL DRAW_DRAGON(drago)
     END
     obj.drago.dx=0; obj.drago.dy=0
   END
   ELSE IF obj.drago.dx>=1 THEN DO
     IF obj.knub.equip~=drago THEN DO
-      call EXIT_BEING(drago)
-      call MOVE(drago,1,0)  /* move x only */
-      call DRAW_DRAGON(drago)
+      CALL EXIT_BEING(drago)
+      CALL MOVE(drago,1,0)  /* move x only */
+      CALL DRAW_DRAGON(drago)
     END
     obj.drago.dx=0
   END
   ELSE IF obj.drago.dy>=1 THEN DO
     IF obj.knub.equip~=drago THEN DO
-      call EXIT_BEING(drago)
-      call MOVE(drago,0,1)  /* move y only */
-      call DRAW_DRAGON(drago)
+      CALL EXIT_BEING(drago)
+      CALL MOVE(drago,0,1)  /* move y only */
+      CALL DRAW_DRAGON(drago)
     END
     obj.drago.dy=0
   END 
-  IF debug==1 THEN call DEBUG_DRAGON
-return
+  IF debug==1 THEN CALL DEBUG_DRAGON
+RETURN
 
 RESET_DRAGONS:
   DO i=0 TO maxdragon
@@ -2131,7 +2131,7 @@ RESET_DRAGONS:
       obj.d.spr.j=_dragon.D_ALIVE.j
     END
   END
-return
+RETURN
 
 SECRET:  /* TODO: fix trigger/untrigger with bat (fixed? need to test) */
   IF obj.pl.room==3 & obj.dot.room==3 THEN DO
@@ -2142,7 +2142,7 @@ SECRET:  /* TODO: fix trigger/untrigger with bat (fixed? need to test) */
       o=item.s
       IF obj.o.room==3 THEN DO
         k.3.re=30
-        return 1 /* dot in room 3 along with any other item */
+        RETURN 1 /* dot in room 3 along with any other item */
       END
       ELSE k.3.re=1
     END
@@ -2152,139 +2152,139 @@ SECRET:  /* TODO: fix trigger/untrigger with bat (fixed? need to test) */
       d=dragon.s
       IF obj.d.room==3 THEN DO
         k.3.re=30
-        return 1
+        RETURN 1
       END
       ELSE k.3.re=1
     END
   END
-return 0
+RETURN 0
 
 /* TODO: refactor exit functions */
 EXIT_OBJ:  /* perform exit occurred on an object without motion */
   ARG exo
   exorm=obj.exo.room
-  IF obj.exo.x+obj.exo.w>maxcol THEN call RIGHT_EXIT(exo, 0) 
-  ELSE IF obj.exo.x<mincol THEN call LEFT_EXIT(exo, 0)
-  ELSE IF obj.exo.y<minline THEN call TOP_EXIT(exo)
-  ELSE IF k.exorm.ci~=0 & obj.exo.x>37 & obj.exo.x<43 & obj.exo.y<castleline THEN call CASTLE_ENTRANCE(exo)
+  IF obj.exo.x+obj.exo.w>maxcol THEN CALL RIGHT_EXIT(exo, 0) 
+  ELSE IF obj.exo.x<mincol THEN CALL LEFT_EXIT(exo, 0)
+  ELSE IF obj.exo.y<minline THEN CALL TOP_EXIT(exo)
+  ELSE IF k.exorm.ci~=0 & obj.exo.x>37 & obj.exo.x<43 & obj.exo.y<castleline THEN CALL CASTLE_ENTRANCE(exo)
   ELSE IF obj.exo.y+obj.exo.h>maxline THEN DO   
-    IF k.exorm.co==0 THEN call BOTTOM_EXIT(exo)
-    ELSE call CASTLE_EXIT(exo)
+    IF k.exorm.co==0 THEN CALL BOTTOM_EXIT(exo)
+    ELSE CALL CASTLE_EXIT(exo)
   END   
-return
-return
+RETURN
+RETURN
 
 EXIT_BEING:  /* perform exit on a being with motion */
   ARG exo
   exorm=obj.exo.room
   IF obj.exo.dirx>0 & obj.exo.x+obj.exo.w>=maxcol THEN DO
-    IF exo==knub THEN call ERASE_BAT
-    ELSE IF obj.exo.type=="dragon" THEN call ERASE_DRAGON(exo)
-    call RIGHT_EXIT(exo, 1)
-    return 1
+    IF exo==knub THEN CALL ERASE_BAT
+    ELSE IF obj.exo.type=="dragon" THEN CALL ERASE_DRAGON(exo)
+    CALL RIGHT_EXIT(exo, 1)
+    RETURN 1
   END
   ELSE IF obj.exo.dirx<0 & obj.exo.x<=mincol THEN DO
-    IF exo==knub THEN call ERASE_BAT
-    ELSE IF obj.exo.type=="dragon" THEN call ERASE_DRAGON(exo)
-    call LEFT_EXIT(exo, 1)
-    return 1
+    IF exo==knub THEN CALL ERASE_BAT
+    ELSE IF obj.exo.type=="dragon" THEN CALL ERASE_DRAGON(exo)
+    CALL LEFT_EXIT(exo, 1)
+    RETURN 1
   END
   ELSE IF obj.exo.diry<0 THEN DO
      IF obj.exo.y<=minline THEN DO
-       IF exo==knub THEN call ERASE_BAT
-       ELSE IF obj.exo.type=="dragon" THEN call ERASE_DRAGON(exo)
-       call TOP_EXIT(exo)
-       return 1
+       IF exo==knub THEN CALL ERASE_BAT
+       ELSE IF obj.exo.type=="dragon" THEN CALL ERASE_DRAGON(exo)
+       CALL TOP_EXIT(exo)
+       RETURN 1
      END
      ELSE IF k.exorm.ci~=0 & obj.exo.x>37 & obj.exo.x<43 & obj.exo.y==castleline THEN DO
-       IF exo==knub THEN call ERASE_BAT
-       ELSE IF obj.exo.type=="dragon" THEN call ERASE_DRAGON(exo)
-       call CASTLE_ENTRANCE(exo)
-       return 1
+       IF exo==knub THEN CALL ERASE_BAT
+       ELSE IF obj.exo.type=="dragon" THEN CALL ERASE_DRAGON(exo)
+       CALL CASTLE_ENTRANCE(exo)
+       RETURN 1
      END
   END
   ELSE IF obj.exo.diry>0 & obj.exo.y+obj.exo.h>=maxline THEN DO   
     IF k.exorm.co==0 THEN DO
-      IF exo==knub THEN call ERASE_BAT
-      ELSE IF obj.exo.type=="dragon" THEN call ERASE_DRAGON(exo)
-      call BOTTOM_EXIT(exo)
-      return 1
+      IF exo==knub THEN CALL ERASE_BAT
+      ELSE IF obj.exo.type=="dragon" THEN CALL ERASE_DRAGON(exo)
+      CALL BOTTOM_EXIT(exo)
+      RETURN 1
     END
     ELSE DO
-      IF exo==knub THEN call ERASE_BAT
-      ELSE IF obj.exo.type=="dragon" THEN call ERASE_DRAGON(exo)
-      call CASTLE_EXIT(exo)
-      return 1 
+      IF exo==knub THEN CALL ERASE_BAT
+      ELSE IF obj.exo.type=="dragon" THEN CALL ERASE_DRAGON(exo)
+      CALL CASTLE_EXIT(exo)
+      RETURN 1 
     END
   END   
-return 0
+RETURN 0
 
 TOP_EXIT:
   ARG exo
   crm=obj.exo.room
-  IF k.crm.te==0 THEN return  
+  IF k.crm.te==0 THEN RETURN  
   /* obj.p.y=maxline-obj.p.h */
   obj.exo.y=maxline-(obj.exo.diry)  /* diry should be -1 or 0 */
-  call NEXTROOM(exo, k.crm.te)
-return
+  CALL NEXTROOM(exo, k.crm.te)
+RETURN
 
 BOTTOM_EXIT:
   ARG exo
   crm=obj.exo.room
-  IF k.crm.be==0 THEN return
+  IF k.crm.be==0 THEN RETURN
   /* obj.p.y=minline */
   obj.exo.y=minline-obj.exo.diry  /* diry should be +1 or 0 */
-  call NEXTROOM(exo, k.crm.be)
-return
+  CALL NEXTROOM(exo, k.crm.be)
+RETURN
 
 LEFT_EXIT:
   ARG exo, moving
   crm=obj.exo.room
-  IF k.crm.le==0 THEN return
+  IF k.crm.le==0 THEN RETURN
   /* obj.p.x=maxcol-obj.p.w */
   IF moving==1 THEN obj.exo.x=maxcol-(obj.exo.dirx)  /* dirx should be -1 or 0 */
   else obj.exo.x=maxcol-obj.exo.w
-  call NEXTROOM(exo, k.crm.le)
-return
+  CALL NEXTROOM(exo, k.crm.le)
+RETURN
 
 RIGHT_EXIT:
   ARG exo, moving
   crm=obj.exo.room
-  IF k.crm.re==0 THEN return
+  IF k.crm.re==0 THEN RETURN
   /* obj.p.x=mincol */
   IF moving==1 THEN obj.exo.x=mincol-(obj.exo.dirx+obj.exo.w)  /* dirx should be +1 or 0 */
   ELSE obj.exo.x=mincol
-  call NEXTROOM(exo, k.crm.re)
-return
+  CALL NEXTROOM(exo, k.crm.re)
+RETURN
 
 CASTLE_ENTRANCE:
   ARG exo
   crm=obj.exo.room
-  IF k.crm.ci==0 THEN return 
+  IF k.crm.ci==0 THEN RETURN 
   obj.exo.y=maxline-(obj.exo.diry)  /* diry should be -1 or 0 */
-  call NEXTROOM(exo, k.crm.ci)
-return
+  CALL NEXTROOM(exo, k.crm.ci)
+RETURN
 
 CASTLE_EXIT:
   ARG exo
   crm=obj.exo.room
-  IF k.crm.co==0 THEN return      
+  IF k.crm.co==0 THEN RETURN      
   obj.exo.x=40; obj.exo.y=castleline-obj.exo.diry  /* diry should be +1 */
-  call NEXTROOM(exo, k.crm.co)
-return
+  CALL NEXTROOM(exo, k.crm.co)
+RETURN
 
 NEXTROOM:
   ARG exo, next_room
   obj.exo.room=next_room
   IF exo=="PL" THEN DO
     rm=next_room
-    call DRAW_BG
-    call DRAW_OBJS
+    CALL DRAW_BG
+    CALL DRAW_OBJS
     obj.light.drawn=0    
-    IF rm==3 THEN call SECRET
+    IF rm==3 THEN CALL SECRET
     bufferflush
   END
-return
+RETURN
 
 EXPAND_KINGDOM:  /* set up full size kingdom for difficulty 2 and 3 */
     k.1.be=15
@@ -2293,7 +2293,7 @@ EXPAND_KINGDOM:  /* set up full size kingdom for difficulty 2 and 3 */
     k.27.te=22; k.27.re=22; k.27.be=22; k.27.le=22
     k.28.be=12
     k.29.te=12
-return
+RETURN
 
 INIT_PLAYER:  
   obj.pl.room=17
@@ -2309,7 +2309,7 @@ INIT_PLAYER:
   obj.pl.diry=0
   obj.pl.equip="NONE"
   obj.pl.state=PL_ALIVE
-return
+RETURN
 
 INIT_FLASHLIGHT:  
   /* set default flashlight height and width (keep even numbers here) */
@@ -2327,7 +2327,7 @@ INIT_FLASHLIGHT:
   RESET_FLASHLIGHT:  
   obj.light.w=flash_width-1  /* -1 to align with how other obj w is indexed */
   obj.light.h=flash_height-1  /* -1 to align with how other obj h is indexed */
-return
+RETURN
   
 INIT_OBJECTS:
 
@@ -2970,7 +2970,7 @@ INIT_OBJECTS:
   obj.rhindle.lvl3.1=29  /* random room upper limit */
   obj.rhindle.state=D_ALIVE
   obj.rhindle.atkstart=0
-return
+RETURN
  
 INIT_KINGDOM:  /* room data */
   /* splash screen */
@@ -3815,7 +3815,7 @@ INIT_KINGDOM:  /* room data */
   k.WCMAZE3_MAP.22="         €€€€                                                    €€€€         "
   k.WCMAZE3_MAP.23="€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€                €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€"
   k.WCMAZE3_MAP.24="€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€                €€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€"
-return
+RETURN
 
 PHENOM_LOGO:  /* https://www.phenomprod.com */
    phenommaxline=13
@@ -3832,7 +3832,7 @@ PHENOM_LOGO:  /* https://www.phenomprod.com */
   phenom.11="  [1;37m€€[47mﬂ[40mﬂ[0mﬂ[1;30mﬂ  [37m€€€[47m‹[40m . €€‹‹€€[47mﬂ[40m €€‹[47m‹[40m€€[30mﬂ [37m€€[47m‹‹[40m€€ ﬁ€€‹[0m‹[1;30m‹ [37m€€   €€  €€‹‹€€[47mﬂ[40m €€ [47mﬂ[40m€[47m€[40m€ €‹‹€€[47m±[0m"
   phenom.12=" [1;37m ﬂﬂ[30mﬂ  sM [37mﬂﬂ ﬂﬂ   [0mﬂ[1mﬂﬂ[0mﬂ[1;30mﬂ  [37mﬂﬂﬂﬂ[0mﬂ    ﬂ[1mﬂﬂ[0mﬂ   ﬂ[1mﬂﬂ[0mﬂ ﬂ[1mﬂ[0mﬂ  [1;30mﬂ[0mﬂ[1mﬂ   [0mﬂ[1mﬂﬂ[0mﬂ[1;30mﬂ  [0mﬂ[1mﬂ  [0mﬂ[1mﬂﬂ [30mﬂ[0mﬂ[1mﬂﬂ[0mﬂ"
   phenom.13="[49C[1;30;40mhttps://www.phenomprod.com"
-return
+RETURN
 
 /* background colors *** foreground colors */
 /*     black=40      ***     black=30      */ 

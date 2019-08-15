@@ -658,8 +658,8 @@ START:
   CALL RESET_DRAGONS
 
   CALL DRAW_BG
-  CALL DRAW_PL
   CALL DRAW_OBJS
+  CALL DRAW_PL
   
   /* main loop */
   RESUME:
@@ -858,7 +858,7 @@ GET_FLASHLIGHT_SIZE:
   IF obj.light.x+obj.light.w>maxcol THEN DO
     obj.light.dw=obj.light.x+obj.light.w-maxcol
     obj.light.w=obj.light.w-obj.light.dw
-  ENd
+  END
   
   /* handle bottom screen edge */
   IF obj.light.y+obj.light.h>maxline THEN DO
@@ -867,13 +867,15 @@ GET_FLASHLIGHT_SIZE:
   END
 RETURN
 
-DRAW_FLASHLIGHT:
+DRAW_FLASHLIGHT:  /* used only by REFRESH */
   rm=obj.pl.room
   mp=k.rm.map
   IF flashlight==0 | k.rm.dark==0 THEN RETURN
   
+  /* TODO: fix bug when GET_FLASHLIGHT_SIZE is called upon entering a room */
+  /* the dimensions are off by one, bug I'm not sure why */
   CALL GET_FLASHLIGHT_SIZE
-
+  
   DO i=0 TO obj.light.h
     line=obj.light.y+i
     se "["||line||";"||obj.light.x||"H[0;43;37m"|| SUBSTR(k.mp.line, obj.light.x-1, obj.light.w+1)
@@ -903,7 +905,16 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
     DO i=0 TO obj.light.h
       line=obj.light.y+(i)
       se "["||line||";"||obj.light.x||"H[0;43;37m"|| SUBSTR(k.mp.line, mapstart, maplength)
-    END
+      
+      /* TODO: fix/optimize this */
+      DO j=0 TO maxdrawitem
+	  		o=item.j
+	  		IF obj.pl.equip~=o & obj.knub.equp~=o & COLLIDE_BY_LINE("LIGHT", line, o)==1 THEN DO
+	  			CALL DRAW_OBJ_LINE(o, line)
+	  		END
+	    END
+    END  
+    
     obj.light.drawn=1
   END
   ELSE DO   
@@ -1024,9 +1035,10 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
       se "["||line||";"||drawxpos||"H"||result_str
       
       /* check for line collision with other objects */
+      /* TODO: optimize this so we're not drawing the flashlight line first and the object line 2nd */
     	DO j=0 TO maxdrawitem
     		o=item.j
-    		IF COLLIDE_BY_LINE("LIGHT", line, o)==1 THEN DO
+    		IF obj.pl.equip~=o & obj.knub.equp~=o & COLLIDE_BY_LINE("LIGHT", line, o)==1 THEN DO
     			CALL DRAW_OBJ_LINE(o, line)
     		END
     	END
@@ -1132,6 +1144,7 @@ DRAW_OBJECT:  /* TODO: fix item interactions */
         SELECT
           WHEN map_char==" " THEN DO
             IF obj.pl.equip==dro & flashlight~=0 & k.rm.dark==1 THEN bgcolor="[43m"
+            /* IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", l, (obj.dro.x+m)-1)==1 THEN bgcolor="[43m" */
             ELSE bgcolor=k.rm.bc
             result_line=result_line||bgcolor||spr_char
           END
@@ -1153,7 +1166,7 @@ DRAW_OBJECT:  /* TODO: fix item interactions */
 RETURN
 
 DRAW_OBJ_LINE:
-  ARG dro, drawline, start, length
+  ARG dro, drawline /*, start, length */
   rm=obj.pl.room
   mp=k.rm.map
   
@@ -1749,12 +1762,28 @@ WILL_COLLIDE:  /* detect if object1 and object2 will collide (with object 1 in m
 RETURN 0
 
 COLLIDE_BY_LINE:  /* detect if o2 collides with current line being drawn of o1 */
-  ARG o1, drawline, o2 
+  ARG o1, drawline, o2
+  
+  /* TODO: do something about this hacky flashlight fix */
+  /* need to make this code apply to all objects in motion with erasex */
+  IF o1=="LIGHT" & erasex==-1 THEN DO
+  	o1xleft=obj.o1.x-obj.pl.dx
+  	o1xright=obj.o1.x+obj.o1.w
+  END
+  ELSE IF o1=="LIGHT" & erasex==1 THEN DO
+  	o1xleft=obj.o1.x
+  	o1xright=obj.o1.x+obj.o1.w+obj.pl.dx
+  END 
+  ELSE DO
+  	o1xleft=obj.o1.x
+  	o1xright=obj.o1.x+obj.o1.w
+  END
+  
   IF obj.o2.room==obj.pl.room &,
   	drawline >= obj.o2.y &,
   	drawline <= obj.o2.y+obj.o2.h &,
-  	obj.o2.x+obj.o1.w >= obj.o1.x &,
-  	obj.o2.x <= obj.o1.x+obj.o1.w THEN RETURN 1
+  	obj.o2.x+obj.o2.w >= o1xleft &,
+  	obj.o2.x <= o1xright THEN RETURN 1
   ELSE RETURN 0
 RETURN 0
 

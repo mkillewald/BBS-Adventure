@@ -984,8 +984,11 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
       ELSE DO
         /* this is a flashlight line */
         IF (i==0 & drawy==-1) | (i==obj.light.h & drawy==1) THEN DO
+        	
+        	flashline=SUBSTR(k.mp.line, mapstart, maplength)
+        	
           /* add new flashlight line */
-          result_str=result_str||"[0;43;37m"|| SUBSTR(k.mp.line, mapstart, maplength)
+          result_str=result_str||"[0;43;37m"||flashline
         END
         ELSE DO
           /* skip over already drawn portion of flashlight */
@@ -1019,11 +1022,19 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
       
       IF line==maxline THEN result_str=result_str||park  /* fix for flashlight wrapping on last line */
       se "["||line||";"||drawxpos||"H"||result_str
+      
+      /* check for line collision with other objects */
+    	DO j=0 TO maxdrawitem
+    		o=item.j
+    		IF COLLIDE_BY_LINE("LIGHT", line, o)==1 THEN DO
+    			call DRAW_OBJ_LINE(o, line)
+    		END
+    	END
     END
   END
 return
 
-ERASE_FLASHLIGHT:  /* TODO: delete if no longer used*/
+ERASE_FLASHLIGHT:  /* TODO: delete if no longer used */
   rm=obj.pl.room
   mp=k.rm.map
   IF flashlight==0 | k.rm.dark==0 THEN return
@@ -1093,7 +1104,7 @@ DRAW_OBJECT:  /* TODO: fix item interactions */
     call DRAW_BRIDGE
     return
   END
-  ELSE IF dro=="CHALICE" | dro=="MAGNET" THEN DO
+  ELSE IF dro=="CHALICE" | dro=="MAGNET" | obj.dro.type=="dragon" THEN DO
     call DRAW_INVERSE_OBJECT(dro)
     return
   END
@@ -1111,7 +1122,7 @@ DRAW_OBJECT:  /* TODO: fix item interactions */
       
       /* get map data underneath item's sprite line */
       l=obj.dro.y+j
-      map_str=SUBSTR(k.mp.l, obj.dro.x-1, obj.dro.w+1) /* -1 for map shift, +1 for how width is indexed */
+      map_str= SUBSTR(k.mp.l, obj.dro.x-1, obj.dro.w+1) /* -1 for map shift, +1 for how width is indexed */
       
       /* loop through each character of the map string and insert bg color based on map character found */
       result_line=""
@@ -1139,6 +1150,38 @@ DRAW_OBJECT:  /* TODO: fix item interactions */
     END
   END
   se park
+return
+
+DRAW_OBJ_LINE:
+  ARG dro, drawline, start, length
+  rm=obj.pl.room
+  mp=k.rm.map
+  
+  /* get object sprite line */
+  spri=drawline-obj.o.y
+  spr_str=obj.dro.spr.spri
+  
+  /* get map data underneath the sprite line */
+  map_str= SUBSTR(k.mp.drawline, obj.dro.x-1, obj.dro.w+1)
+  
+  /* loop through each character of the map string and insert bg color based on map character found */
+  result_line=""
+  DO m=1 TO obj.dro.w+1 /* +1 due to how width is indexed */
+    spr_char = SUBSTR(spr_str, m, 1)
+    map_char = SUBSTR(map_str, m, 1)
+    SELECT
+      WHEN map_char==" " THEN DO
+        /* IF flashlight~=0 & k.rm.dark==1 & obj.pl.equip==dro THEN bgcolor="[43m" */
+        IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", drawline, (obj.dro.x+m)-1)==1 THEN bgcolor="[43m"
+        ELSE bgcolor=k.rm.bc
+        result_line=result_line||bgcolor||spr_char
+      END
+      WHEN map_char=="Û" THEN result_line=result_line||k.rm.bc2||spr_char
+      WHEN map_char=="M" THEN result_line=result_line||"[40m"||spr_char
+      OTHERWISE NOP
+    END
+  END       
+  se "["||drawline||";"||obj.dro.x||"H"||obj.dro.col||result_line||k.rm.fc
 return
 
 /* TODO: fix flashlight interaction */
@@ -1681,6 +1724,49 @@ GATE_OP:  /* open gate animation */
   obj.g.h=0
 return
 
+COLLIDE_NOW:  /* detect if object1 and object2 are colliding now */
+  ARG o1, o2
+  IF obj.o1.room==obj.o2.room &,                  /* o1 and o2 are in same room and   */ 
+     obj.o2.x+obj.o2.w >= obj.o1.x &,             /* o2 right edge > o1 left edge and */
+     obj.o2.y+obj.o2.h >= obj.o1.y &,             /* o2 bottom edge > o1 top edge and */
+     obj.o2.x <= obj.o1.x+obj.o1.w &,             /* o2 left edge < o1 right edge and */
+     obj.o2.y <= obj.o1.y+obj.o1.h THEN return 1  /* o2 top edge < o1 bottom edge     */
+  ELSE return 0
+return 0
+
+WILL_COLLIDE:  /* detect if object1 and object2 will collide (with object 1 in motion) */
+  ARG o1, o2
+  IF obj.o1.dx>1 THEN obj.o1.vx=obj.o1.dx*obj.o1.dirx
+  ELSE obj.o1.vx=obj.o1.dirx
+  IF obj.o1.dy>1 THEN obj.o1.vy=obj.o1.dy*obj.o1.diry
+  ELSE obj.o1.vy=obj.o1.diry
+  IF obj.o1.room==obj.o2.room &,                              /* o1 and o2 are in same room and   */ 
+     obj.o2.x+obj.o2.w >= obj.o1.x+(obj.o1.vx) &,             /* o2 right edge > o1 left edge and */
+     obj.o2.y+obj.o2.h >= obj.o1.y+(obj.o1.vy) &,             /* o2 bottom edge > o1 top edge and */
+     obj.o2.x <= obj.o1.x+obj.o1.w+(obj.o1.vx) &,             /* o2 left edge < o1 right edge and */
+     obj.o2.y <= obj.o1.y+obj.o1.h+(obj.o1.vy) THEN return 1  /* o2 top edge < o1 bottom edge     */
+  ELSE return 0
+return 0
+
+COLLIDE_BY_LINE:  /* detect if o2 collides with current line being drawn of o1 */
+  ARG o1, drawline, o2 
+  IF obj.o2.room==obj.pl.room &,
+  	drawline >= obj.o2.y &,
+  	drawline <= obj.o2.y+obj.o2.h &,
+  	obj.o2.x+obj.o1.w >= obj.o1.x &,
+  	obj.o2.x <= obj.o1.x+obj.o1.w THEN return 1
+  ELSE return 0
+return 0
+
+COLLIDE_BY_CHAR:  /* detect if xpos collides with current char being drawn of o1 */
+  ARG o1, drawline, xpos
+  IF drawline >= obj.o1.y &,
+  	drawline <= obj.o1.y+obj.o1.h &,
+  	xpos >= obj.o1.x &,
+  	xpos <= obj.o1.x+obj.o1.w THEN return 1
+  ELSE return 0
+return
+
 DRAGON_COLLIDE:  /* check if object collides with dead or attacking dragons */
   ARG o
   DO j=0 to maxdragon
@@ -1719,30 +1805,6 @@ BRIDGE_COLLIDE: /* check if p is on bridge */
   IF WILL_COLLIDE(p, "BRIDGE")==1 & obj.p.x+(obj.p.vx)>=obj.bridge.x+3 & obj.p.x+(obj.p.vx)<=obj.bridge.x+obj.bridge.w-4 &,
     obj.p.y+(obj.p.vy)>=obj.bridge.y & obj.p.y+(obj.p.vy)<=obj.bridge.y+obj.bridge.h THEN return 1
 return 0 /* p not on bridge */
-
-WILL_COLLIDE:  /* detect if object1 and object2 will collide (with object 1 in motion) */
-  ARG o1, o2
-  IF obj.o1.dx>1 THEN obj.o1.vx=obj.o1.dx*obj.o1.dirx
-  ELSE obj.o1.vx=obj.o1.dirx
-  IF obj.o1.dy>1 THEN obj.o1.vy=obj.o1.dy*obj.o1.diry
-  ELSE obj.o1.vy=obj.o1.diry
-  IF obj.o1.room==obj.o2.room &,                              /* o1 and o2 are in same room and   */ 
-     obj.o2.x+obj.o2.w >= obj.o1.x+(obj.o1.vx) &,             /* o2 right edge > o1 left edge and */
-     obj.o2.y+obj.o2.h >= obj.o1.y+(obj.o1.vy) &,             /* o2 bottom edge > o1 top edge and */
-     obj.o2.x <= obj.o1.x+obj.o1.w+(obj.o1.vx) &,             /* o2 left edge < o1 right edge and */
-     obj.o2.y <= obj.o1.y+obj.o1.h+(obj.o1.vy) THEN return 1  /* o2 top edge < o1 bottom edge     */
-  ELSE return 0
-return 0
-
-COLLIDE_NOW:  /* detect if object1 and object2 are colliding now */
-  ARG o1, o2
-  IF obj.o1.room==obj.o2.room &,                  /* o1 and o2 are in same room and   */ 
-     obj.o2.x+obj.o2.w >= obj.o1.x &,             /* o2 right edge > o1 left edge and */
-     obj.o2.y+obj.o2.h >= obj.o1.y &,             /* o2 bottom edge > o1 top edge and */
-     obj.o2.x <= obj.o1.x+obj.o1.w &,             /* o2 left edge < o1 right edge and */
-     obj.o2.y <= obj.o1.y+obj.o1.h THEN return 1  /* o2 top edge < o1 bottom edge     */
-  ELSE return 0
-return 0
 
 WALL: /* detect collision with wall or barrier */
   ARG wo
@@ -2447,10 +2509,11 @@ INIT_OBJECTS:
   gate.1="BGATE"
   gate.2="WGATE"
   
-  maxitem=7
-  maxgrabitem=8
   maxmagnetitem=5
   maxsecretitem=6
+  maxitem=7
+  maxgrabitem=8
+  maxdrawitem=11
   item.0="YKEY"
   item.1="WKEY"
   item.2="BKEY"
@@ -2460,11 +2523,14 @@ INIT_OBJECTS:
   item.6="MAGNET"
   item.7="DOT"
   item.8="KNUBBERRUB"
+  item.9="YORGLE"
+  item.10="GRUNDLE"
+  item.11="RHINDLE"
   
   maxdragon=2
   dragon.0="YORGLE"
   dragon.1="GRUNDLE"
-  dragon.2="RHINDLE"
+  dragon.2="RHINDLE" 
   
   /* want lists */ 
   want.knubberrub.max=5  /* TODO: fix this. limited for now */

@@ -1033,7 +1033,8 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
     DO j=0 TO maxdrawitem
       o=item.j
       IF obj.pl.equip~=o & obj.knub.equp~=o & COLLIDE_BY_LINE("LIGHT", line, o)==1 THEN DO
-        CALL DRAW_OBJ_LINE(o, line)
+      	IF obj.o.type=="dragon" | obj.o.type=="inverse" THEN call DRAW_INVERSE_OBJ_LINE(o, line)
+        ELSE CALL DRAW_OBJ_LINE(o, line)
       END
     END
   END
@@ -1120,16 +1121,15 @@ DRAW_OBJECT:  /* TODO: fix item interactions */
     CALL EQUIP("KNUBBERRUB")
     RETURN
   END
-  rm=obj.pl.room
-  mp=k.rm.map
   IF transparent_items==1 THEN DO
     DO j=0 TO obj.dro.h
-      /* for each line of the object's sprite */
       CALL DRAW_OBJ_LINE(dro, obj.dro.y+j)
     END
   END
   ELSE DO 
     /* transparent items is off, item background color will be white */
+    rm=obj.pl.room
+    mp=k.rm.map
     DO j=0 TO obj.dro.h
       se "["||obj.dro.y+j||";"||obj.dro.x||"H"||obj.dro.col||obj.dro.spr.j||k.rm.fc
     END
@@ -1248,7 +1248,9 @@ DRAW_OBJECT_WITH_MOTION: /* draw object in motion (erase where its been) */
     
     /* get map data that is layered "undeneath" the sprite line */  
     map_str= SUBSTR(k.mp.line, mapstart, maplength) 
-      
+     
+     
+    /* TODO: this loop is very similar to DRAW_OBJ_LINE, try to combine/code reduce */ 
     /* inner loop goes through each character of the sprite string and
        inserts bg color based on map character data found underneath  */
     result_str=""
@@ -1257,8 +1259,15 @@ DRAW_OBJECT_WITH_MOTION: /* draw object in motion (erase where its been) */
       map_char = SUBSTR(map_str, k, 1)
       SELECT
         WHEN map_char==" " THEN DO
-          IF spr_char=="E" THEN result_str=result_str||k.rm.c||map_char
-          ELSE result_str=result_str||obj.dro.col||k.rm.bc||spr_char
+        	/* select bgcolor */
+        	IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", line, (obj.dro.x+k)-1)==1 THEN bgcolor="[43m"
+          ELSE bgcolor=k.rm.bc
+          
+          /* select character data */
+          IF spr_char=="E" THEN char_data=map_char
+          ELSE char_data=spr_char
+          	
+          result_str=result_str||obj.dro.col||bgcolor||char_data
         END
         WHEN map_char=="Û" THEN DO 
           IF spr_char=="E" THEN result_str=result_str||k.rm.c||map_char
@@ -1281,42 +1290,53 @@ RETURN
 DRAW_INVERSE_OBJECT: /* draw object whose bg is fg. what if C A T really spelled DOG? */
   ARG dro
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
-  rm=obj.pl.room
-  mp=k.rm.map
   DO j=0 TO obj.dro.h
-    /* for each line of the object's sprite */
-    IF (dro=="YORGLE" | dro=="GRUNDLE" | dro=="RHINDLE") & obj.dro.dirx==1 THEN DO
-      spr_line= REVERSE(obj.dro.spr.j)
-    END
-    ELSE spr_line=obj.dro.spr.j
-    /* get map data underneath item's sprite line */
-    l=obj.dro.y+j
-    map_str= SUBSTR(k.mp.l, obj.dro.x-1, obj.dro.w+1) /* -1 for map shift, +1 for how width is indexed */
-    
-    /* loop through each character of the map string and insert bg color based on map character found */
-    result_line=""
-    DO k=1 TO obj.dro.w+1 /* +1 due to how width is indexed */
-      spr_char = SUBSTR(spr_line, k, 1)
-      map_char = SUBSTR(map_str, k, 1)
-      SELECT
-        WHEN map_char==" " THEN result_line=result_line||obj.dro.col||spr_char
-        WHEN map_char=="Û" THEN DO 
-          IF spr_char==" " THEN result_line=result_line||obj.dro.col||spr_char
-          ELSE DO
-            IF k.rm.dark==1 & flashlight==0 THEN result_line=result_line||k.rm.c||spr_char
-            ELSE result_line=result_line||k.rm.fc||spr_char
-          END
-        END
-        WHEN map_char=="M" THEN DO
-          IF spr_char==" " THEN result_line=result_line||obj.dro.col||spr_char
-          ELSE result_line=result_line||"[22;30m"||spr_char
-        END
-        OTHERWISE NOP
-      END
-    END       
-    se "["||obj.dro.y+j||";"||obj.dro.x||"H"||obj.dro.col||result_line||k.rm.fc
+    CALL DRAW_INVERSE_OBJ_LINE(dro, obj.dro.y+j)
   END
   se park
+RETURN
+
+DRAW_INVERSE_OBJ_LINE:
+  ARG dro, drawline /*, start, length */
+  rm=obj.pl.room
+  mp=k.rm.map
+  
+  /* get object sprite line */
+  spri=drawline-obj.dro.y
+  IF obj.dro.type=="dragon" & obj.dro.dirx==1 THEN DO
+    spr_str= REVERSE(obj.dro.spr.spri)
+  END
+  ELSE spr_str=obj.dro.spr.spri
+  	
+  /* get map data underneath item's sprite line */
+  map_str= SUBSTR(k.mp.drawline, obj.dro.x-1, obj.dro.w+1) /* -1 for map shift, +1 for how width is indexed */
+  
+  /* loop through each character of the map string and insert bg color based on map character found */
+  result_line=""
+  DO m=1 TO obj.dro.w+1 /* +1 due to how width is indexed */
+    spr_char = SUBSTR(spr_str, m, 1)
+    map_char = SUBSTR(map_str, m, 1)
+    SELECT
+      WHEN map_char==" " THEN DO
+      	IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", drawline, (obj.dro.x+m)-1)==1 THEN fgcolor="[33m"
+        ELSE fgcolor=""
+        result_line=result_line||obj.dro.col||fgcolor||spr_char
+      END	
+      WHEN map_char=="Û" THEN DO 
+        IF spr_char==" " THEN result_line=result_line||obj.dro.col||spr_char
+        ELSE DO
+          IF k.rm.dark==1 & flashlight==0 THEN result_line=result_line||k.rm.c||spr_char
+          ELSE result_line=result_line||k.rm.fc||spr_char
+        END
+      END
+      WHEN map_char=="M" THEN DO
+        IF spr_char==" " THEN result_line=result_line||obj.dro.col||spr_char
+        ELSE result_line=result_line||"[22;30m"||spr_char
+      END
+      OTHERWISE NOP
+    END
+  END       
+  se "["||drawline||";"||obj.dro.x||"H"||obj.dro.col||result_line||k.rm.fc
 RETURN
 
 /* TODO: fix flashlight interaction */
@@ -2287,12 +2307,12 @@ NEXTROOM:
 RETURN
 
 EXPAND_KINGDOM:  /* set up full size kingdom for difficulty 2 and 3 */
-    k.1.be=15
-    k.2.be=17
-    k.3.be=10
-    k.27.te=22; k.27.re=22; k.27.be=22; k.27.le=22
-    k.28.be=12
-    k.29.te=12
+  k.1.be=15
+  k.2.be=17
+  k.3.be=10
+  k.27.te=22; k.27.re=22; k.27.be=22; k.27.le=22
+  k.28.be=12
+  k.29.te=12
 RETURN
 
 INIT_PLAYER:  
@@ -2773,6 +2793,7 @@ INIT_OBJECTS:
   obj.sword.lvl3.0=1   /* random room lower limit */
   obj.sword.lvl3.1=29  /* random room upper limit */
 
+  obj.magnet.type="inverse"
   obj.magnet.room=27  /* 27 orig, 29 test */
   obj.magnet.x=64
   obj.magnet.y=19
@@ -2792,6 +2813,7 @@ INIT_OBJECTS:
   obj.magnet.lvl3.0=1   /* random room lower limit */
   obj.magnet.lvl3.1=29  /* random room upper limit */
   
+  obj.chalice.type="inverse"
   obj.chalice.room=28
   obj.chalice.x=25 /* TODO: fix */
   obj.chalice.y=5 /* TODO: fix */
@@ -2812,6 +2834,7 @@ INIT_OBJECTS:
   obj.chalice.lvl3.0=19  /* random room lower limit */
   obj.chalice.lvl3.1=26  /* random room upper limit */
   
+  obj.bridge.type="inverse"
   obj.bridge.room=4
   obj.bridge.x=20 
   obj.bridge.y=14 
@@ -2852,6 +2875,7 @@ INIT_OBJECTS:
   obj.dot.lvl3.1=0  /* random room upper limit */
   
   knub="KNUBBERRUB"  /* handy shortcut because i'm too lazy to type his full name every god damn time */
+  obj.knubberrub.type="inverse"
   obj.knubberrub.room=2 
   obj.knubberrub.x=17 
   obj.knubberrub.y=19 /* TODO: fix */

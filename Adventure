@@ -835,10 +835,19 @@ ERASE_PL:
 RETURN
 
 GET_FLASHLIGHT_SIZE:
-  obj.light.x=obj.pl.x-obj.light.offx
-  obj.light.y=obj.pl.y-obj.light.offy
+  /* determine x,y position of flashlight. we change our calculations if player is outside of screen bounds */
+  /*  such as when entering a new room  */
+  IF obj.pl.x < mincol THEN obj.light.x=mincol-obj.light.offx
+  ELSE IF obj.pl.x > maxcol THEN obj.light.x=maxcol-obj.light.offx
+  ELSE obj.light.x=obj.pl.x-obj.light.offx
+  	
+  IF obj.pl.y < minline THEN obj.light.y=minline-obj.light.offy
+  ELSE IF obj.pl.y > maxline THEN obj.light.y=maxline-obj.light.offy
+  ELSE obj.light.y=obj.pl.y-obj.light.offy
+  
+  /* determine flashlight width and height */
   obj.light.w=flash_width-1  /* -1 to align with how other obj w is indexed */
-  obj.light.h=flash_height-1  /* -1 to align with how other obj h is indexed */
+  obj.light.h=flash_height-1  /* -1 to align with how other obj h is indexed * 
 
   /* handle left screen edge */
   IF obj.light.x<mincol THEN DO
@@ -872,8 +881,6 @@ DRAW_FLASHLIGHT:  /* used only by REFRESH */
   mp=k.rm.map
   IF flashlight==0 | k.rm.dark==0 THEN RETURN
   
-  /* TODO: fix bug when GET_FLASHLIGHT_SIZE is called upon entering a room */
-  /* the dimensions are off by one, bug I'm not sure why */
   CALL GET_FLASHLIGHT_SIZE
   
   DO i=0 TO obj.light.h
@@ -902,18 +909,18 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
 
   IF obj.light.drawn==0 THEN DO
     /* draw flashlight upon entering room */
-    DO i=0 TO obj.light.h
+    /* DO i=0 TO obj.light.h
       line=obj.light.y+(i)
-      se "["||line||";"||obj.light.x||"H[0;43;37m"|| SUBSTR(k.mp.line, mapstart, maplength)
+      se "["||line||";"||obj.light.x||"H[0;43;37m"|| SUBSTR(k.mp.line, mapstart, maplength) */
       
       /* TODO: fix/optimize this */
-      DO j=0 TO maxdrawitem
+      /* DO j=0 TO maxdrawitem
 	  		o=item.j
 	  		IF obj.pl.equip~=o & obj.knub.equp~=o & COLLIDE_BY_LINE("LIGHT", line, o)==1 THEN DO
 	  			CALL DRAW_OBJ_LINE(o, line)
 	  		END
 	    END
-    END  
+    END  */
     
     obj.light.drawn=1
   END
@@ -1061,6 +1068,8 @@ ERASE_FLASHLIGHT:  /* TODO: delete if no longer used */
 RETURN
 
 DRAW_OBJS:  /* draw objects (not in the main loop) */
+   CALL DRAW_FLASHLIGHT
+  
   /* draw items */
   DO i=0 TO maxitem
     o=item.i

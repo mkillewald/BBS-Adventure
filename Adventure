@@ -588,7 +588,7 @@ DRAW_PHENOM:
       CALL DELAY(2)
     END
     IF time('e') > 1.3 THEN DO
-    	se "[7;1H"
+      se "[7;1H"
       DO i=1 TO phenommaxline
         tr phenom.i
       END
@@ -646,7 +646,7 @@ START:
   END
   
   IF fear==1 THEN DO  /* dragons fear SWORD */
-  	fear.yorgle.max=1
+    fear.yorgle.max=1
     fear.yorgle.0="SWORD"
     fear.yorgle.1="YKEY"
     fear.grundle.0="SWORD" 
@@ -697,14 +697,14 @@ START:
     END
     
     IF dragon_enable>0 THEN DO
-	    DO i=0 TO maxdragon
-	     	d=dragon.i
-	     	IF obj.d.state>=D_DEAD THEN ITERATE i
-	      CALL DRAGON_GUARD(d)
-	      CALL DRAGON_FLEE(d)
-	      CALL DRAGON_MOVE(d)
-	    END
-	  END
+      DO i=0 TO maxdragon
+        d=dragon.i
+        IF obj.d.state>=D_DEAD THEN ITERATE i
+        CALL DRAGON_GUARD(d)
+        CALL DRAGON_FLEE(d)
+        CALL DRAGON_MOVE(d)
+      END
+    END
        
     CALL CHECK
   END
@@ -838,16 +838,16 @@ GET_FLASHLIGHT_SIZE:
   /* determine x,y position of flashlight. we change our calculations if player is outside of screen bounds */
   /*  such as when entering a new room  */
   IF obj.pl.x < mincol THEN obj.light.x=mincol-obj.light.offx
-  ELSE IF obj.pl.x > maxcol THEN obj.light.x=maxcol-obj.light.offx
+  ELSE IF obj.pl.x > maxcol THEN obj.light.x=(maxcol-1)-obj.light.offx
   ELSE obj.light.x=obj.pl.x-obj.light.offx
-  	
+    
   IF obj.pl.y < minline THEN obj.light.y=minline-obj.light.offy
   ELSE IF obj.pl.y > maxline THEN obj.light.y=maxline-obj.light.offy
   ELSE obj.light.y=obj.pl.y-obj.light.offy
   
   /* determine flashlight width and height */
   obj.light.w=flash_width-1  /* -1 to align with how other obj w is indexed */
-  obj.light.h=flash_height-1  /* -1 to align with how other obj h is indexed * 
+  obj.light.h=flash_height-1  /* -1 to align with how other obj h is indexed */
 
   /* handle left screen edge */
   IF obj.light.x<mincol THEN DO
@@ -915,11 +915,11 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
       
       /* TODO: fix/optimize this */
       /* DO j=0 TO maxdrawitem
-	  		o=item.j
-	  		IF obj.pl.equip~=o & obj.knub.equp~=o & COLLIDE_BY_LINE("LIGHT", line, o)==1 THEN DO
-	  			CALL DRAW_OBJ_LINE(o, line)
-	  		END
-	    END
+        o=item.j
+        IF obj.pl.equip~=o & obj.knub.equp~=o & COLLIDE_BY_LINE("LIGHT", line, o)==1 THEN DO
+          CALL DRAW_OBJ_LINE(o, line)
+        END
+      END
     END  */
     
     obj.light.drawn=1
@@ -1002,9 +1002,9 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
       ELSE DO
         /* this is a flashlight line */
         IF (i==0 & drawy==-1) | (i==obj.light.h & drawy==1) THEN DO
-        	
-        	flashline=SUBSTR(k.mp.line, mapstart, maplength)
-        	
+          
+          flashline=SUBSTR(k.mp.line, mapstart, maplength)
+          
           /* add new flashlight line */
           result_str=result_str||"[0;43;37m"||flashline
         END
@@ -1043,12 +1043,12 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
       
       /* check for line collision with other objects */
       /* TODO: optimize this so we're not drawing the flashlight line first and the object line 2nd */
-    	DO j=0 TO maxdrawitem
-    		o=item.j
-    		IF obj.pl.equip~=o & obj.knub.equp~=o & COLLIDE_BY_LINE("LIGHT", line, o)==1 THEN DO
-    			CALL DRAW_OBJ_LINE(o, line)
-    		END
-    	END
+      DO j=0 TO maxdrawitem
+        o=item.j
+        IF obj.pl.equip~=o & obj.knub.equp~=o & COLLIDE_BY_LINE("LIGHT", line, o)==1 THEN DO
+          CALL DRAW_OBJ_LINE(o, line)
+        END
+      END
     END
   END
 RETURN
@@ -1597,15 +1597,15 @@ PLAYER_MOVE:
     
   /* do player-msg collision detect */
   IF MSG_COLLIDE("PL")==1 THEN RETURN
-  	
+    
   /* do player-dragon collision detect */
   IF DRAGON_COLLIDE("PL")==1 THEN DO
-  	IF obj.pl.dx==2 THEN DO
-  		/* moving 2 char failed, lets try 1 char */
-  		obj.pl.dx=1
-  		IF DRAGON_COLLIDE("PL")==1 THEN RETURN
-  	END
-  	ELSE RETURN
+    IF obj.pl.dx==2 THEN DO
+      /* moving 2 char failed, lets try 1 char */
+      obj.pl.dx=1
+      IF DRAGON_COLLIDE("PL")==1 THEN RETURN
+    END
+    ELSE RETURN
   END
     
   /* do map collision detect */
@@ -1776,40 +1776,40 @@ COLLIDE_BY_LINE:  /* detect if o2 collides with current line being drawn of o1 *
   /* TODO: do something about this hacky flashlight fix */
   /* need to make this code apply to all objects in motion with erasex */
   IF o1=="LIGHT" & erasex==-1 THEN DO
-  	o1xleft=obj.o1.x-obj.pl.dx
-  	o1xright=obj.o1.x+obj.o1.w
+    o1xleft=obj.o1.x-obj.pl.dx
+    o1xright=obj.o1.x+obj.o1.w
   END
   ELSE IF o1=="LIGHT" & erasex==1 THEN DO
-  	o1xleft=obj.o1.x
-  	o1xright=obj.o1.x+obj.o1.w+obj.pl.dx
+    o1xleft=obj.o1.x
+    o1xright=obj.o1.x+obj.o1.w+obj.pl.dx
   END 
   ELSE DO
-  	o1xleft=obj.o1.x
-  	o1xright=obj.o1.x+obj.o1.w
+    o1xleft=obj.o1.x
+    o1xright=obj.o1.x+obj.o1.w
   END
   
   IF obj.o2.room==obj.pl.room &,
-  	drawline >= obj.o2.y &,
-  	drawline <= obj.o2.y+obj.o2.h &,
-  	obj.o2.x+obj.o2.w >= o1xleft &,
-  	obj.o2.x <= o1xright THEN RETURN 1
+    drawline >= obj.o2.y &,
+    drawline <= obj.o2.y+obj.o2.h &,
+    obj.o2.x+obj.o2.w >= o1xleft &,
+    obj.o2.x <= o1xright THEN RETURN 1
   ELSE RETURN 0
 RETURN 0
 
 COLLIDE_BY_CHAR:  /* detect if xpos collides with current char being drawn of o1 */
   ARG o1, drawline, xpos
   IF drawline >= obj.o1.y &,
-  	drawline <= obj.o1.y+obj.o1.h &,
-  	xpos >= obj.o1.x &,
-  	xpos <= obj.o1.x+obj.o1.w THEN RETURN 1
+    drawline <= obj.o1.y+obj.o1.h &,
+    xpos >= obj.o1.x &,
+    xpos <= obj.o1.x+obj.o1.w THEN RETURN 1
   ELSE RETURN 0
 RETURN
 
 DRAGON_COLLIDE:  /* check if object collides with dead or attacking dragons */
   ARG o
   DO j=0 to maxdragon
-  	d=dragon.j
-  	IF (obj.d.state==D_DEAD | obj.d.state==D_ATTACK) & WILL_COLLIDE(o, d)==1 THEN RETURN 1
+    d=dragon.j
+    IF (obj.d.state==D_DEAD | obj.d.state==D_ATTACK) & WILL_COLLIDE(o, d)==1 THEN RETURN 1
   END
 RETURN 0
 
@@ -2084,8 +2084,8 @@ DRAGON_MOVE:
   
   /* check for impalement */
   IF obj.drago.state==D_ALIVE & COLLIDE_NOW(drago, "SWORD") THEN DO
-  	obj.drago.state=D_DEAD
-  	DO i=0 TO obj.drago.h
+    obj.drago.state=D_DEAD
+    DO i=0 TO obj.drago.h
       obj.drago.spr.i=_dragon.D_DEAD.i
     END
     CALL DRAW_INVERSE_OBJECT(drago)
@@ -2094,8 +2094,8 @@ DRAGON_MOVE:
   
   /* should dragon attack? */
   IF obj.drago.state==D_ALIVE & WILL_COLLIDE(drago, "PL") THEN DO
-  	obj.drago.state=D_ATTACK
-  	DO i=0 TO obj.drago.h
+    obj.drago.state=D_ATTACK
+    DO i=0 TO obj.drago.h
       obj.drago.spr.i=_dragon.D_ATTACK.i
     END
     obj.drago.atkstart= time('s')
@@ -2108,28 +2108,28 @@ DRAGON_MOVE:
   now= time('s')
   atkwindow=now-obj.drago.atkstart
   IF obj.drago.state==D_ATTACK & atkwindow>1 & atkwindow<3 & WILL_COLLIDE(drago, "PL") THEN DO
-  	obj.pl.state=PL_DEAD
-  	CALL ERASE_PL
-  	obj.pl.x=obj.drago.x+1
-  	obj.pl.y=obj.drago.y+4
-  	obj.drago.state=D_FULL
-  	obj.drago.atkstart=0
-  	DO i=0 TO obj.drago.h
+    obj.pl.state=PL_DEAD
+    CALL ERASE_PL
+    obj.pl.x=obj.drago.x+1
+    obj.pl.y=obj.drago.y+4
+    obj.drago.state=D_FULL
+    obj.drago.atkstart=0
+    DO i=0 TO obj.drago.h
       obj.drago.spr.i=_dragon.D_ALIVE.i
     END
-  	CALL DRAW_INVERSE_OBJECT(drago)
-  	CALL DRAW_PL
-  	RETURN
+    CALL DRAW_INVERSE_OBJECT(drago)
+    CALL DRAW_PL
+    RETURN
   END
   ELSE IF obj.drago.state==D_ATTACK & atkwindow>2 THEN DO
-  	obj.drago.state=D_ALIVE
-  	obj.drago.atkstart=0
-  	DO i=0 TO obj.drago.h
+    obj.drago.state=D_ALIVE
+    obj.drago.atkstart=0
+    DO i=0 TO obj.drago.h
       obj.drago.spr.i=_dragon.D_ALIVE.i
     END
   END
   ELSE IF obj.drago.state==D_ATTACK THEN RETURN
-  	
+    
   /* OK 2 move dragon */
 
   obj.drago.dx=obj.drago.dx+obj.drago.spdx
@@ -2165,7 +2165,7 @@ RESET_DRAGONS:
   DO i=0 TO maxdragon
     d=dragon.i
     obj.d.state=D_ALIVE  /* born again! */
-  	DO j=0 TO obj.d.h
+    DO j=0 TO obj.d.h
       obj.d.spr.j=_dragon.D_ALIVE.j
     END
   END

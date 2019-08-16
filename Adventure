@@ -605,7 +605,6 @@ START:
   start= time('r') /* reset interval timer */
   game_running=1
 
-  CALL INIT_FLASHLIGHT /* init flashlight */
   CALL INIT_OBJECTS  /* init objects */
   
   IF difficulty==1 THEN DO
@@ -655,6 +654,7 @@ START:
     
   REINCARNATE:
   CALL INIT_PLAYER  /* init player */
+  CALL INIT_FLASHLIGHT /* init flashlight */
   CALL RESET_DRAGONS
 
   CALL DRAW_BG
@@ -835,8 +835,8 @@ ERASE_PL:
 RETURN
 
 GET_FLASHLIGHT_SIZE:
-  /* determine x,y position of flashlight. we change our calculations if player is outside of screen bounds */
-  /*  such as when entering a new room  */
+  /* determine x,y position of flashlight using player offsets, but we need modify our calculation
+     slightly when player is outside of screen bounds,such as when entering a new room  */
   IF obj.pl.x < mincol THEN obj.light.x=mincol-obj.light.offx
   ELSE IF obj.pl.x > maxcol THEN obj.light.x=(maxcol-1)-obj.light.offx
   ELSE obj.light.x=obj.pl.x-obj.light.offx
@@ -848,7 +848,8 @@ GET_FLASHLIGHT_SIZE:
   /* determine flashlight width and height */
   obj.light.w=flash_width-1  /* -1 to align with how other obj w is indexed */
   obj.light.h=flash_height-1  /* -1 to align with how other obj h is indexed */
-
+  
+  /* finally, we need to clip the flashlight at the screen edges */
   /* handle left screen edge */
   IF obj.light.x<mincol THEN DO
     obj.light.dw=mincol-(obj.light.x)
@@ -876,7 +877,7 @@ GET_FLASHLIGHT_SIZE:
   END
 RETURN
 
-DRAW_FLASHLIGHT:  /* used only by REFRESH */
+DRAW_FLASHLIGHT:  /* used by REFRESH and DRAW_OBJS */
   rm=obj.pl.room
   mp=k.rm.map
   IF flashlight==0 | k.rm.dark==0 THEN RETURN
@@ -894,6 +895,10 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
   rm=obj.pl.room
   mp=k.rm.map
   IF flashlight==0 | k.rm.dark==0 THEN RETURN
+  IF obj.light.drawn==0 THEN DO  /* skip drawing flashlight when entering new roon */
+    obj.light.drawn=1
+    RETURN
+  END
   
   CALL GET_FLASHLIGHT_SIZE
   
@@ -906,148 +911,129 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
   loopend=obj.light.h
   mapstart=obj.light.x-1   /* -1 for map shift */
   maplength=obj.light.w+1  /* +1 for how obj width is indexed  */
-
-  IF obj.light.drawn==0 THEN DO
-    /* draw flashlight upon entering room */
-    /* DO i=0 TO obj.light.h
-      line=obj.light.y+(i)
-      se "["||line||";"||obj.light.x||"H[0;43;37m"|| SUBSTR(k.mp.line, mapstart, maplength) */
-      
-      /* TODO: fix/optimize this */
-      /* DO j=0 TO maxdrawitem
-        o=item.j
-        IF obj.pl.equip~=o & obj.knub.equp~=o & COLLIDE_BY_LINE("LIGHT", line, o)==1 THEN DO
-          CALL DRAW_OBJ_LINE(o, line)
-        END
-      END
-    END  */
-    
-    obj.light.drawn=1
+  
+  /* check for movement in x direction */
+  IF obj.pl.dirx==-1 THEN DO
+    /* player and flashlight are moving left */
+    IF obj.light.x>=mincol THEN drawx=-1 /* not less than the left edge of screen */
+    IF obj.light.x+obj.light.w<maxcol THEN erasex=1  /* not at right edge of screen */
   END
-  ELSE DO   
-    /* check for movement in x direction */
-    IF obj.pl.dirx==-1 THEN DO
-      /* player and flashlight are moving left */
-      IF obj.light.x>=mincol THEN drawx=-1 /* not less than the left edge of screen */
-      IF obj.light.x+obj.light.w<maxcol THEN erasex=1  /* not at right edge of screen */
+  ELSE IF obj.pl.dirx==1 THEN DO
+    /* player and flashlight are moving right */
+    IF obj.light.x+obj.light.w<=maxcol THEN drawx=1 /* not greater than the right edge of screen */
+    IF obj.light.x>mincol THEN erasex=-1  /* not at left edge of screen */
+  END
+  
+  /* check for movement in y direction */
+  IF obj.pl.diry==-1 THEN DO
+    /* player and flashlight are moving up */
+    drawy=-1
+    IF obj.light.y+obj.light.h<maxline THEN DO  /* not at bottom edge of screen */
+      erasey=1  
+      loopend=obj.light.h+1
     END
-    ELSE IF obj.pl.dirx==1 THEN DO
-      /* player and flashlight are moving right */
-      IF obj.light.x+obj.light.w<=maxcol THEN drawx=1 /* not greater than the right edge of screen */
-      IF obj.light.x>mincol THEN erasex=-1  /* not at left edge of screen */
+  END
+  ELSE IF obj.pl.diry==1 THEN DO
+    /* dro is moving down */
+    drawy=1 
+    IF obj.light.y>minline THEN DO   /* not at the top edge of screen */
+      erasey=-1
+      loopstart=-1
     END
+  END
+  
+  /* loop sets up each line of flashlight */
+  DO i=loopstart TO loopend BY 1
+    line=obj.light.y+(i) 
+    result_str=""
     
-    /* check for movement in y direction */
-    IF obj.pl.diry==-1 THEN DO
-      /* player and flashlight are moving up */
-      drawy=-1
-      IF obj.light.y+obj.light.h<maxline THEN DO  /* not at bottom edge of screen */
-        erasey=1  
-        loopend=obj.light.h+1
-      END
-    END
-    ELSE IF obj.pl.diry==1 THEN DO
-      /* dro is moving down */
-      drawy=1 
-      IF obj.light.y>minline THEN DO   /* not at the top edge of screen */
-        erasey=-1
-        loopstart=-1
-      END
-    END
-    
-    /* loop sets up each line of flashlight */
-    DO i=loopstart TO loopend BY 1
-      line=obj.light.y+(i) 
-      result_str=""
-      
-      /* handle start of line */ 
-      IF erasex==-1 THEN DO     
-        IF mapstart-obj.pl.dx < mincol-1 THEN DO
-          drawxpos=mincol
-          emapstart=mincol
-          elength=1
-        END
-        ELSE DO
-          drawxpos=obj.light.x-obj.pl.dx
-          emapstart=mapstart-obj.pl.dx
-          elength=obj.pl.dx
-        END
-        /* result_str=result_str||"[0;47;37m"|| SUBSTR(k.mp.line, emapstart, elength) */
-        result_str=result_str||"[0;47;37m"|| COPIES(" ", elength)
-      END
-      ELSE IF drawx==-1 THEN DO
-        drawxpos=obj.light.x
-        result_str=result_str||"[0;43;37m"|| SUBSTR(k.mp.line, mapstart, obj.pl.dx)
-      END
-      
-      /* handle line */
-      IF i==-1 THEN DO
-        /* this is a line above the flashlight */
-        /* check if need to erase top line */
-        IF erasey==-1 THEN DO
-          /* result_str=result_str||"[0;47;37m"|| SUBSTR(k.mp.line, mapstart, maplength) */
-          result_str=result_str||"[0;47;37m"|| COPIES(" ", maplength)
-        END
-        ELSE ITERATE i  /* skip this loop iteration */
-      END
-      ELSE IF i==obj.light.h+1 THEN DO
-        /* this is a line below the flashlight */
-        /* check if need to erase bottom line */
-        IF erasey==1 THEN DO
-          /* result_str=result_str||"[0;47;37m"|| SUBSTR(k.mp.line, mapstart, maplength) */
-          result_str=result_str||"[0;47;37m"|| COPIES(" ", maplength)
-        END
-        ELSE ITERATE i  /* skip this loop iteration */
+    /* handle start of line */ 
+    IF erasex==-1 THEN DO     
+      IF mapstart-obj.pl.dx < mincol-1 THEN DO
+        drawxpos=mincol
+        emapstart=mincol
+        elength=1
       END
       ELSE DO
-        /* this is a flashlight line */
-        IF (i==0 & drawy==-1) | (i==obj.light.h & drawy==1) THEN DO
-          
-          flashline=SUBSTR(k.mp.line, mapstart, maplength)
-          
-          /* add new flashlight line */
-          result_str=result_str||"[0;43;37m"||flashline
+        drawxpos=obj.light.x-obj.pl.dx
+        emapstart=mapstart-obj.pl.dx
+        elength=obj.pl.dx
+      END
+      /* result_str=result_str||"[0;47;37m"|| SUBSTR(k.mp.line, emapstart, elength) */
+      result_str=result_str||"[0;47;37m"|| COPIES(" ", elength)
+    END
+    ELSE IF drawx==-1 THEN DO
+      drawxpos=obj.light.x
+      result_str=result_str||"[0;43;37m"|| SUBSTR(k.mp.line, mapstart, obj.pl.dx)
+    END
+    
+    /* handle line */
+    IF i==-1 THEN DO
+      /* this is a line above the flashlight */
+      /* check if need to erase top line */
+      IF erasey==-1 THEN DO
+        /* result_str=result_str||"[0;47;37m"|| SUBSTR(k.mp.line, mapstart, maplength) */
+        result_str=result_str||"[0;47;37m"|| COPIES(" ", maplength)
+      END
+      ELSE ITERATE i  /* skip this loop iteration */
+    END
+    ELSE IF i==obj.light.h+1 THEN DO
+      /* this is a line below the flashlight */
+      /* check if need to erase bottom line */
+      IF erasey==1 THEN DO
+        /* result_str=result_str||"[0;47;37m"|| SUBSTR(k.mp.line, mapstart, maplength) */
+        result_str=result_str||"[0;47;37m"|| COPIES(" ", maplength)
+      END
+      ELSE ITERATE i  /* skip this loop iteration */
+    END
+    ELSE DO
+      /* this is a flashlight line */
+      IF (i==0 & drawy==-1) | (i==obj.light.h & drawy==1) THEN DO
+        
+        flashline=SUBSTR(k.mp.line, mapstart, maplength)
+        
+        /* add new flashlight line */
+        result_str=result_str||"[0;43;37m"||flashline
+      END
+      ELSE DO
+        /* skip over already drawn portion of flashlight */
+        IF drawx==-1 THEN DO
+          /* skipstart=mapstart+obj.pl.dx */
+          skiplength=maplength-obj.pl.dx
+        END
+        ELSE IF drawx==1 THEN DO
+          /* skipstart=mapstart */
+          skiplength=maplength-obj.pl.dx
         END
         ELSE DO
-          /* skip over already drawn portion of flashlight */
-          IF drawx==-1 THEN DO
-            /* skipstart=mapstart+obj.pl.dx */
-            skiplength=maplength-obj.pl.dx
-          END
-          ELSE IF drawx==1 THEN DO
-            /* skipstart=mapstart */
-            skiplength=maplength-obj.pl.dx
-          END
-          ELSE DO
-            /* skipstart=mapstart */
-            skiplength=maplength
-          END
-          result_str=result_str||"["||skiplength||"C"
-          /*result_str=result_str||"[43m"|| SUBSTR(k.mp.line, skipstart, skiplength)*/
+          /* skipstart=mapstart */
+          skiplength=maplength
         END
+        result_str=result_str||"["||skiplength||"C"
+        /*result_str=result_str||"[43m"|| SUBSTR(k.mp.line, skipstart, skiplength)*/
       END
-      
-      /* handle end of line */
-      IF erasex==1 THEN DO
-        IF obj.light.x+obj.light.w < maxcol-1 THEN elength=obj.pl.dx
-        ELSE elength=1
-        /* result_str=result_str||"[0;47;37m"|| SUBSTR(k.mp.line, mapstart+maplength, elength) */
-        result_str=result_str||"[0;47;37m"|| COPIES(" ", elength)
-      END
-      ELSE IF drawx==1 THEN DO
-        result_str=result_str||"[0;43;37m"|| SUBSTR(k.mp.line, mapstart+maplength-obj.pl.dx, obj.pl.dx)
-      END
-      
-      IF line==maxline THEN result_str=result_str||park  /* fix for flashlight wrapping on last line */
-      se "["||line||";"||drawxpos||"H"||result_str
-      
-      /* check for line collision with other objects */
-      /* TODO: optimize this so we're not drawing the flashlight line first and the object line 2nd */
-      DO j=0 TO maxdrawitem
-        o=item.j
-        IF obj.pl.equip~=o & obj.knub.equp~=o & COLLIDE_BY_LINE("LIGHT", line, o)==1 THEN DO
-          CALL DRAW_OBJ_LINE(o, line)
-        END
+    END
+    
+    /* handle end of line */
+    IF erasex==1 THEN DO
+      IF obj.light.x+obj.light.w < maxcol-1 THEN elength=obj.pl.dx
+      ELSE elength=1
+      /* result_str=result_str||"[0;47;37m"|| SUBSTR(k.mp.line, mapstart+maplength, elength) */
+      result_str=result_str||"[0;47;37m"|| COPIES(" ", elength)
+    END
+    ELSE IF drawx==1 THEN DO
+      result_str=result_str||"[0;43;37m"|| SUBSTR(k.mp.line, mapstart+maplength-obj.pl.dx, obj.pl.dx)
+    END
+    
+    IF line==maxline THEN result_str=result_str||park  /* fix for flashlight wrapping on last line */
+    se "["||line||";"||drawxpos||"H"||result_str
+    
+    /* check for line collision with other objects */
+    /* TODO: optimize this so we're not drawing the flashlight line first and the object line 2nd */
+    DO j=0 TO maxdrawitem
+      o=item.j
+      IF obj.pl.equip~=o & obj.knub.equp~=o & COLLIDE_BY_LINE("LIGHT", line, o)==1 THEN DO
+        CALL DRAW_OBJ_LINE(o, line)
       END
     END
   END
@@ -1139,30 +1125,7 @@ DRAW_OBJECT:  /* TODO: fix item interactions */
   IF transparent_items==1 THEN DO
     DO j=0 TO obj.dro.h
       /* for each line of the object's sprite */
-      spr_line=obj.dro.spr.j
-      
-      /* get map data underneath item's sprite line */
-      l=obj.dro.y+j
-      map_str= SUBSTR(k.mp.l, obj.dro.x-1, obj.dro.w+1) /* -1 for map shift, +1 for how width is indexed */
-      
-      /* loop through each character of the map string and insert bg color based on map character found */
-      result_line=""
-      DO m=1 TO obj.dro.w+1 /* +1 due to how width is indexed */
-        spr_char = SUBSTR(spr_line, m, 1)
-        map_char = SUBSTR(map_str, m, 1)
-        SELECT
-          WHEN map_char==" " THEN DO
-            IF obj.pl.equip==dro & flashlight~=0 & k.rm.dark==1 THEN bgcolor="[43m"
-            /* IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", l, (obj.dro.x+m)-1)==1 THEN bgcolor="[43m" */
-            ELSE bgcolor=k.rm.bc
-            result_line=result_line||bgcolor||spr_char
-          END
-          WHEN map_char=="Û" THEN result_line=result_line||k.rm.bc2||spr_char
-          WHEN map_char=="M" THEN result_line=result_line||"[40m"||spr_char
-          OTHERWISE NOP
-        END
-      END       
-      se "["||obj.dro.y+j||";"||obj.dro.x||"H"||obj.dro.col||result_line||k.rm.fc
+      CALL DRAW_OBJ_LINE(dro, obj.dro.y+j)
     END
   END
   ELSE DO 
@@ -1180,7 +1143,7 @@ DRAW_OBJ_LINE:
   mp=k.rm.map
   
   /* get object sprite line */
-  spri=drawline-obj.o.y
+  spri=drawline-obj.dro.y
   spr_str=obj.dro.spr.spri
   
   /* get map data underneath the sprite line */
@@ -1803,7 +1766,7 @@ COLLIDE_BY_CHAR:  /* detect if xpos collides with current char being drawn of o1
     xpos >= obj.o1.x &,
     xpos <= obj.o1.x+obj.o1.w THEN RETURN 1
   ELSE RETURN 0
-RETURN
+RETURN 0
 
 DRAGON_COLLIDE:  /* check if object collides with dead or attacking dragons */
   ARG o
@@ -2210,7 +2173,6 @@ EXIT_OBJ:  /* perform exit occurred on an object without motion */
     ELSE CALL CASTLE_EXIT(exo)
   END   
 RETURN
-RETURN
 
 EXIT_BEING:  /* perform exit on a being with motion */
   ARG exo
@@ -2365,6 +2327,8 @@ INIT_FLASHLIGHT:
   RESET_FLASHLIGHT:  
   obj.light.w=flash_width-1  /* -1 to align with how other obj w is indexed */
   obj.light.h=flash_height-1  /* -1 to align with how other obj h is indexed */
+  
+  CALL GET_FLASHLIGHT_SIZE
 RETURN
   
 INIT_OBJECTS:

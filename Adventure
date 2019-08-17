@@ -1033,7 +1033,7 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
     DO j=0 TO maxdrawitem
       o=item.j
       IF obj.pl.equip~=o & obj.knub.equp~=o & COLLIDE_BY_LINE("LIGHT", line, o)==1 THEN DO
-      	IF obj.o.type=="dragon" | obj.o.type=="inverse" THEN call DRAW_INVERSE_OBJ_LINE(o, line)
+        IF obj.o.type=="dragon" | obj.o.type=="inverse" THEN call DRAW_INVERSE_OBJ_LINE(o, line)
         ELSE CALL DRAW_OBJ_LINE(o, line)
       END
     END
@@ -1108,11 +1108,7 @@ RETURN
 DRAW_OBJECT:  /* TODO: fix item interactions */
   ARG dro
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
-  IF dro=="BRIDGE" THEN DO
-    CALL DRAW_BRIDGE
-    RETURN
-  END
-  ELSE IF dro=="CHALICE" | dro=="MAGNET" | obj.dro.type=="dragon" THEN DO
+  ELSE IF obj.dro.type=="inverse" | obj.dro.type=="dragon" THEN DO
     CALL DRAW_INVERSE_OBJECT(dro)
     RETURN
   END
@@ -1174,7 +1170,7 @@ DRAW_OBJECT_WITH_MOTION: /* draw object in motion (erase where its been) */
   ARG dro
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
   IF dro=="BRIDGE" THEN DO
-    CALL DRAW_BRIDGE
+    CALL DRAW_BRIDGE /* TODO: replac this *?
     RETURN
   END
   ELSE IF dro=="CHALICE" | dro=="MAGNET" THEN DO
@@ -1220,6 +1216,7 @@ DRAW_OBJECT_WITH_MOTION: /* draw object in motion (erase where its been) */
     outerloopstart=-1
   END
        
+  /* TODO: this loop is very similar to DRAW_OBJ_LINE, try to combine/code reduce */      
   /* outer loop goes through each line of sprite */ 
   DO j=outerloopstart TO outerloopend BY 1
     line=obj.dro.y+(j)
@@ -1249,8 +1246,6 @@ DRAW_OBJECT_WITH_MOTION: /* draw object in motion (erase where its been) */
     /* get map data that is layered "undeneath" the sprite line */  
     map_str= SUBSTR(k.mp.line, mapstart, maplength) 
      
-     
-    /* TODO: this loop is very similar to DRAW_OBJ_LINE, try to combine/code reduce */ 
     /* inner loop goes through each character of the sprite string and
        inserts bg color based on map character data found underneath  */
     result_str=""
@@ -1259,14 +1254,14 @@ DRAW_OBJECT_WITH_MOTION: /* draw object in motion (erase where its been) */
       map_char = SUBSTR(map_str, k, 1)
       SELECT
         WHEN map_char==" " THEN DO
-        	/* select bgcolor */
-        	IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", line, (obj.dro.x+k)-1)==1 THEN bgcolor="[43m"
+          /* select bgcolor */
+          IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", line, (obj.dro.x+k)-1)==1 THEN bgcolor="[43m"
           ELSE bgcolor=k.rm.bc
           
           /* select character data */
           IF spr_char=="E" THEN char_data=map_char
           ELSE char_data=spr_char
-          	
+            
           result_str=result_str||obj.dro.col||bgcolor||char_data
         END
         WHEN map_char=="Û" THEN DO 
@@ -1306,22 +1301,36 @@ DRAW_INVERSE_OBJ_LINE:
   IF obj.dro.type=="dragon" & obj.dro.dirx==1 THEN DO
     spr_str= REVERSE(obj.dro.spr.spri)
   END
+  ELSE IF dro=="BRIDGE" THEN DO
+    spr_str= obj.dro.spr.spri
+    spr_rev= REVERSE(spr_str)
+  END
   ELSE spr_str=obj.dro.spr.spri
-  	
+    
   /* get map data underneath item's sprite line */
   map_str= SUBSTR(k.mp.drawline, obj.dro.x-1, obj.dro.w+1) /* -1 for map shift, +1 for how width is indexed */
   
   /* loop through each character of the map string and insert bg color based on map character found */
   result_line=""
   DO m=1 TO obj.dro.w+1 /* +1 due to how width is indexed */
-    spr_char = SUBSTR(spr_str, m, 1)
+    IF dro=="BRIDGE" THEN DO
+      IF m<=3 THEN spr_char = SUBSTR(spr_str, m, 1)
+      ELSE IF m==4 THEN DO
+        result_line=result_line||"[6C"
+        m=9
+        ITERATE
+      END
+      ELSE IF m>9 THEN spr_char = SUBSTR(spr_rev, m-9, 1)
+    END
+    ELSE spr_char = SUBSTR(spr_str, m, 1)
+      
     map_char = SUBSTR(map_str, m, 1)
     SELECT
       WHEN map_char==" " THEN DO
-      	IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", drawline, (obj.dro.x+m)-1)==1 THEN fgcolor="[33m"
+        IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", drawline, (obj.dro.x+m)-1)==1 THEN fgcolor="[33m"
         ELSE fgcolor=""
         result_line=result_line||obj.dro.col||fgcolor||spr_char
-      END	
+      END 
       WHEN map_char=="Û" THEN DO 
         IF spr_char==" " THEN result_line=result_line||obj.dro.col||spr_char
         ELSE DO
@@ -1376,6 +1385,7 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
     outerloopstart=-1
   END
        
+  /* TODO: this loop is very similar to DRAW_INVERSE_OBJ_LINE, try to combine/code reduce */      
   /* outer loop goes through each line of sprite */ 
   DO j=outerloopstart TO outerloopend BY 1
     line=obj.dro.y+(j)
@@ -1464,14 +1474,14 @@ ERASE_OBJECT:
   se park
 RETURN
 
-DRAW_BRIDGE: /* TODO: fix item interactions */
+DRAW_BRIDGE: /* DEPRECIATED */
   dro="BRIDGE"
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
   rm=obj.pl.room
   mp=k.rm.map
   DO j=0 TO obj.dro.h
     /* for each line of the object's sprite */
-    spr_line=obj.dro.spr.j
+    spr_line= obj.dro.spr.j
     rev_line= REVERSE(spr_line) 
     /* get map data underneath item's sprite line */
     l=obj.dro.y+j
@@ -2875,7 +2885,7 @@ INIT_OBJECTS:
   obj.dot.lvl3.1=0  /* random room upper limit */
   
   knub="KNUBBERRUB"  /* handy shortcut because i'm too lazy to type his full name every god damn time */
-  obj.knubberrub.type="inverse"
+  /* obj.knubberrub.type="inverse" */
   obj.knubberrub.room=2 
   obj.knubberrub.x=17 
   obj.knubberrub.y=19 /* TODO: fix */

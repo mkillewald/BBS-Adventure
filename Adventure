@@ -37,7 +37,6 @@ debug_bat=0     /* 0 = disable bat debug,    1 = enable bat debug    */
 debug_dragon=0  /* 0 = disable dragon debug, 1 = enable dragon debug */
 
 /* system options */
-transparent_items=1  /* 0=disaled, 1=enabled (default) */
 flashlight=3         /* 0=disabled, 1=small, 2=medium, 3=large (default) */
 bat_enable=0         /* 0=bat disabled, 1=bat enabled (default) */
 dragon_enable=0      /* 0=dragons disabled, 1=dragons enabled (default) */
@@ -600,6 +599,13 @@ DRAW_PHENOM:
   CALL DELAY(75)
 RETURN
 
+/* TODO: replace uses of:
+     CALL <function>
+     RETURN
+     
+     with:
+     SIGNAL <function> */
+
 /** GAME START **/
 START:
   start= time('r') /* reset interval timer */
@@ -620,7 +626,7 @@ START:
     obj.wkey.room=6
     obj.sword.room=17
     obj.bridge.room=11
-    obj.chalice.room=20
+    obj.chalice.room=14 /* orig 20 */
     obj.magnet.room=14
   END
   ELSE IF difficulty==3 THEN DO
@@ -1100,12 +1106,13 @@ DRAW_MSG:
   m=msg.n
   rm=obj.pl.room
   DO l=0 TO obj.m.h
-    se "["||obj.m.y+l||";"||obj.m.x||"H"||obj.m.col||obj.m.spr.l||k.rm.fc
+    se "["||obj.m.y+l||";"||obj.m.x||"H"||obj.m.col||obj.m.spr.l
   END
   se park
 RETURN
 
-DRAW_OBJECT:  /* TODO: fix item interactions */
+/* TODO: fix item interactions */
+DRAW_OBJECT:  
   ARG dro
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
   ELSE IF obj.dro.type=="inverse" | obj.dro.type=="dragon" THEN DO
@@ -1117,20 +1124,44 @@ DRAW_OBJECT:  /* TODO: fix item interactions */
     CALL EQUIP("KNUBBERRUB")
     RETURN
   END
-  IF transparent_items==1 THEN DO
-    DO j=0 TO obj.dro.h
-      CALL DRAW_OBJ_LINE(dro, obj.dro.y+j)
-    END
-  END
-  ELSE DO 
-    /* transparent items is off, item background color will be white */
-    rm=obj.pl.room
-    mp=k.rm.map
-    DO j=0 TO obj.dro.h
-      se "["||obj.dro.y+j||";"||obj.dro.x||"H"||obj.dro.col||obj.dro.spr.j||k.rm.fc
-    END
+  DO j=0 TO obj.dro.h
+    CALL DRAW_OBJ_LINE(dro, obj.dro.y+j)
   END
   se park
+RETURN
+
+BUILD_OBJ_LINE:  
+  /* requires dro, drawline, spr_str, map_str, map_start, and map_len defined before calling */
+  /* sets result_line for use by draw functions */ 
+  
+  /* loop through each character of the map string and insert bg color based on map character found */
+  result_line=""
+  DO m=1 TO map_len
+    spr_char = SUBSTR(spr_str, m, 1)
+    map_char = SUBSTR(map_str, m, 1)
+    SELECT
+      WHEN map_char==" " THEN DO
+      	/* select bgcolor */
+        IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", drawline, map_start+m)==1 THEN bgcolor="[43m"
+        ELSE bgcolor=k.rm.bc
+        	
+        /* select character data */
+        IF spr_char=="E" THEN char_data=map_char
+        ELSE char_data=spr_char
+        	
+        result_line=result_line||obj.dro.col||bgcolor||char_data
+      END
+      WHEN map_char=="€" THEN DO
+      	IF spr_char=="E" THEN result_line=result_line||k.rm.c||map_char
+        ELSE result_line=result_line||obj.dro.col||k.rm.bc2||spr_char
+      END
+      WHEN map_char=="M" THEN DO
+      	IF spr_char=="E" THEN result_line=result_line||"[0;30;47m€"
+        ELSE result_line=result_line||obj.dro.col||"[40m"||spr_char
+      END
+      OTHERWISE NOP
+    END
+  END 
 RETURN
 
 DRAW_OBJ_LINE:
@@ -1143,37 +1174,22 @@ DRAW_OBJ_LINE:
   spr_str=obj.dro.spr.spri
   
   /* get map data underneath the sprite line */
-  map_str= SUBSTR(k.mp.drawline, obj.dro.x-1, obj.dro.w+1)
+  map_len=obj.dro.w+1  /* +1 for how width is indexed */
+  map_start=obj.dro.x-1  /* -1 for map shift */
+  map_str= SUBSTR(k.mp.drawline, map_start, map_len)
   
-  /* loop through each character of the map string and insert bg color based on map character found */
-  result_line=""
-  DO m=1 TO obj.dro.w+1 /* +1 due to how width is indexed */
-    spr_char = SUBSTR(spr_str, m, 1)
-    map_char = SUBSTR(map_str, m, 1)
-    SELECT
-      WHEN map_char==" " THEN DO
-        /* IF flashlight~=0 & k.rm.dark==1 & obj.pl.equip==dro THEN bgcolor="[43m" */
-        IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", drawline, (obj.dro.x+m)-1)==1 THEN bgcolor="[43m"
-        ELSE bgcolor=k.rm.bc
-        result_line=result_line||bgcolor||spr_char
-      END
-      WHEN map_char=="€" THEN result_line=result_line||k.rm.bc2||spr_char
-      WHEN map_char=="M" THEN result_line=result_line||"[40m"||spr_char
-      OTHERWISE NOP
-    END
-  END       
-  se "["||drawline||";"||obj.dro.x||"H"||obj.dro.col||result_line||k.rm.fc
+  call BUILD_OBJ_LINE  
+  se "["||drawline||";"||obj.dro.x||"H"||result_line
 RETURN
 
-/* TODO: fix flashlight interaction */
 DRAW_OBJECT_WITH_MOTION: /* draw object in motion (erase where its been) */
   ARG dro
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
   IF dro=="BRIDGE" THEN DO
-    CALL DRAW_BRIDGE /* TODO: replac this *?
+    CALL DRAW_BRIDGE /* TODO: replace this */
     RETURN
   END
-  ELSE IF dro=="CHALICE" | dro=="MAGNET" THEN DO
+  ELSE IF obj.dro.type=="inverse" THEN DO
     CALL DRAW_INVERSE_OBJECT_WITH_MOTION(dro)
     RETURN
   END
@@ -1189,8 +1205,8 @@ DRAW_OBJECT_WITH_MOTION: /* draw object in motion (erase where its been) */
   erasex=0
   outerloopstart=0
   outerloopend=obj.dro.h
-  mapstart=obj.dro.x-1   /* -1 for map shift */
-  maplength=obj.dro.w+1  /* +1 for how obj width is indexed */ 
+  map_start=obj.dro.x-1   /* -1 for map shift */
+  map_len=obj.dro.w+1  /* +1 for how obj width is indexed */ 
   
   /* check for movement in x direction */
   IF obj.dro.dirx==-1 & obj.dro.x+obj.dro.w<maxcol THEN DO
@@ -1215,73 +1231,42 @@ DRAW_OBJECT_WITH_MOTION: /* draw object in motion (erase where its been) */
     /* we will need to erase one line above dro */
     outerloopstart=-1
   END
-       
-  /* TODO: this loop is very similar to DRAW_OBJ_LINE, try to combine/code reduce */      
+           
   /* outer loop goes through each line of sprite */ 
   DO j=outerloopstart TO outerloopend BY 1
-    line=obj.dro.y+(j)
+    drawline=obj.dro.y+(j)
     drawxpos=obj.dro.x
-    /* IF line<minline | line>maxline THEN ITERATE */ /* skip loop iteration if line is out of bounds */
+    /* IF drawline<minline | drawline>maxline THEN ITERATE */ /* skip loop iteration if line is out of bounds */
     
     /* get current line of sprite to work on */
     IF j==-1 | j==obj.dro.h+1 THEN DO
       /* this is either 1 line above or 1 line below dro sprite, so we are "erasing" on y */
-      spr_line=COPIES("E", obj.dro.w+1)
+      spr_str=COPIES("E", obj.dro.w+1)
     END
-    ELSE spr_line=obj.dro.spr.j
+    ELSE spr_str=obj.dro.spr.j
                 
     /* check if we need to erase 1 char to left of sprite */
     IF erasex==-1 THEN DO
       drawxpos=drawxpos-1
-      spr_line= "E"||spr_line
-      mapstart=(obj.dro.x-1)-1   /* (original value)-1, due to being inside loop */
-      maplength=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
+      spr_str="E"||spr_str
+      map_start=(obj.dro.x-1)-1   /* (original value)-1, due to being inside loop */
+      map_len=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
     END
     /* check if we need to erase 1 char to right of sprite */
     ELSE IF erasex==1 THEN DO
-      spr_line=spr_line||"E"
-      maplength=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
+      spr_str=spr_str||"E"
+      map_len=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
     END 
     
     /* get map data that is layered "undeneath" the sprite line */  
-    map_str= SUBSTR(k.mp.line, mapstart, maplength) 
+    map_str= SUBSTR(k.mp.drawline, map_start, map_len) 
      
-    /* inner loop goes through each character of the sprite string and
-       inserts bg color based on map character data found underneath  */
-    result_str=""
-    DO k=1 TO maplength 
-      spr_char = SUBSTR(spr_line, k, 1)
-      map_char = SUBSTR(map_str, k, 1)
-      SELECT
-        WHEN map_char==" " THEN DO
-          /* select bgcolor */
-          IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", line, (obj.dro.x+k)-1)==1 THEN bgcolor="[43m"
-          ELSE bgcolor=k.rm.bc
-          
-          /* select character data */
-          IF spr_char=="E" THEN char_data=map_char
-          ELSE char_data=spr_char
-            
-          result_str=result_str||obj.dro.col||bgcolor||char_data
-        END
-        WHEN map_char=="€" THEN DO 
-          IF spr_char=="E" THEN result_str=result_str||k.rm.c||map_char
-          ELSE result_str=result_str||obj.dro.col||k.rm.bc2||spr_char
-        END
-        WHEN map_char=="M" THEN DO
-          IF spr_char=="E" THEN result_str=result_str||"[22;30;47m€"||k.rm.c
-          ELSE result_str=result_str||"[22;40m"||spr_char
-        END
-        OTHERWISE NOP
-      END
-    END
-   
-    se "["||line||";"||drawxpos||"H"||result_str||k.rm.fc          
+    call BUILD_OBJ_LINE
+    se "["||drawline||";"||drawxpos||"H"||result_line         
   END
   se park
 RETURN
 
-/* TODO: fix flashlight interaction */
 DRAW_INVERSE_OBJECT: /* draw object whose bg is fg. what if C A T really spelled DOG? */
   ARG dro
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
@@ -1290,6 +1275,56 @@ DRAW_INVERSE_OBJECT: /* draw object whose bg is fg. what if C A T really spelled
   END
   se park
 RETURN
+
+BUILD_INVERSE_OBJ_LINE:
+  /* requires dro, drawline, spr_str, map_str, map_start and map_len defined before calling */
+  /* sets result_line for use by draw functions */ 
+  
+  /* loop through each character of the map string and insert bg color based on map character found */
+  result_line=""
+  DO m=1 TO map_len 
+    IF dro=="BRIDGE" THEN DO
+      IF m<=3 THEN spr_char= SUBSTR(spr_str, m, 1)
+      ELSE IF m==4 THEN DO
+        result_line=result_line||"[6C"
+        m=9
+        ITERATE
+      END
+      ELSE IF m>9 THEN spr_char= SUBSTR(spr_rev, m-9, 1)
+    END
+    ELSE spr_char= SUBSTR(spr_str, m, 1)
+      
+    map_char= SUBSTR(map_str, m, 1)
+    SELECT
+      WHEN map_char==" " THEN DO
+      	/* select fg color */
+        IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", drawline, map_start+m)==1 THEN fgcolor="[0;33m"
+        ELSE fgcolor="[0;37m"
+        	
+      	IF spr_char=="E" THEN DO
+      	  bgcolor="[47m"
+      	  char_data="€"
+      	END
+      	ELSE DO
+      		bgcolor=obj.dro.col
+      		char_data=spr_char
+        END        	
+        result_line=result_line||fgcolor||bgcolor||char_data
+      END 
+      WHEN map_char=="€" THEN DO 
+      	IF spr_char=="E" THEN result_line=result_line||k.rm.c||map_char
+        ELSE IF spr_char==" " THEN result_line=result_line||k.rm.fc||obj.dro.col||spr_char
+        ELSE result_line=result_line||k.rm.fc||obj.dro.col||spr_char
+      END
+      WHEN map_char=="M" THEN DO
+      	IF spr_char=="E" THEN result_line=result_line||"[0;30;47m€"
+        ELSE IF spr_char==" " THEN result_line=result_line||obj.dro.col||spr_char
+        ELSE result_line=result_line||"[0;30m"||obj.dro.col||spr_char
+      END
+      OTHERWISE NOP
+    END
+  END
+RETURN       
 
 DRAW_INVERSE_OBJ_LINE:
   ARG dro, drawline /*, start, length */
@@ -1308,47 +1343,15 @@ DRAW_INVERSE_OBJ_LINE:
   ELSE spr_str=obj.dro.spr.spri
     
   /* get map data underneath item's sprite line */
-  map_str= SUBSTR(k.mp.drawline, obj.dro.x-1, obj.dro.w+1) /* -1 for map shift, +1 for how width is indexed */
+  map_len= obj.dro.w+1  /* +1 for how width is indexed */
+  map_start= obj.dro.x-1  /* -1 for map shift */
+  map_str= SUBSTR(k.mp.drawline, map_start, map_len) 
   
-  /* loop through each character of the map string and insert bg color based on map character found */
-  result_line=""
-  DO m=1 TO obj.dro.w+1 /* +1 due to how width is indexed */
-    IF dro=="BRIDGE" THEN DO
-      IF m<=3 THEN spr_char = SUBSTR(spr_str, m, 1)
-      ELSE IF m==4 THEN DO
-        result_line=result_line||"[6C"
-        m=9
-        ITERATE
-      END
-      ELSE IF m>9 THEN spr_char = SUBSTR(spr_rev, m-9, 1)
-    END
-    ELSE spr_char = SUBSTR(spr_str, m, 1)
-      
-    map_char = SUBSTR(map_str, m, 1)
-    SELECT
-      WHEN map_char==" " THEN DO
-        IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", drawline, (obj.dro.x+m)-1)==1 THEN fgcolor="[33m"
-        ELSE fgcolor=""
-        result_line=result_line||obj.dro.col||fgcolor||spr_char
-      END 
-      WHEN map_char=="€" THEN DO 
-        IF spr_char==" " THEN result_line=result_line||obj.dro.col||spr_char
-        ELSE DO
-          IF k.rm.dark==1 & flashlight==0 THEN result_line=result_line||k.rm.c||spr_char
-          ELSE result_line=result_line||k.rm.fc||spr_char
-        END
-      END
-      WHEN map_char=="M" THEN DO
-        IF spr_char==" " THEN result_line=result_line||obj.dro.col||spr_char
-        ELSE result_line=result_line||"[22;30m"||spr_char
-      END
-      OTHERWISE NOP
-    END
-  END       
-  se "["||drawline||";"||obj.dro.x||"H"||obj.dro.col||result_line||k.rm.fc
+  CALL BUILD_INVERSE_OBJ_LINE
+  se "["||drawline||";"||obj.dro.x||"H"||result_line||k.rm.fc
 RETURN
 
-/* TODO: fix flashlight interaction */
+/* TODO: fix draw/erase issues with screen edges */
 DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T really spelled DOG? */
   ARG dro
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
@@ -1358,8 +1361,8 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
   erasex=0
   outerloopstart=0
   outerloopend=obj.dro.h
-  mapstart=obj.dro.x-1   /* -1 for map shift */
-  maplength=obj.dro.w+1  /* +1 for how obj width is indexed */ 
+  map_start=obj.dro.x-1   /* -1 for map shift */
+  map_len=obj.dro.w+1  /* +1 for how obj width is indexed */ 
   
   /* check for movement in x direction */
   IF obj.dro.dirx==-1 & obj.dro.x+obj.dro.w<maxcol THEN DO
@@ -1388,64 +1391,40 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
   /* TODO: this loop is very similar to DRAW_INVERSE_OBJ_LINE, try to combine/code reduce */      
   /* outer loop goes through each line of sprite */ 
   DO j=outerloopstart TO outerloopend BY 1
-    line=obj.dro.y+(j)
+    drawline=obj.dro.y+(j)
     drawxpos=obj.dro.x
-    /* IF line<minline | line>maxline THEN ITERATE */ /* skip loop iteration if line is out of bounds */
+    /* IF drawline<minline | drawline>maxline THEN ITERATE */ /* skip loop iteration if line is out of bounds */
     
     /* get current line of sprite to work on */
     IF j==-1 | j==obj.dro.h+1 THEN DO
       /* this is either 1 line above or 1 line below dro sprite, so we are "erasing" on y */
-      spr_line=COPIES("E", obj.dro.w+1)
+      spr_str=COPIES("E", obj.dro.w+1)
     END
     ELSE DO
       IF obj.dro.type=="dragon" & obj.dro.dirx==1 THEN DO
-        spr_line=REVERSE(obj.dro.spr.j) 
+        spr_str=REVERSE(obj.dro.spr.j) 
       END
-      ELSE spr_line=obj.dro.spr.j
+      ELSE spr_str=obj.dro.spr.j
     END
                 
     /* check if we need to erase 1 char to left of sprite */
     IF erasex==-1 THEN DO
       drawxpos=drawxpos-1
-      spr_line= "E"||spr_line
-      mapstart=(obj.dro.x-1)-1   /* (original value)-1, due to being inside loop */
-      maplength=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
+      spr_str="E"||spr_str
+      map_start=(obj.dro.x-1)-1   /* (original value)-1, due to being inside loop */
+      map_len=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
     END
     /* check if we need to erase 1 char to right of sprite */
     ELSE IF erasex==1 THEN DO
-      spr_line=spr_line||"E"
-      maplength=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
+      spr_str=spr_str||"E"
+      map_len=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
     END 
     
     /* get map data that is layered "undeneath" the sprite line */  
-    map_str= SUBSTR(k.mp.line, mapstart, maplength) 
-   
-    /* inner loop goes through each character of the sprite string and
-       inserts bg color based on map character data found underneath  */
-    result_str=obj.dro.col
-    DO k=1 TO maplength 
-      spr_char = SUBSTR(spr_line, k, 1)
-      map_char = SUBSTR(map_str, k, 1)
-      SELECT
-        WHEN map_char==" " THEN DO
-          IF spr_char=="E" THEN result_str=result_str||k.rm.c||map_char
-          ELSE result_str=result_str||obj.dro.col||spr_char
-        END
-        WHEN map_char=="€" THEN DO
-          IF spr_char=="E" THEN result_str=result_str||k.rm.c||map_char
-          ELSE IF spr_char==" " THEN result_str=result_str||obj.dro.col||spr_char
-          ELSE result_str=result_str||obj.dro.col||k.rm.fc||spr_char
-        END
-        WHEN map_char=="M" THEN DO
-          IF spr_char=="E" THEN result_str=result_str||"[22;30;47m€"||k.rm.c
-          ELSE IF spr_char==" " THEN result_str=result_str||obj.dro.col||spr_char
-          ELSE result_str=result_str||"[22;30m"||spr_char
-        END
-        OTHERWISE NOP
-      END
-    END
+    map_str= SUBSTR(k.mp.drawline, map_start, map_len) 
     
-    se "["||line||";"||drawxpos||"H"||result_str /* ||k.rm.fc */         
+    call BUILD_INVERSE_OBJ_LINE
+    se "["||drawline||";"||drawxpos||"H"||result_line /* ||k.rm.fc */         
   END
   se park
 RETURN
@@ -1467,7 +1446,7 @@ ERASE_OBJECT:
       newstr = LEFT(str,m_index-1) || "[0;30;47m€" || k.rm.c || RIGHT(str,length(str)-m_index)
       str = newstr
     END
-    IF obj.pl.equip==dro & flashlight~=0 & k.rm.dark==1 THEN erasecolor="[43m"
+    IF obj.pl.equip==dro & flashlight~=0 & k.rm.dark==1 THEN erasecolor="[0;43m"
     ELSE erasecolor=k.rm.c
     se "["||j||";"||obj.dro.x||"H"||erasecolor||str
   END
@@ -1887,6 +1866,7 @@ MAGNET_SEEK:  /* magnet will seek an item based on priority */
 RETURN
 
 /* in main loop */ 
+/* TODO: fix object exits */
 MAGNETISM:  /* move wanted object toward magnet */ 
   IF obj.magnet.want=="NONE" THEN RETURN   
   mwo=obj.magnet.want
@@ -2815,7 +2795,7 @@ INIT_OBJECTS:
   obj.magnet.diry=0
   obj.magnet.offset.x=0
   obj.magnet.offset.y=0
-  obj.magnet.col="[0;40;37m"
+  obj.magnet.col="[40m"
   obj.magnet.spr.0=_magnet.0
   obj.magnet.spr.1=_magnet.1
   obj.magnet.busy=0
@@ -2837,7 +2817,7 @@ INIT_OBJECTS:
   obj.chalice.diry=0
   obj.chalice.offset.x=0
   obj.chalice.offset.y=0
-  obj.chalice.col="[0;45;37m" /* TODO: color cycle */
+  obj.chalice.col="[45m" /* TODO: color cycle? */
   obj.chalice.spr.0=_chalice.0
   obj.chalice.spr.1=_chalice.1
   obj.chalice.spr.2=_chalice.2
@@ -2858,7 +2838,7 @@ INIT_OBJECTS:
   obj.bridge.diry=0
   obj.bridge.offset.x=0
   obj.bridge.offset.y=0
-  obj.bridge.col="[0;45;37m"
+  obj.bridge.col="[45m"
   obj.bridge.spr.0=_bridge.0
   obj.bridge.spr.1=_bridge.1
   obj.bridge.spr.2=_bridge.2
@@ -2879,7 +2859,7 @@ INIT_OBJECTS:
   obj.dot.diry=0
   obj.dot.offset.x=0
   obj.dot.offset.y=0
-  obj.dot.col="[22;47;37m"
+  obj.dot.col="[0;37m"
   obj.dot.spr.0=_dot.0
   obj.dot.lvl3.0=0  /* random room lower limit */
   obj.dot.lvl3.1=0  /* random room upper limit */
@@ -2899,7 +2879,7 @@ INIT_OBJECTS:
   obj.knubberrub.diry=1
   obj.knubberrub.offset.x=0
   obj.knubberrub.offset.y=0
-  obj.knubberrub.col="[0;40;37m"
+  obj.knubberrub.col="[40m"
   obj.knubberrub.frame=0  /* frame counter */
   obj.knubberrub.maxframe=_bat.maxframe
   obj.knubberrub.animspd=0.0078125 /* 1/128 */
@@ -2928,7 +2908,7 @@ INIT_OBJECTS:
   obj.yorgle.diry=0
   obj.yorgle.offset.x=0
   obj.yorgle.offset.y=0
-  obj.yorgle.col="[0;43;37m"
+  obj.yorgle.col="[43m"
   obj.yorgle.spr.0=_dragon.0.0
   obj.yorgle.spr.1=_dragon.0.1
   obj.yorgle.spr.2=_dragon.0.2
@@ -2959,7 +2939,7 @@ INIT_OBJECTS:
   obj.grundle.diry=0
   obj.grundle.offset.x=0
   obj.grundle.offset.y=0
-  obj.grundle.col="[0;42;37m"
+  obj.grundle.col="[42m"
   obj.grundle.spr.0=_dragon.0.0
   obj.grundle.spr.1=_dragon.0.1
   obj.grundle.spr.2=_dragon.0.2
@@ -2990,7 +2970,7 @@ INIT_OBJECTS:
   obj.rhindle.diry=0
   obj.rhindle.offset.x=0
   obj.rhindle.offset.y=0
-  obj.rhindle.col="[0;41;37m"
+  obj.rhindle.col="[41m"
   obj.rhindle.spr.0=_dragon.0.0
   obj.rhindle.spr.1=_dragon.0.1
   obj.rhindle.spr.2=_dragon.0.2
@@ -3023,63 +3003,63 @@ INIT_KINGDOM:  /* room data */
 
   /* dark green hall below yellow castle */
   k.2.dark=0
-  k.2.c="[0;47;32m"; k.2.fc="[22;32m"; k.2.bc="[47m"; k.2.bc2="[42m"
+  k.2.c="[0;47;32m"; k.2.fc="[0;32m"; k.2.bc="[47m"; k.2.bc2="[42m"
   k.2.te=17; k.2.re=3; k.2.be=5; k.2.le=1; k.2.ci=0; k.2.co=0
   k.2.map="BOTTOM_MID_MAP"
 
   /* dark orange hall above invisible maze */
   k.3.dark=0
-  k.3.c="[0;47;33m"; k.3.fc="[22;33m"; k.3.bc="[47m"; k.3.bc2="[43m"
+  k.3.c="[0;47;33m"; k.3.fc="[0;33m"; k.3.bc="[47m"; k.3.bc2="[43m"
   k.3.te=6; k.3.re=1; k.3.be=29; k.3.le=2; k.3.ci=0; k.3.co=0
   k.3.map="TOP_RHT_MAP"
 
   /* blue maze top center */
   k.4.dark=0
-  k.4.c="[0;47;34m"; k.4.fc="[22;34m"; k.4.bc="[47m"; k.4.bc2="[44m"
+  k.4.c="[0;47;34m"; k.4.fc="[0;34m"; k.4.bc="[47m"; k.4.bc2="[44m"
   k.4.te=16; k.4.re=5; k.4.be=7; k.4.le=6; k.4.ci=0; k.4.co=0
   k.4.map="BMAZE0_MAP"
 
   /* blue maze left side */
   k.5.dark=0
-  k.5.c="[0;47;34m"; k.5.fc="[22;34m"; k.5.bc="[47m"; k.5.bc2="[44m"
+  k.5.c="[0;47;34m"; k.5.fc="[0;34m"; k.5.bc="[47m"; k.5.bc2="[44m"
   k.5.te=29; k.5.re=6; k.5.be=8; k.5.le=4; k.5.ci=0; k.5.co=0
   k.5.map="BMAZE3_MAP"
 
   /* blue maze bottom center */
   k.6.dark=0
-  k.6.c="[0;47;34m"; k.6.fc="[22;34m"; k.6.bc="[47m"; k.6.bc2="[44m"
+  k.6.c="[0;47;34m"; k.6.fc="[0;34m"; k.6.bc="[47m"; k.6.bc2="[44m"
   k.6.te=7; k.6.re=4; k.6.be=3; k.6.le=5; k.6.ci=0; k.6.co=0
   k.6.map="BMAZE2_MAP"
 
   /* blue maze center */
   k.7.dark=0
-  k.7.c="[0;47;34m"; k.7.fc="[22;34m"; k.7.bc="[47m"; k.7.bc2="[44m"
+  k.7.c="[0;47;34m"; k.7.fc="[0;34m"; k.7.bc="[47m"; k.7.bc2="[44m"
   k.7.te=4; k.7.re=8; k.7.be=6; k.7.le=8; k.7.ci=0; k.7.co=0
   k.7.map="BMAZE1_MAP"
 
   /* entrance to blue maze */
   k.8.dark=0
-  k.8.c="[0;47;34m"; k.8.fc="[22;34m"; k.8.bc="[47m"; k.8.bc2="[44m"
+  k.8.c="[0;47;34m"; k.8.fc="[0;34m"; k.8.bc="[47m"; k.8.bc2="[44m"
   k.8.te=5; k.8.re=7; k.8.be=1; k.8.le=7; k.8.ci=0; k.8.co=0
   k.8.map="BMAZE4_MAP"
 
   /* invisible maze center */
   k.9.dark=1
-  k.9.c="[0;47;37m"; k.9.fc="[22;37m"; k.9.bc="[47m"; k.9.bc2="[47m"
+  k.9.c="[0;47;37m"; k.9.fc="[0;37m"; k.9.bc="[47m"; k.9.bc2="[47m"
   IF flashlight==0 THEN k.9.fc="[22;33m"
   k.9.te=10; k.9.re=10; k.9.be=11; k.9.le=10; k.9.ci=0; k.9.co=0
   k.9.map="IMAZE1_MAP"
 
   /* entrance to invisible maze */
   k.10.dark=1
-  k.10.c="[0;47;37m"; k.10.fc="[22;37m"; k.10.bc="[47m"; k.10.bc2="[47m"
+  k.10.c="[0;47;37m"; k.10.fc="[0;37m"; k.10.bc="[47m"; k.10.bc2="[47m"
   IF flashlight==0 THEN k.10.fc="[22;33m"
   k.10.te=3; k.10.re=9; k.10.be=9; k.10.le=9; k.10.ci=0; k.10.co=0
   k.10.map="IMAZE0_MAP"
 
   /* invisible maze bottom */
   k.11.dark=1
-  k.11.c="[0;47;37m"; k.11.fc="[22;37m"; k.11.bc="[47m"; k.11.bc2="[47m"
+  k.11.c="[0;47;37m"; k.11.fc="[0;37m"; k.11.bc="[47m"; k.11.bc2="[47m"
   IF flashlight==0 THEN k.11.fc="[22;33m"
   k.11.te=9; k.11.re=12; k.11.be=28; k.11.le=13; k.11.ci=0; k.11.co=0
   k.11.map="IMAZE2_MAP"
@@ -3098,7 +3078,7 @@ INIT_KINGDOM:  /* room data */
 
   /* dark green top entry room */
   k.14.dark=0
-  k.14.c="[0;47;32m"; k.14.fc="[22;32m"; k.14.bc="[47m"; k.14.bc2="[42m"
+  k.14.c="[0;47;32m"; k.14.fc="[0;32m"; k.14.bc="[47m"; k.14.bc2="[42m"
   k.14.te=13; k.14.re=16; k.14.be=15; k.14.le=16; k.14.ci=0; k.14.co=0
   k.14.map="BOTTOM_MAP"
 
@@ -3110,7 +3090,7 @@ INIT_KINGDOM:  /* room data */
 
   /* black castle */
   k.16.dark=0
-  k.16.c="[0;47;30m"; k.16.fc="[22;30m"; k.16.bc="[47m"; k.16.bc2="[40m"
+  k.16.c="[0;47;30m"; k.16.fc="[0;30m"; k.16.bc="[47m"; k.16.bc2="[40m"
   k.16.te=1; k.16.re=28; k.16.be=4; k.16.le=28; k.16.ci=27; k.16.co=0
   k.16.map="CASTLE_MAP"
 
@@ -3128,77 +3108,77 @@ INIT_KINGDOM:  /* room data */
 
   /* black castle maze top left */
   k.19.dark=1
-  k.19.c="[0;47;37m"; k.19.fc="[22;37m"; k.19.bc="[47m"; k.19.bc2="[43m"
-  IF flashlight==0 THEN k.19.fc="[22;33m"
+  k.19.c="[0;47;37m"; k.19.fc="[0;37m"; k.19.bc="[47m"; k.19.bc2="[43m"
+  IF flashlight==0 THEN k.19.fc="[0;33m"
   k.19.te=21; k.19.re=20; k.19.be=21; k.19.le=22; k.19.ci=0; k.19.co=0
   k.19.map="BCMAZE0_MAP"
 
   /* black castle maze top right */
   k.20.dark=1
-  k.20.c="[0;47;37m"; k.20.fc="[22;37m"; k.20.bc="[47m"; k.20.bc2="[47m"
-  IF flashlight==0 THEN k.20.fc="[22;33m"
+  k.20.c="[0;47;37m"; k.20.fc="[0;37m"; k.20.bc="[47m"; k.20.bc2="[47m"
+  IF flashlight==0 THEN k.20.fc="[0;33m"
   k.20.te=22; k.20.re=21; k.20.be=22; k.20.le=19; k.20.ci=0; k.20.co=0
   k.20.map="BCMAZE1_MAP"
 
   /* black castle maze bottom left */
   k.21.dark=1
-  k.21.c="[0;47;37m"; k.21.fc="[22;37m"; k.21.bc="[47m"; k.21.bc2="[47m"
-  IF flashlight==0 THEN k.21.fc="[22;33m"
+  k.21.c="[0;47;37m"; k.21.fc="[0;37m"; k.21.bc="[47m"; k.21.bc2="[47m"
+  IF flashlight==0 THEN k.21.fc="[0;33m"
   k.21.te=19; k.21.re=22; k.21.be=19; k.21.le=20; k.21.ci=0; k.21.co=0
   k.21.map="BCMAZE2_MAP"
 
   /* entrance to black castle maze */
   k.22.dark=1
-  k.22.c="[0;47;37m"; k.22.fc="[22;37m"; k.22.bc="[47m"; k.22.bc2="[47m"
-  IF flashlight==0 THEN k.22.fc="[22;33m"
+  k.22.c="[0;47;37m"; k.22.fc="[0;37m"; k.22.bc="[47m"; k.22.bc2="[47m"
+  IF flashlight==0 THEN k.22.fc="[0;33m"
   k.22.te=20; k.22.re=19; k.22.be=27; k.22.le=21; k.22.ci=0; k.22.co=0
   k.22.map="BCMAZE3_MAP"
 
   /* white castle maze top left */
   k.23.dark=0
-  k.23.c="[0;47;31m"; k.23.fc="[22;31m"; k.23.bc="[47m"; k.23.bc2="[41m"
+  k.23.c="[0;47;31m"; k.23.fc="[0;31m"; k.23.bc="[47m"; k.23.bc2="[41m"
   k.23.te=25; k.23.re=24; k.23.be=25; k.23.le=24; k.23.ci=0; k.23.co=0
   k.23.map="WCMAZE0_MAP"
 
   /* white castle maze top right */
   k.24.dark=0
-  k.24.c="[0;47;31m"; k.24.fc="[22;31m"; k.24.bc="[47m"; k.24.bc2="[41m"
+  k.24.c="[0;47;31m"; k.24.fc="[0;31m"; k.24.bc="[47m"; k.24.bc2="[41m"
   k.24.te=26; k.24.re=23; k.24.be=26; k.24.le=23; k.24.ci=0; k.24.co=0
   k.24.map="WCMAZE1_MAP"
 
   /* white castle maze bottom left */
   k.25.dark=0
-  k.25.c="[0;47;31m"; k.25.fc="[22;31m"; k.25.bc="[47m"; k.25.bc2="[41m"
+  k.25.c="[0;47;31m"; k.25.fc="[0;31m"; k.25.bc="[47m"; k.25.bc2="[41m"
   k.25.te=23; k.25.re=26; k.25.be=23; k.25.le=26; k.25.ci=0; k.25.co=0
   k.25.map="WCMAZE2_MAP"
 
   /* entrance to white castle maze */
   k.26.dark=0
-  k.26.c="[0;47;31m"; k.26.fc="[22;31m"; k.26.bc="[47m"; k.26.bc2="[41m"
+  k.26.c="[0;47;31m"; k.26.fc="[0;31m"; k.26.bc="[47m"; k.26.bc2="[41m"
   k.26.te=24; k.26.re=25; k.26.be=24; k.26.le=25; k.26.ci=0; k.26.co=15
   k.26.map="WCMAZE3_MAP"
 
   /* black castle foyer */
   k.27.dark=0
-  k.27.c="[0;47;31m"; k.27.fc="[22;31m"; k.27.bc="[47m"; k.27.bc2="[41m"
+  k.27.c="[0;47;31m"; k.27.fc="[0;31m"; k.27.bc="[47m"; k.27.bc2="[41m"
   k.27.te=28; k.27.re=28; k.27.be=28; k.27.le=28; k.27.ci=0; k.27.co=16
   k.27.map="MIDDLE_MAP"
 
   /* the other purple room */
   k.28.dark=0
-  k.28.c="[0;47;35m"; k.28.fc="[22;35m"; k.28.bc="[47m"; k.28.bc2="[45m"
+  k.28.c="[0;47;35m"; k.28.fc="[0;35m"; k.28.bc="[47m"; k.28.bc2="[45m"
   k.28.te=29; k.28.re=7; k.28.be=27; k.28.le=8; k.28.ci=0; k.28.co=0
   k.28.map="TOP_MAP"
 
   /* nothing to see here, red top entry room */
   k.29.dark=0
-  k.29.c="[0;47;31m"; k.29.fc="[22;31m"; k.29.bc="[47m"; k.29.bc2="[41m"
+  k.29.c="[0;47;31m"; k.29.fc="[0;31m"; k.29.bc="[47m"; k.29.bc2="[41m"
   k.29.te=3; k.29.re=1; k.29.be=16; k.29.le=3; k.29.ci=0; k.29.co=0
   k.29.map="BOTTOM_MAP"
 
   /* roll credits */
   k.30.dark=0
-  k.30.c="[0;47;35m"; k.30.fc="[22;35m"; k.30.bc="[47m"; k.30.bc2="[45m"
+  k.30.c="[0;47;35m"; k.30.fc="[0;35m"; k.30.bc="[47m"; k.30.bc2="[45m"
   k.30.te=6; k.30.re=1; k.30.be=6; k.30.le=3; k.30.ci=0; k.30.co=0
   k.30.map="BOTTOM_MID_MAP"
 

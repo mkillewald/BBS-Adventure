@@ -32,7 +32,7 @@ changewhere "BBS Adventure "||ver
 /* debug switches */
 debug=0         /* 0 = disable debug mode,   1 = enable debug mode   */
 debug_flash=0   /* 0 = disable flash debug,  1 = enable flash debug  */
-debug_magnet=0  /* 0 = disable magnet debug, 1 = enable magnet debug */
+debug_magnet=1  /* 0 = disable magnet debug, 1 = enable magnet debug */
 debug_bat=0     /* 0 = disable bat debug,    1 = enable bat debug    */
 debug_dragon=0  /* 0 = disable dragon debug, 1 = enable dragon debug */
 
@@ -625,7 +625,7 @@ START:
     obj.bkey.room=25
     obj.wkey.room=6
     obj.sword.room=17
-    obj.bridge.room=11
+    obj.bridge.room=0 /* orig 11 */
     obj.chalice.room=14 /* orig 20 */
     obj.magnet.room=14
   END
@@ -728,8 +728,7 @@ RETURN
 DEBUG_PL:
   IF game_running~=1 THEN RETURN
   se "[3;2HPL.X:"||obj.pl.x||" PL.Y:"||obj.pl.y||" PL.DIRX:"||obj.pl.dirx||" PL.DIRY:"||obj.pl.diry||" PL.S:"||obj.pl.state"  "
-  IF flashlight>0 & debug_flashl==1 THEN se "[43m[4;2HFlash X:"||obj.light.x||" Y:"||obj.light.y||" W:"||obj.light.w||" H:"||obj.light.h||"        " 
-  /*se "[5;2HYK.R:"||obj.ykey.room||" YK.X:"||obj.ykey.x||" YK.Y:"||obj.ykey.y||" YK.DIRX:"||obj.ykey.dirx||" YK.DIRY:"||obj.ykey.diry||"     "*/
+  IF flashlight>0 & debug_flashl==1 THEN se "[43m[4;2HFlash X:"||obj.light.x||" Y:"||obj.light.y||" W:"||obj.light.w||" H:"||obj.light.h||"        "
 RETURN
 
 DEBUG_MAGNET:
@@ -737,6 +736,7 @@ DEBUG_MAGNET:
   dbmwo=obj.magnet.want
   se "[5;2HM.W:" || dbmwo || " M.BUSY:" || obj.magnet.busy|| "             " 
   IF dbmwo~="NONE" THEN se " owDX:" || obj.dbmwo.dx || " owDY:" || obj.dbmwo.dy || "              "
+  se "[6;2HC.R:"||obj.chalice.room||" C.X:"||obj.chalice.x||" C.Y:"||obj.chalice.y||" C.DIRX:"||obj.chalice.dirx||" C.DIRY:"||obj.chalice.diry||"     "	
 RETURN
 
 DEBUG_BAT:  /* TODO: finish */
@@ -1429,6 +1429,7 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
   se park
 RETURN
 
+/* TODO: fix flashlight interaction */
 ERASE_OBJECT:
   ARG dro
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
@@ -1542,7 +1543,7 @@ ERASE_DRAGON:  /* TODO: finish */
   CALL ERASE_OBJECT(dro)
 RETURN
 
-DRAW_BAT:  /* CALLed by BAT_MOVE in main loop */
+DRAW_BAT:  /* called by BAT_MOVE in main loop */
   IF OK2DRAWOBJ(knub)==0 | obj.knub.room~=obj.pl.room THEN RETURN
   CALL EQUIP(knub)
   CALL DRAW_INVERSE_OBJECT_WITH_MOTION(knub)
@@ -1557,7 +1558,7 @@ RETURN
 
 PLAYER_MOVE:
   IF obj.pl.state==PL_DEAD | (obj.pl.dirx==0 & obj.pl.diry==0) THEN RETURN
-  CALL EXIT_BEING("PL") 
+  CALL EXIT_WITH_MOTION("PL") 
   
   IF obj.pl.dirx==-1 & obj.pl.x==mincol+1 THEN obj.pl.dx=1 
   ELSE IF obj.pl.dirx==1 & obj.pl.x==maxcol-2 THEN obj.pl.dx=1  
@@ -1866,7 +1867,6 @@ MAGNET_SEEK:  /* magnet will seek an item based on priority */
 RETURN
 
 /* in main loop */ 
-/* TODO: fix object exits */
 MAGNETISM:  /* move wanted object toward magnet */ 
   IF obj.magnet.want=="NONE" THEN RETURN   
   mwo=obj.magnet.want
@@ -1883,21 +1883,21 @@ MAGNETISM:  /* move wanted object toward magnet */
       obj.mwo.dx=obj.mwo.dx+obj.mwo.spdx
       obj.mwo.dy=obj.mwo.dy+obj.mwo.spdy
       IF obj.mwo.dx>=1 & obj.mwo.dy>=1 THEN DO
-        /* CALL ERASE_OBJECT(mwo) */
+        CALL EXIT_WITH_MOTION(mwo)
         CALL MOVE(mwo,1,1)  /* move x and y */
         CALL DRAW_OBJECT_WITH_MOTION(mwo)
         obj.mwo.dx=0; obj.mwo.dy=0
         obj.mwo.dirx=0; obj.mwo.diry=0
       END
       ELSE IF obj.mwo.dx>=1 THEN DO
-        /* CALL ERASE_OBJECT(mwo) */
+        CALL EXIT_WITH_MOTION(mwo)
         CALL MOVE(mwo,1,0)  /* move x only */
         CALL DRAW_OBJECT_WITH_MOTiON(mwo)
         obj.o.dx=0
         obj.mwo.dirx=0
       END
       ELSE IF obj.mwo.dy>=1 THEN DO
-        /* CALL ERASE_OBJECT(mwo) */
+        CALL EXIT_WITH_MOTION(mwo)
         CALL MOVE(mwo,0,1)  /* move y only */
         CALL DRAW_OBJECT_WITH_MOTION(mwo) 
         obj.mwo.dy=0
@@ -1959,7 +1959,7 @@ BAT_MOVE:  /* TODO:  fix item interaction */
   /* IF (obj.knub.fedup==0 | obj.knub.fedup>400) & obj.pl.equip~=knub & WILL_COLLIDE(knub, "PL")==1 THEN CALL GRAB("PL", knub) */ 
   IF obj.knub.dx>=1 & obj.knub.dy>=1 THEN DO
     IF obj.pl.equip~=knub THEN DO 
-      CALL EXIT_BEING(knub)
+      CALL EXIT_WITH_MOTION(knub)
       CALL MOVE(knub,1,1)  /* move x and y */
       CALL DRAW_BAT
     END
@@ -1967,7 +1967,7 @@ BAT_MOVE:  /* TODO:  fix item interaction */
   END
   ELSE IF obj.knub.dx>=1 THEN DO
     IF obj.pl.equip~=knub THEN DO
-      CALL EXIT_BEING(knub)
+      CALL EXIT_WITH_MOTION(knub)
       CALL MOVE(knub,1,0)  /* move x only */
       CALL DRAW_BAT
     END
@@ -1975,7 +1975,7 @@ BAT_MOVE:  /* TODO:  fix item interaction */
   END
   ELSE IF obj.knub.dy>=1 THEN DO
     IF obj.pl.equip~=knub THEN DO
-      CALL EXIT_BEING(knub)
+      CALL EXIT_WITH_MOTION(knub)
       CALL MOVE(knub,0,1)  /* move y only */
       CALL DRAW_BAT
     END
@@ -2109,7 +2109,7 @@ DRAGON_MOVE:
   obj.drago.dy=obj.drago.dy+obj.drago.spdy
   IF obj.drago.dx>=1 & obj.drago.dy>=1 THEN DO
     IF obj.knub.equip~=drago THEN DO 
-      CALL EXIT_BEING(drago)
+      CALL EXIT_WITH_MOTION(drago)
       CALL MOVE(drago,1,1)  /* move x and y */
       CALL DRAW_DRAGON(drago)
     END
@@ -2117,7 +2117,7 @@ DRAGON_MOVE:
   END
   ELSE IF obj.drago.dx>=1 THEN DO
     IF obj.knub.equip~=drago THEN DO
-      CALL EXIT_BEING(drago)
+      CALL EXIT_WITH_MOTION(drago)
       CALL MOVE(drago,1,0)  /* move x only */
       CALL DRAW_DRAGON(drago)
     END
@@ -2125,7 +2125,7 @@ DRAGON_MOVE:
   END
   ELSE IF obj.drago.dy>=1 THEN DO
     IF obj.knub.equip~=drago THEN DO
-      CALL EXIT_BEING(drago)
+      CALL EXIT_WITH_MOTION(drago)
       CALL MOVE(drago,0,1)  /* move y only */
       CALL DRAW_DRAGON(drago)
     END
@@ -2170,33 +2170,34 @@ SECRET:  /* TODO: fix trigger/untrigger with bat (fixed? need to test) */
   END
 RETURN 0
 
-/* TODO: refactor exit functions */
 EXIT_OBJ:  /* perform exit occurred on an object without motion */
   ARG exo
   exorm=obj.exo.room
-  IF obj.exo.x+obj.exo.w>maxcol THEN CALL RIGHT_EXIT(exo, 0) 
+  IF obj.exo.x+obj.exo.w>maxcol THEN CALL RIGHT_EXIT(exo, 0)
   ELSE IF obj.exo.x<mincol THEN CALL LEFT_EXIT(exo, 0)
   ELSE IF obj.exo.y<minline THEN CALL TOP_EXIT(exo)
   ELSE IF k.exorm.ci~=0 & obj.exo.x>37 & obj.exo.x<43 & obj.exo.y<castleline THEN CALL CASTLE_ENTRANCE(exo)
-  ELSE IF obj.exo.y+obj.exo.h>maxline THEN DO   
+  ELSE IF obj.exo.y+obj.exo.h>maxline THEN DO 
     IF k.exorm.co==0 THEN CALL BOTTOM_EXIT(exo)
     ELSE CALL CASTLE_EXIT(exo)
   END   
 RETURN
 
-EXIT_BEING:  /* perform exit on a being with motion */
+EXIT_WITH_MOTION:  /* perform exit on a object with motion */
   ARG exo
   exorm=obj.exo.room
   IF obj.exo.dirx>0 & obj.exo.x+obj.exo.w>=maxcol THEN DO
     IF exo==knub THEN CALL ERASE_BAT
     ELSE IF obj.exo.type=="dragon" THEN CALL ERASE_DRAGON(exo)
-    CALL RIGHT_EXIT(exo, 1)
+    ELSE call ERASE_OBJECT(exo)
+    CALL RIGHT_EXIT(exo)
     RETURN 1
   END
   ELSE IF obj.exo.dirx<0 & obj.exo.x<=mincol THEN DO
     IF exo==knub THEN CALL ERASE_BAT
     ELSE IF obj.exo.type=="dragon" THEN CALL ERASE_DRAGON(exo)
-    CALL LEFT_EXIT(exo, 1)
+    ELSE call ERASE_OBJECT(exo)
+    CALL LEFT_EXIT(exo)
     RETURN 1
   END
   ELSE IF obj.exo.diry<0 THEN DO
@@ -2209,6 +2210,7 @@ EXIT_BEING:  /* perform exit on a being with motion */
      ELSE IF k.exorm.ci~=0 & obj.exo.x>37 & obj.exo.x<43 & obj.exo.y==castleline THEN DO
        IF exo==knub THEN CALL ERASE_BAT
        ELSE IF obj.exo.type=="dragon" THEN CALL ERASE_DRAGON(exo)
+       ELSE call ERASE_OBJECT(exo)
        CALL CASTLE_ENTRANCE(exo)
        RETURN 1
      END
@@ -2217,12 +2219,14 @@ EXIT_BEING:  /* perform exit on a being with motion */
     IF k.exorm.co==0 THEN DO
       IF exo==knub THEN CALL ERASE_BAT
       ELSE IF obj.exo.type=="dragon" THEN CALL ERASE_DRAGON(exo)
+      ELSE call ERASE_OBJECT(exo)
       CALL BOTTOM_EXIT(exo)
       RETURN 1
     END
     ELSE DO
       IF exo==knub THEN CALL ERASE_BAT
       ELSE IF obj.exo.type=="dragon" THEN CALL ERASE_DRAGON(exo)
+      ELSE call ERASE_OBJECT(exo)
       CALL CASTLE_EXIT(exo)
       RETURN 1 
     END
@@ -2233,8 +2237,8 @@ TOP_EXIT:
   ARG exo
   crm=obj.exo.room
   IF k.crm.te==0 THEN RETURN  
-  /* obj.p.y=maxline-obj.p.h */
-  obj.exo.y=maxline-(obj.exo.diry)  /* diry should be -1 or 0 */
+  IF exo=="PL" THEN obj.exo.y=maxline-(obj.exo.diry)  /* diry should be -1 or 0 */
+  ELSE obj.exo.y=maxline-obj.exo.h
   CALL NEXTROOM(exo, k.crm.te)
 RETURN
 
@@ -2242,27 +2246,25 @@ BOTTOM_EXIT:
   ARG exo
   crm=obj.exo.room
   IF k.crm.be==0 THEN RETURN
-  /* obj.p.y=minline */
-  obj.exo.y=minline-obj.exo.diry  /* diry should be +1 or 0 */
+  IF exo=="PL" THEN obj.exo.y=minline-obj.exo.diry  /* diry should be +1 or 0 */
+  ELSE obj.exo.y=minline
   CALL NEXTROOM(exo, k.crm.be)
 RETURN
 
 LEFT_EXIT:
-  ARG exo, moving
+  ARG exo
   crm=obj.exo.room
   IF k.crm.le==0 THEN RETURN
-  /* obj.p.x=maxcol-obj.p.w */
-  IF moving==1 THEN obj.exo.x=maxcol-(obj.exo.dirx)  /* dirx should be -1 or 0 */
-  else obj.exo.x=maxcol-obj.exo.w
+  IF exo=="PL" THEN obj.exo.x=maxcol-(obj.exo.dirx)  /* dirx should be -1 or 0 */
+  ELSE obj.exo.x=maxcol-obj.exo.w
   CALL NEXTROOM(exo, k.crm.le)
 RETURN
 
 RIGHT_EXIT:
-  ARG exo, moving
+  ARG exo
   crm=obj.exo.room
   IF k.crm.re==0 THEN RETURN
-  /* obj.p.x=mincol */
-  IF moving==1 THEN obj.exo.x=mincol-(obj.exo.dirx+obj.exo.w)  /* dirx should be +1 or 0 */
+  IF exo=="PL" THEN obj.exo.x=mincol-(obj.exo.dirx+obj.exo.w)  /* dirx should be +1 or 0 */
   ELSE obj.exo.x=mincol
   CALL NEXTROOM(exo, k.crm.re)
 RETURN
@@ -2271,7 +2273,8 @@ CASTLE_ENTRANCE:
   ARG exo
   crm=obj.exo.room
   IF k.crm.ci==0 THEN RETURN 
-  obj.exo.y=maxline-(obj.exo.diry)  /* diry should be -1 or 0 */
+  IF exo=="PL" THEN obj.exo.y=maxline-(obj.exo.diry)  /* diry should be -1 or 0 */
+  ELSE obj.exo.y=maxline-obj.exo.h
   CALL NEXTROOM(exo, k.crm.ci)
 RETURN
 
@@ -2279,7 +2282,12 @@ CASTLE_EXIT:
   ARG exo
   crm=obj.exo.room
   IF k.crm.co==0 THEN RETURN      
-  obj.exo.x=40; obj.exo.y=castleline-obj.exo.diry  /* diry should be +1 */
+  IF exo=="PL" THEN DO
+  	obj.exo.x=40; obj.exo.y=castleline-obj.exo.diry  /* diry should be +1 */
+  END
+  ELSE DO 
+  	obj.exo.x=40; obj.exo.y=castleline
+  END
   CALL NEXTROOM(exo, k.crm.co)
 RETURN
 
@@ -2306,7 +2314,7 @@ EXPAND_KINGDOM:  /* set up full size kingdom for difficulty 2 and 3 */
 RETURN
 
 INIT_PLAYER:  
-  obj.pl.room=17
+  obj.pl.room=14  /* orig 17 */
   obj.pl.x=40
   obj.pl.y=20
   obj.pl.w=1
@@ -2342,7 +2350,6 @@ INIT_FLASHLIGHT:
 RETURN
   
 INIT_OBJECTS:
-
   /* sprite data */
   _gate.0="зззз"
   _gate.1="зззз"
@@ -3833,7 +3840,7 @@ INIT_KINGDOM:  /* room data */
   k.WCMAZE3_MAP.24="ллллллллллллллллллллллллллллллл                ллллллллллллллллллллллллллллллл"
 RETURN
 
-PHENOM_LOGO:  /* https://www.phenomprod.com */
+PHENOM_LOGO:  /* P H E N O M   P R O D U C T I O N S */
    phenommaxline=13
    phenom.1=" [0;40;30m[29C[1;37m.."
    phenom.2=" [0;40;30m[8C[1mм[0mл[1mллллллм  [47m [40mлл   ллл  [47mАм[40mм[47mм[40mлл[47mм[40m [47mАм[40mлл   лл[0mл[1;30mп  [0mм[1;47mмм[40mл[47mмм[0mм [1;30mп[0mл[1mлл[47mм[40m ..ллл[0mл[1;30mп"

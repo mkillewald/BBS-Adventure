@@ -626,8 +626,8 @@ START:
     obj.wkey.room=6
     obj.sword.room=17
     obj.bridge.room=0 /* orig 11 */
-    obj.chalice.room=14 /* orig 20 */
-    obj.magnet.room=14
+    obj.chalice.room=13 /* orig 20 */
+    obj.magnet.room=13  /* orig 14 */
   END
   ELSE IF difficulty==3 THEN DO
     CALL EXPAND_KINGDOM
@@ -736,7 +736,7 @@ DEBUG_MAGNET:
   dbmwo=obj.magnet.want
   se "[5;2HM.W:" || dbmwo || " M.BUSY:" || obj.magnet.busy|| "             " 
   IF dbmwo~="NONE" THEN se " owDX:" || obj.dbmwo.dx || " owDY:" || obj.dbmwo.dy || "              "
-  se "[6;2HC.R:"||obj.chalice.room||" C.X:"||obj.chalice.x||" C.Y:"||obj.chalice.y||" C.DIRX:"||obj.chalice.dirx||" C.DIRY:"||obj.chalice.diry||"     "	
+  se "[6;2HC.R:"||obj.chalice.room||" C.X:"||obj.chalice.x||" C.Y:"||obj.chalice.y||" C.DIRX:"||obj.chalice.dirx||" C.DIRY:"||obj.chalice.diry||"     "  
 RETURN
 
 DEBUG_BAT:  /* TODO: finish */
@@ -886,6 +886,7 @@ RETURN
 DRAW_FLASHLIGHT:  /* used by REFRESH and DRAW_OBJS */
   rm=obj.pl.room
   mp=k.rm.map
+  obj.light.room=rm
   IF flashlight==0 | k.rm.dark==0 THEN RETURN
   
   CALL GET_FLASHLIGHT_SIZE
@@ -1141,22 +1142,22 @@ BUILD_OBJ_LINE:
     map_char = SUBSTR(map_str, m, 1)
     SELECT
       WHEN map_char==" " THEN DO
-      	/* select bgcolor */
+        /* select bgcolor */
         IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", drawline, map_start+m)==1 THEN bgcolor="[43m"
         ELSE bgcolor=k.rm.bc
-        	
+          
         /* select character data */
         IF spr_char=="E" THEN char_data=map_char
         ELSE char_data=spr_char
-        	
+          
         result_line=result_line||obj.dro.col||bgcolor||char_data
       END
       WHEN map_char=="€" THEN DO
-      	IF spr_char=="E" THEN result_line=result_line||k.rm.c||map_char
+        IF spr_char=="E" THEN result_line=result_line||k.rm.c||map_char
         ELSE result_line=result_line||obj.dro.col||k.rm.bc2||spr_char
       END
       WHEN map_char=="M" THEN DO
-      	IF spr_char=="E" THEN result_line=result_line||"[0;30;47m€"
+        IF spr_char=="E" THEN result_line=result_line||"[0;30;47m€"
         ELSE result_line=result_line||obj.dro.col||"[40m"||spr_char
       END
       OTHERWISE NOP
@@ -1297,27 +1298,27 @@ BUILD_INVERSE_OBJ_LINE:
     map_char= SUBSTR(map_str, m, 1)
     SELECT
       WHEN map_char==" " THEN DO
-      	/* select fg color */
+        /* select fg color */
         IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", drawline, map_start+m)==1 THEN fgcolor="[0;33m"
         ELSE fgcolor="[0;37m"
-        	
-      	IF spr_char=="E" THEN DO
-      	  bgcolor="[47m"
-      	  char_data="€"
-      	END
-      	ELSE DO
-      		bgcolor=obj.dro.col
-      		char_data=spr_char
-        END        	
+          
+        IF spr_char=="E" THEN DO
+          bgcolor="[47m"
+          char_data="€"
+        END
+        ELSE DO
+          bgcolor=obj.dro.col
+          char_data=spr_char
+        END         
         result_line=result_line||fgcolor||bgcolor||char_data
       END 
       WHEN map_char=="€" THEN DO 
-      	IF spr_char=="E" THEN result_line=result_line||k.rm.c||map_char
+        IF spr_char=="E" THEN result_line=result_line||k.rm.c||map_char
         ELSE IF spr_char==" " THEN result_line=result_line||k.rm.fc||obj.dro.col||spr_char
         ELSE result_line=result_line||k.rm.fc||obj.dro.col||spr_char
       END
       WHEN map_char=="M" THEN DO
-      	IF spr_char=="E" THEN result_line=result_line||"[0;30;47m€"
+        IF spr_char=="E" THEN result_line=result_line||"[0;30;47m€"
         ELSE IF spr_char==" " THEN result_line=result_line||obj.dro.col||spr_char
         ELSE result_line=result_line||"[0;30m"||obj.dro.col||spr_char
       END
@@ -1429,7 +1430,6 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
   se park
 RETURN
 
-/* TODO: fix flashlight interaction */
 ERASE_OBJECT:
   ARG dro
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
@@ -1447,13 +1447,14 @@ ERASE_OBJECT:
       newstr = LEFT(str,m_index-1) || "[0;30;47m€" || k.rm.c || RIGHT(str,length(str)-m_index)
       str = newstr
     END
-    IF obj.pl.equip==dro & flashlight~=0 & k.rm.dark==1 THEN erasecolor="[0;43m"
+    IF (flashlight~=0 & k.rm.dark==1) & (obj.pl.equip==dro | COLLIDE_BY_LINE(dro, j, "LIGHT")==1) THEN erasecolor="[0;43m"
     ELSE erasecolor=k.rm.c
     se "["||j||";"||obj.dro.x||"H"||erasecolor||str
   END
   se park
 RETURN
 
+/* TODO: replace uses with DRAW_INVERSE_OBJECT */
 DRAW_BRIDGE: /* DEPRECIATED */
   dro="BRIDGE"
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
@@ -2283,10 +2284,10 @@ CASTLE_EXIT:
   crm=obj.exo.room
   IF k.crm.co==0 THEN RETURN      
   IF exo=="PL" THEN DO
-  	obj.exo.x=40; obj.exo.y=castleline-obj.exo.diry  /* diry should be +1 */
+    obj.exo.x=40; obj.exo.y=castleline-obj.exo.diry  /* diry should be +1 */
   END
   ELSE DO 
-  	obj.exo.x=40; obj.exo.y=castleline
+    obj.exo.x=40; obj.exo.y=castleline
   END
   CALL NEXTROOM(exo, k.crm.co)
 RETURN

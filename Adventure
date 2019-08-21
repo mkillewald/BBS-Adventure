@@ -811,8 +811,6 @@ ERASE_PL:
   IF rm==0 THEN RETURN
   mp=k.rm.map 
   
-  /* CALL ERASE_FLASHLIGHT */
-  
   /* erase equipped object */
   /* TODO: clarify this by moving this into ERASE_OBJECT */
   IF obj.pl.equip~="NONE" THEN CALL ERASE_OBJECT(obj.pl.equip)
@@ -966,7 +964,6 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
         emapstart=mapstart-obj.pl.dx
         elength=obj.pl.dx
       END
-      /* result_str=result_str||"[0;47;37m"|| SUBSTR(k.mp.line, emapstart, elength) */
       result_str=result_str||"[0;47;37m"|| COPIES(" ", elength)
     END
     ELSE IF drawx==-1 THEN DO
@@ -979,7 +976,6 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
       /* this is a line above the flashlight */
       /* check if need to erase top line */
       IF erasey==-1 THEN DO
-        /* result_str=result_str||"[0;47;37m"|| SUBSTR(k.mp.line, mapstart, maplength) */
         result_str=result_str||"[0;47;37m"|| COPIES(" ", maplength)
       END
       ELSE ITERATE i  /* skip this loop iteration */
@@ -988,7 +984,6 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
       /* this is a line below the flashlight */
       /* check if need to erase bottom line */
       IF erasey==1 THEN DO
-        /* result_str=result_str||"[0;47;37m"|| SUBSTR(k.mp.line, mapstart, maplength) */
         result_str=result_str||"[0;47;37m"|| COPIES(" ", maplength)
       END
       ELSE ITERATE i  /* skip this loop iteration */
@@ -1005,19 +1000,15 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
       ELSE DO
         /* skip over already drawn portion of flashlight */
         IF drawx==-1 THEN DO
-          /* skipstart=mapstart+obj.pl.dx */
           skiplength=maplength-obj.pl.dx
         END
         ELSE IF drawx==1 THEN DO
-          /* skipstart=mapstart */
           skiplength=maplength-obj.pl.dx
         END
         ELSE DO
-          /* skipstart=mapstart */
           skiplength=maplength
         END
         result_str=result_str||"["||skiplength||"C"
-        /*result_str=result_str||"[43m"|| SUBSTR(k.mp.line, skipstart, skiplength)*/
       END
     END
     
@@ -1025,7 +1016,6 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
     IF erasex==1 THEN DO
       IF obj.light.x+obj.light.w < maxcol-1 THEN elength=obj.pl.dx
       ELSE elength=1
-      /* result_str=result_str||"[0;47;37m"|| SUBSTR(k.mp.line, mapstart+maplength, elength) */
       result_str=result_str||"[0;47;37m"|| COPIES(" ", elength)
     END
     ELSE IF drawx==1 THEN DO
@@ -1045,20 +1035,6 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
         ELSE CALL DRAW_OBJ_LINE(o, line)
       END
     END
-  END
-RETURN
-
-ERASE_FLASHLIGHT:  /* TODO: delete if no longer used */
-  rm=obj.pl.room
-  mp=k.rm.map
-  IF flashlight==0 | k.rm.dark==0 THEN RETURN
-  
-  CALL GET_FLASHLIGHT_SIZE
-
-  DO i=0 TO obj.light.h
-    line=obj.light.y+i
-    /* se "["||line||";"||obj.light.x||"H[47m"|| SUBSTR(k.mp.line, obj.light.x-1, obj.light.w+1) */
-    se "["||line||";"||obj.light.x||"H[47m"|| COPIES(" ", obj.light.w+1)
   END
 RETURN
 
@@ -1413,7 +1389,7 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
     map_str= SUBSTR(k.mp.drawline, map_start, map_len) 
     
     call BUILD_INVERSE_OBJ_LINE
-    se "["||drawline||";"||drawxpos||"H"||result_line /* ||k.rm.fc */         
+    se "["||drawline||";"||drawxpos||"H"||result_line       
   END
   se park
 RETURN
@@ -1432,79 +1408,70 @@ DRAW_BRIDGE_LINE:
   spr_str=obj.bridge.spr.spri
   IF spri==0 | spri==obj.bridge.h THEN drawbridgexpos=obj.bridge.x
   ELSE drawbridgexpos=obj.bridge.x+2
-  IF debug==1 THEN DO
-    se park||drawline" "drawbridgexpos" "spri" :"spr_str":       "
-    CALL DEBUG_STEPPER
-  END
   se "["||drawline||";"||drawbridgexpos||"H"||obj.bridge.col||spr_str||"["||obj.bridge.gap||"C"||spr_str
 RETURN
 
 DRAW_BRIDGE_WITH_MOTION:
-  dro="BRIDGE"
-  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
+  IF OK2DRAWOBJ("BRIDGE")==0 | obj.bridge.room ~= obj.pl.room THEN RETURN
   rm=obj.pl.room
   mp=k.rm.map
   
   erasex=0
   outerloopstart=0
-  outerloopend=obj.dro.h
-  map_start=obj.dro.x-1   /* -1 for map shift */
-  map_len=obj.dro.w+1  /* +1 for how obj width is indexed */ 
+  outerloopend=obj.bridge.h
+  map_start=obj.bridge.x-1   /* -1 for map shift */
+  map_len=obj.bridge.w+1  /* +1 for how obj width is indexed */ 
   
   /* check for movement in x direction */
-  IF obj.dro.dirx==-1 & obj.dro.x+obj.dro.w<maxcol THEN DO
-    /* dro is moving left and not at right edge of screen bounds */
-    /* we will need to erase one char position to the right of dro */
+  IF obj.bridge.dirx==-1 & obj.bridge.x+obj.bridge.w<maxcol THEN DO
+    /* bridge is moving left and not at right edge of screen bounds */
+    /* we will need to erase one char position to the right of bridge */
     erasex=1 
   END
-  ELSE IF obj.dro.dirx==1 & obj.dro.x>mincol THEN DO
-    /* dro is moving right and not at left edge of screen bounds */
-    /* we will need to erase one char position to the left of dro */
+  ELSE IF obj.bridge.dirx==1 & obj.bridge.x>mincol THEN DO
+    /* bridge is moving right and not at left edge of screen bounds */
+    /* we will need to erase one char position to the left of bridge */
     erasex=-1  
   END
   
   /* check for movement in y direction */
-  IF obj.dro.diry==-1 & obj.dro.y+obj.dro.h<maxline THEN DO
-    /* dro is moving up and not at bottom edge of screen bounds */
-    /* we will need to erase one line below dro */
-    outerloopend=obj.dro.h+1
+  IF obj.bridge.diry==-1 & obj.bridge.y+obj.bridge.h<maxline THEN DO
+    /* bridge is moving up and not at bottom edge of screen bounds */
+    /* we will need to erase one line below bridge */
+    outerloopend=obj.bridge.h+1
   END
-  ELSE IF obj.dro.diry==1 & obj.dro.y>minline THEN DO
-    /* dro is moving down and not at top edge of screen bounds */ 
-    /* we will need to erase one line above dro */
+  ELSE IF obj.bridge.diry==1 & obj.bridge.y>minline THEN DO
+    /* bridge is moving down and not at top edge of screen bounds */ 
+    /* we will need to erase one line above bridge */
     outerloopstart=-1
   END
        
   /* TODO: this loop is very similar to DRAW_INVERSE_OBJ_LINE, try to combine/code reduce */      
   /* outer loop goes through each line of sprite */ 
   DO j=outerloopstart TO outerloopend BY 1
-    drawline=obj.dro.y+(j)
-    drawxpos=obj.dro.x
+    drawline=obj.bridge.y+(j)
+    drawxpos=obj.bridge.x
     /* IF drawline<minline | drawline>maxline THEN ITERATE */ /* skip loop iteration if line is out of bounds */
     
     /* get current line of sprite to work on */
-    IF j==-1 | j==obj.dro.h+1 THEN DO
-      /* this is either 1 line above or 1 line below dro sprite, so we are "erasing" on y */
-      spr_str=COPIES("E", obj.dro.w+1)
+    IF j==-1 | j==obj.bridge.h+1 THEN DO
+      /* this is either 1 line above or 1 line below bridge sprite, so we are "erasing" on y */
+      spr_str=COPIES("E", obj.bridge.w+1)
     END
-    ELSE DO
-      IF obj.dro.type=="dragon" & obj.dro.dirx==1 THEN DO
-        spr_str=REVERSE(obj.dro.spr.j) 
-      END
-      ELSE spr_str=obj.dro.spr.j
+    ELSE spr_str=obj.bridge.spr.j
     END
                 
     /* check if we need to erase 1 char to left of sprite */
     IF erasex==-1 THEN DO
       drawxpos=drawxpos-1
       spr_str="E"||spr_str
-      map_start=(obj.dro.x-1)-1   /* (original value)-1, due to being inside loop */
-      map_len=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
+      map_start=(obj.bridge.x-1)-1   /* (original value)-1, due to being inside loop */
+      map_len=(obj.bridge.w+1)+1  /* (original value)+1, due to being inside loop */
     END
     /* check if we need to erase 1 char to right of sprite */
     ELSE IF erasex==1 THEN DO
       spr_str=spr_str||"E"
-      map_len=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
+      map_len=(obj.bridge.w+1)+1  /* (original value)+1, due to being inside loop */
     END 
     
     /* get map data that is layered "undeneath" the sprite line */  
@@ -2445,7 +2412,8 @@ INIT_OBJECTS:
      _bridge.3="лл "
      _bridge.4="лл "
      _bridge.5="   " */
-  
+     
+  /* otimized bridge */
   _bridge.0="   "
   _bridge.1=  " "
   _bridge.2=  " "

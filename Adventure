@@ -32,23 +32,23 @@ changewhere "BBS Adventure "||ver
 /* debug switches */
 debug=0         /* 0 = disable debug mode,   1 = enable debug mode   */
 debug_flash=0   /* 0 = disable flash debug,  1 = enable flash debug  */
-debug_magnet=1  /* 0 = disable magnet debug, 1 = enable magnet debug */
+debug_magnet=0  /* 0 = disable magnet debug, 1 = enable magnet debug */
 debug_bat=0     /* 0 = disable bat debug,    1 = enable bat debug    */
 debug_dragon=0  /* 0 = disable dragon debug, 1 = enable dragon debug */
 
 /* system options */
-flashlight=3         /* 0=disabled, 1=small, 2=medium, 3=large (default) */
-bat_enable=0         /* 0=bat disabled, 1=bat enabled (default) */
-dragon_enable=0      /* 0=dragons disabled, 1=dragons enabled (default) */
+flashlight=3    /* 0=disabled, 1=small, 2=medium, 3=large (default) */
+bat_enable=0    /* 0=bat disabled, 1=bat enabled (default) */
+dragon_enable=0 /* 0=dragons disabled, 1=dragons enabled (default) */
 
 /* default game settings */
-difficulty=1  /* 1=level 1 (default), 2=level 2, 3=level 3 */
-attack=0      /* 0=dragons delay before attack (default), 1=dragons attack instantly */
-fear=0        /* 0=dragons do not fear sword (default), 1=dragons fear sword */ 
+difficulty=1    /* 1=level 1 (default), 2=level 2, 3=level 3 */
+attack=0        /* 0=dragons delay before attack (default), 1=dragons attack instantly */
+fear=0          /* 0=dragons do not fear sword (default), 1=dragons fear sword */ 
 
 /* dragon attack delay */
-instantattack=1.5   /* 1.5 seconds */
-delayedattack=3     /* 3 seconds */
+instantattack=1.5 /* 1.5 seconds */
+delayedattack=3   /* 3 seconds */
 
 /* player state constants */
 PL_ALIVE=0
@@ -621,13 +621,13 @@ START:
   ELSE IF difficulty==2 THEN DO
     CALL EXPAND_KINGDOM
     /* set level 2 item locations */
-    obj.ykey.room=9  /* orig 9, test 3 */
+    obj.ykey.room=9  
     obj.bkey.room=25
     obj.wkey.room=6
     obj.sword.room=17
-    obj.bridge.room=0 /* orig 11 */
-    obj.chalice.room=13 /* orig 20 */
-    obj.magnet.room=13  /* orig 14 */
+    obj.bridge.room=11
+    obj.chalice.room=20
+    obj.magnet.room=14
   END
   ELSE IF difficulty==3 THEN DO
     CALL EXPAND_KINGDOM
@@ -1040,7 +1040,8 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
     DO j=0 TO maxdrawitem
       o=item.j
       IF obj.pl.equip~=o & obj.knub.equp~=o & COLLIDE_BY_LINE("LIGHT", line, o)==1 THEN DO
-        IF obj.o.type=="dragon" | obj.o.type=="inverse" THEN call DRAW_INVERSE_OBJ_LINE(o, line)
+        IF o=="BRIDGE" THEN CALL DRAW_BRIDGE_LINE(line)
+        ELSE IF obj.o.type=="dragon" | obj.o.type=="inverse" THEN CALL DRAW_INVERSE_OBJ_LINE(o, line)
         ELSE CALL DRAW_OBJ_LINE(o, line)
       END
     END
@@ -1116,6 +1117,7 @@ RETURN
 DRAW_OBJECT:  
   ARG dro
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
+  ELSE IF dro=="BRIDGE" THEN SIGNAL DRAW_BRIDGE
   ELSE IF obj.dro.type=="inverse" | obj.dro.type=="dragon" THEN DO
     CALL DRAW_INVERSE_OBJECT(dro)
     RETURN
@@ -1135,6 +1137,7 @@ BUILD_OBJ_LINE:
   /* requires dro, drawline, spr_str, map_str, map_start, and map_len defined before calling */
   /* sets result_line for use by draw functions */ 
   
+  /* TODO: optimize color stacking */
   /* loop through each character of the map string and insert bg color based on map character found */
   result_line=""
   DO m=1 TO map_len
@@ -1145,11 +1148,9 @@ BUILD_OBJ_LINE:
         /* select bgcolor */
         IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", drawline, map_start+m)==1 THEN bgcolor="[43m"
         ELSE bgcolor=k.rm.bc
-          
         /* select character data */
         IF spr_char=="E" THEN char_data=map_char
         ELSE char_data=spr_char
-          
         result_line=result_line||obj.dro.col||bgcolor||char_data
       END
       WHEN map_char=="л" THEN DO
@@ -1187,7 +1188,7 @@ DRAW_OBJECT_WITH_MOTION: /* draw object in motion (erase where its been) */
   ARG dro
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
   IF dro=="BRIDGE" THEN DO
-    CALL DRAW_BRIDGE /* TODO: replace this */
+    CALL DRAW_BRIDGE_WITH_MOTION
     RETURN
   END
   ELSE IF obj.dro.type=="inverse" THEN DO
@@ -1281,20 +1282,11 @@ BUILD_INVERSE_OBJ_LINE:
   /* requires dro, drawline, spr_str, map_str, map_start and map_len defined before calling */
   /* sets result_line for use by draw functions */ 
   
+  /* TODO: optimize color stacking */
   /* loop through each character of the map string and insert bg color based on map character found */
   result_line=""
-  DO m=1 TO map_len 
-    IF dro=="BRIDGE" THEN DO
-      IF m<=3 THEN spr_char= SUBSTR(spr_str, m, 1)
-      ELSE IF m==4 THEN DO
-        result_line=result_line||"[6C"
-        m=9
-        ITERATE
-      END
-      ELSE IF m>9 THEN spr_char= SUBSTR(spr_rev, m-9, 1)
-    END
-    ELSE spr_char= SUBSTR(spr_str, m, 1)
-      
+  DO m=1 TO map_len     
+    spr_char= SUBSTR(spr_str, m, 1)  
     map_char= SUBSTR(map_str, m, 1)
     SELECT
       WHEN map_char==" " THEN DO
@@ -1337,10 +1329,6 @@ DRAW_INVERSE_OBJ_LINE:
   IF obj.dro.type=="dragon" & obj.dro.dirx==1 THEN DO
     spr_str= REVERSE(obj.dro.spr.spri)
   END
-  ELSE IF dro=="BRIDGE" THEN DO
-    spr_str= obj.dro.spr.spri
-    spr_rev= REVERSE(spr_str)
-  END
   ELSE spr_str=obj.dro.spr.spri
     
   /* get map data underneath item's sprite line */
@@ -1349,7 +1337,7 @@ DRAW_INVERSE_OBJ_LINE:
   map_str= SUBSTR(k.mp.drawline, map_start, map_len) 
   
   CALL BUILD_INVERSE_OBJ_LINE
-  se "["||drawline||";"||obj.dro.x||"H"||result_line||k.rm.fc
+  se "["||drawline||";"||obj.dro.x||"H"||result_line  /* ||k.rm.fc */
 RETURN
 
 /* TODO: fix draw/erase issues with screen edges */
@@ -1430,6 +1418,164 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
   se park
 RETURN
 
+DRAW_BRIDGE:
+  IF OK2DRAWOBJ("BRIDGE")==0 | obj.bridge.room ~= obj.pl.room THEN RETURN
+  DO j=0 TO obj.bridge.h
+    CALL DRAW_BRIDGE_LINE(obj.bridge.y+j)
+  END
+  se park
+RETURN
+
+DRAW_BRIDGE_LINE:
+  ARG drawline
+  spri=drawline-obj.bridge.y
+  spr_str=obj.bridge.spr.spri
+  IF spri==0 | spri==obj.bridge.h THEN drawbridgexpos=obj.bridge.x
+  ELSE drawbridgexpos=obj.bridge.x+2
+  IF debug==1 THEN DO
+    se park||drawline" "drawbridgexpos" "spri" :"spr_str":       "
+    CALL DEBUG_STEPPER
+  END
+  se "["||drawline||";"||drawbridgexpos||"H"||obj.bridge.col||spr_str||"["||obj.bridge.gap||"C"||spr_str
+RETURN
+
+DRAW_BRIDGE_WITH_MOTION:
+  dro="BRIDGE"
+  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
+  rm=obj.pl.room
+  mp=k.rm.map
+  
+  erasex=0
+  outerloopstart=0
+  outerloopend=obj.dro.h
+  map_start=obj.dro.x-1   /* -1 for map shift */
+  map_len=obj.dro.w+1  /* +1 for how obj width is indexed */ 
+  
+  /* check for movement in x direction */
+  IF obj.dro.dirx==-1 & obj.dro.x+obj.dro.w<maxcol THEN DO
+    /* dro is moving left and not at right edge of screen bounds */
+    /* we will need to erase one char position to the right of dro */
+    erasex=1 
+  END
+  ELSE IF obj.dro.dirx==1 & obj.dro.x>mincol THEN DO
+    /* dro is moving right and not at left edge of screen bounds */
+    /* we will need to erase one char position to the left of dro */
+    erasex=-1  
+  END
+  
+  /* check for movement in y direction */
+  IF obj.dro.diry==-1 & obj.dro.y+obj.dro.h<maxline THEN DO
+    /* dro is moving up and not at bottom edge of screen bounds */
+    /* we will need to erase one line below dro */
+    outerloopend=obj.dro.h+1
+  END
+  ELSE IF obj.dro.diry==1 & obj.dro.y>minline THEN DO
+    /* dro is moving down and not at top edge of screen bounds */ 
+    /* we will need to erase one line above dro */
+    outerloopstart=-1
+  END
+       
+  /* TODO: this loop is very similar to DRAW_INVERSE_OBJ_LINE, try to combine/code reduce */      
+  /* outer loop goes through each line of sprite */ 
+  DO j=outerloopstart TO outerloopend BY 1
+    drawline=obj.dro.y+(j)
+    drawxpos=obj.dro.x
+    /* IF drawline<minline | drawline>maxline THEN ITERATE */ /* skip loop iteration if line is out of bounds */
+    
+    /* get current line of sprite to work on */
+    IF j==-1 | j==obj.dro.h+1 THEN DO
+      /* this is either 1 line above or 1 line below dro sprite, so we are "erasing" on y */
+      spr_str=COPIES("E", obj.dro.w+1)
+    END
+    ELSE DO
+      IF obj.dro.type=="dragon" & obj.dro.dirx==1 THEN DO
+        spr_str=REVERSE(obj.dro.spr.j) 
+      END
+      ELSE spr_str=obj.dro.spr.j
+    END
+                
+    /* check if we need to erase 1 char to left of sprite */
+    IF erasex==-1 THEN DO
+      drawxpos=drawxpos-1
+      spr_str="E"||spr_str
+      map_start=(obj.dro.x-1)-1   /* (original value)-1, due to being inside loop */
+      map_len=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
+    END
+    /* check if we need to erase 1 char to right of sprite */
+    ELSE IF erasex==1 THEN DO
+      spr_str=spr_str||"E"
+      map_len=(obj.dro.w+1)+1  /* (original value)+1, due to being inside loop */
+    END 
+    
+    /* get map data that is layered "undeneath" the sprite line */  
+    map_str= SUBSTR(k.mp.drawline, map_start, map_len) 
+    
+    call BUILD_INVERSE_OBJ_LINE
+    se "["||drawline||";"||drawxpos||"H"||result_line /* ||k.rm.fc */         
+  END
+  se park
+RETURN
+
+ERASE_BRIDGE:
+  IF OK2DRAWOBJ("BRIDGE")==0 | obj.bridge.room ~= obj.pl.room THEN RETURN
+  rm=obj.pl.room
+  mp=k.rm.map
+  DO j=0 TO obj.bridge.h
+    drawline=obj.bridge.y+j
+    
+    /* get map data under bridge */
+    IF j==0 | j==obj.bridge.h THEN DO
+      /* this is first or last line of bridge */
+      erasebridgexpos=obj.bridge.x
+      map_str= SUBSTR(k.mp.drawline, erasebridgexpos-1, obj.bridge.w+1)  /* -1 for map shift, +1 for how width is indexed */
+      str1= LEFT(map_str, 3)
+      str2= RIGHT(map_str, 3)
+    END
+    ELSE DO
+      erasebridgexpos=obj.bridge.x+2
+      map_str= SUBSTR(k.mp.drawline, erasebridgexpos-1, obj.bridge.gap+2)  /* bridge gap plus one space on each side */
+      str1= LEFT(map_str, 1)
+      str2= RIGHT(map_str, 1)
+    END
+    
+    /* TODO: optimize color stacking */
+    /* loop through characters of str1 and str2 and insert color as needed */
+    map_start1=erasebridgexpos-1  /* -1 for map shift */
+    map_start2=obj.bridge.x+8 /* +9 for start of 2nd half of bridge, -1 for map shift */
+    str_len= LENGTH(str1) /* both str1 and str2 will be the same length */
+    result_str1=""
+    result_str2=""
+    DO char=1 TO str_len
+      /* get char of str1 and determine erasecol */
+      map_char1= SUBSTR(str1, char, 1)
+      IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", drawline, map_start1+char)==1 THEN erasecol=k.rm.fc||"[43m"
+      ELSE erasecol=k.rm.c
+      result_str1=result_str1||erasecol||map_char1
+      
+      /* get char of str2 and determine erasecol */
+      map_char2= SUBSTR(str2, char, 1)
+      IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", drawline, map_start2+char)==1 THEN erasecol=k.rm.fc||"[43m"
+      ELSE erasecol=k.rm.c
+      result_str2=result_str2||erasecol||map_char2    
+    END
+    
+    /* handle the side barriers */
+    m_index= INDEX(result_str1, "M")
+    IF m_index~=0 THEN DO
+      newstr1= LEFT(result_str1, m_index-1) || "[0;30;47mл" || RIGHT(result_str1, LENGTH(result_str1)-m_index)
+      result_str1 = newstr1
+    END
+    m_index= INDEX(result_str2,"M")
+    IF m_index~=0 THEN DO
+      newstr2= LEFT(result_str2, m_index-1) || "[0;30;47mл" || RIGHT(result_str2, LENGTH(result_str2)-m_index)
+      result_str2 = newstr2
+    END
+          
+    se "["||drawline||";"||erasebridgexpos||"H"||result_str1||"["||obj.bridge.gap||"C"||result_str2
+  END
+  se park
+RETURN
+
 ERASE_OBJECT:
   ARG dro
   IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
@@ -1450,77 +1596,6 @@ ERASE_OBJECT:
     IF (flashlight~=0 & k.rm.dark==1) & (obj.pl.equip==dro | COLLIDE_BY_LINE(dro, j, "LIGHT")==1) THEN erasecolor="[0;43m"
     ELSE erasecolor=k.rm.c
     se "["||j||";"||obj.dro.x||"H"||erasecolor||str
-  END
-  se park
-RETURN
-
-/* TODO: replace uses with DRAW_INVERSE_OBJECT */
-DRAW_BRIDGE: /* DEPRECIATED */
-  dro="BRIDGE"
-  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
-  rm=obj.pl.room
-  mp=k.rm.map
-  DO j=0 TO obj.dro.h
-    /* for each line of the object's sprite */
-    spr_line= obj.dro.spr.j
-    rev_line= REVERSE(spr_line) 
-    /* get map data underneath item's sprite line */
-    l=obj.dro.y+j
-    map_str=SUBSTR(k.mp.l, obj.dro.x-1, obj.dro.w+1) /* -1 for map shift, +1 for how width is indexed */
-    
-    /* loop through each character of the map string and insert bg color based on map character found */
-    result_line=""
-    DO k=1 TO obj.dro.w+1 /* +1 due to how width is indexed */
-      IF k<=3 THEN spr_char = SUBSTR(spr_line, k, 1)
-      ELSE IF k==4 THEN DO
-        result_line=result_line||"[6C"
-        k=9
-        ITERATE
-      END
-      ELSE IF k>9 THEN spr_char = SUBSTR(rev_line, k-9, 1)
-      map_char = SUBSTR(map_str, k, 1)
-      SELECT
-        WHEN map_char==" " THEN result_line=result_line||obj.dro.col||spr_char
-        WHEN map_char=="л" THEN DO 
-          IF spr_char==" " THEN result_line=result_line||obj.dro.col||spr_char
-          ELSE DO
-            IF k.rm.dark==1 & flashlight==0 THEN result_line=result_line||k.rm.c||spr_char
-            ELSE result_line=result_line||k.rm.fc||spr_char
-          END
-        END
-        WHEN map_char=="M" THEN DO
-          IF spr_char==" " THEN result_line=result_line||obj.dro.col||spr_char
-          ELSE result_line=result_line||"[30m"||spr_char
-        END
-        OTHERWISE NOP
-      END
-    END       
-    se "["||obj.dro.y+j||";"||obj.dro.x||"H"||obj.dro.col||result_line||k.rm.fc
-  END
-  se park
-RETURN
-
-ERASE_BRIDGE:
-  o="BRIDGE"
-  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
-  rm=obj.pl.room
-  mp=k.rm.map
-  DO j=obj.dro.y TO obj.dro.y+obj.dro.h
-    str= SUBSTR(k.mp.j, obj.dro.x-1, obj.dro.w+1)  /* -1 for map shift, +1 for how width is indexed */
-    str1= LEFT(str,3)
-    str2= RIGHT(str,3)
-    /* handle the side barriers */
-    m_index= INDEX(str1,"M")
-    IF m_index~=0 THEN DO
-      newstr1= LEFT(str1,m_index-1) || "[0;30;47mл" || k.rm.c || RIGHT(str1,length(str1)-m_index)
-      str1 = newstr1
-    END
-    m_index= INDEX(str2,"M")
-    IF m_index~=0 THEN DO
-      newstr2= LEFT(str2,m_index-1) || "[0;30;47mл" || k.rm.c || RIGHT(str2,length(str2)-m_index)
-      str2 = newstr2
-    END
-    se "["||j||";"||obj.dro.x||"H"||k.rm.c||str1||"[6C"||str2
   END
   se park
 RETURN
@@ -1601,7 +1676,7 @@ PLAYER_MOVE:
   /* do item collision detect */
   DO i=0 TO maxgrabitem
     o=item.i
-    IF o=="BRIDGE" & obj.knubberrub.equip~=o & BRIDGE_COLLIDE("PL")==1 THEN NOP /* allow pl to wa lk accross bridge */
+    IF o=="BRIDGE" & obj.knubberrub.equip~=o & BRIDGE_COLLIDE("PL")==1 THEN NOP /* allow pl to walk across bridge */
     ELSE IF o==knub & (obj.knub.fedup==0 | obj.knub.fedup>400) & WILL_COLLIDE("PL", o)==1 THEN CALL GRAB("PL", o)
     ELSE IF obj.knubberrub.equip~=o & WILL_COLLIDE("PL", o)==1 THEN CALL GRAB("PL", o)
   END
@@ -2364,25 +2439,32 @@ INIT_OBJECTS:
   _magnet.0="лпл"
   _magnet.1=" л "
 
+  /* _bridge.0="   "
+     _bridge.1="лл "
+     _bridge.2="лл "
+     _bridge.3="лл "
+     _bridge.4="лл "
+     _bridge.5="   " */
+  
   _bridge.0="   "
-  _bridge.1="лл "
-  _bridge.2="лл "
-  _bridge.3="лл "
-  _bridge.4="лл "
+  _bridge.1=  " "
+  _bridge.2=  " "
+  _bridge.3=  " "
+  _bridge.4=  " "
   _bridge.5="   "
   
- /* original bat sprites */
- /* _bat.0.0="пллллллм"
-    _bat.0.1="пллллллм"
-    _bat.0.2="лпм  мпл"
-    _bat.0.3="п мллм п"
-    _bat.0.4=" лллллл "
-    _bat.0.5="мллллллм" 
+  /* original bat sprites */
+  /* _bat.0.0="пллллллм"
+     _bat.0.1="пллллллм"
+     _bat.0.2="лпм  мпл"
+     _bat.0.3="п мллм п"
+     _bat.0.4=" лллллл "
+     _bat.0.5="мллллллм" 
     
-    _bat.1.0=" лллллл "
-    _bat.1.1="  лллл  "
-    _bat.1.2="м м  м м"
-    _bat.1.3="лммллммл" */    
+     _bat.1.0=" лллллл "
+     _bat.1.1="  лллл  "
+     _bat.1.2="м м  м м"
+     _bat.1.3="лммллммл" */    
   
   _bat.maxframe=1
   _bat.0.0=" ллл "
@@ -2853,6 +2935,7 @@ INIT_OBJECTS:
   obj.bridge.spr.3=_bridge.3
   obj.bridge.spr.4=_bridge.4
   obj.bridge.spr.5=_bridge.5
+  obj.bridge.gap=6  /* the walkable part of the bridge */
   obj.bridge.lvl3.0=1   /* random room lower limit */
   obj.bridge.lvl3.1=29  /* random room upper limit */
   

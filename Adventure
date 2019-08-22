@@ -60,6 +60,9 @@ D_ATTACK=1
 D_DEAD=2
 D_FULL=3
 
+/* other defined constants */
+MAP_SHIFT=-1
+
 /* used for boundary checks only! */
 /* changing these values will not */ 
 /* adapt the users display        */
@@ -826,7 +829,7 @@ ERASE_PL:
   
   /* erase player */  
   line=obj.pl.y
-  str = SUBSTR(k.mp.line, obj.pl.x-1, obj.pl.w+1)  /* -1 for map shift, +1 for how width is indexed */
+  str = SUBSTR(k.mp.line, obj.pl.x+MAP_SHIFT, obj.pl.w+1)  /* +1 for how width is indexed */
   /* handle the side barriers */
   m_index = INDEX(str,"M")
   IF m_index ~=0 THEN DO
@@ -914,7 +917,7 @@ DRAW_FLASHLIGHT_WITH_MOTION: /* draw flashlight in motion (erase where its been)
   erasey=0
   loopstart=0
   loopend=obj.light.h
-  mapstart=obj.light.x-1   /* -1 for map shift */
+  mapstart=obj.light.x+MAP_SHIFT
   maplength=obj.light.w+1  /* +1 for how obj width is indexed  */
   
   /* check for movement in x direction */
@@ -1153,7 +1156,7 @@ DRAW_OBJ_LINE:
   
   /* get map data underneath the sprite line */
   map_len=obj.dro.w+1  /* +1 for how width is indexed */
-  map_start=obj.dro.x-1  /* -1 for map shift */
+  map_start=obj.dro.x+MAP_SHIFT
   map_str= SUBSTR(k.mp.drawline, map_start, map_len)
   
   call BUILD_OBJ_LINE  
@@ -1183,7 +1186,7 @@ DRAW_OBJECT_WITH_MOTION: /* draw object in motion (erase where its been) */
   erasex=0
   outerloopstart=0
   outerloopend=obj.dro.h
-  map_start=obj.dro.x-1   /* -1 for map shift */
+  map_start=obj.dro.x+MAP_SHIFT
   map_len=obj.dro.w+1  /* +1 for how obj width is indexed */ 
   
   /* check for movement in x direction */
@@ -1309,7 +1312,7 @@ DRAW_INVERSE_OBJ_LINE:
     
   /* get map data underneath item's sprite line */
   map_len= obj.dro.w+1  /* +1 for how width is indexed */
-  map_start= obj.dro.x-1  /* -1 for map shift */
+  map_start= obj.dro.x+MAP_SHIFT
   map_str= SUBSTR(k.mp.drawline, map_start, map_len) 
   
   CALL BUILD_INVERSE_OBJ_LINE
@@ -1326,7 +1329,7 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
   erasex=0
   outerloopstart=0
   outerloopend=obj.dro.h
-  map_start=obj.dro.x-1   /* -1 for map shift */
+  map_start=obj.dro.x+MAP_SHIFT
   map_len=obj.dro.w+1  /* +1 for how obj width is indexed */ 
   
   /* check for movement in x direction */
@@ -1406,20 +1409,21 @@ DRAW_BRIDGE_LINE:
   ARG drawline
   spri=drawline-obj.bridge.y
   spr_str=obj.bridge.spr.spri
-  IF spri==0 | spri==obj.bridge.h THEN drawbridgexpos=obj.bridge.x
-  ELSE drawbridgexpos=obj.bridge.x+2
+  IF spri==0 | spri==obj.bridge.h THEN drawbridgexpos=obj.bridge.x /* this is either the first or last line */
+  ELSE drawbridgexpos=obj.bridge.x+2 /* this is an interior brige line */
   se "["||drawline||";"||drawbridgexpos||"H"||obj.bridge.col||spr_str||"["||obj.bridge.gap||"C"||spr_str
 RETURN
 
-DRAW_BRIDGE_WITH_MOTION:
+DRAW_BRIDGE_WITH_MOTION:  /* TODO: re do this! */
   IF OK2DRAWOBJ("BRIDGE")==0 | obj.bridge.room ~= obj.pl.room THEN RETURN
   rm=obj.pl.room
   mp=k.rm.map
   
   erasex=0
+  erasey=0
   outerloopstart=0
   outerloopend=obj.bridge.h
-  map_start=obj.bridge.x-1   /* -1 for map shift */
+  map_start=obj.bridge.x+MAP_SHIFT
   map_len=obj.bridge.w+1  /* +1 for how obj width is indexed */ 
   
   /* check for movement in x direction */
@@ -1445,39 +1449,17 @@ DRAW_BRIDGE_WITH_MOTION:
     /* we will need to erase one line above bridge */
     outerloopstart=-1
   END
-       
-  /* TODO: this loop is very similar to DRAW_INVERSE_OBJ_LINE, try to combine/code reduce */      
+            
   /* outer loop goes through each line of sprite */ 
   DO j=outerloopstart TO outerloopend BY 1
     drawline=obj.bridge.y+(j)
-    drawxpos=obj.bridge.x
     /* IF drawline<minline | drawline>maxline THEN ITERATE */ /* skip loop iteration if line is out of bounds */
     
-    /* get current line of sprite to work on */
-    IF j==-1 | j==obj.bridge.h+1 THEN DO
-      /* this is either 1 line above or 1 line below bridge sprite, so we are "erasing" on y */
-      spr_str=COPIES("E", obj.bridge.w+1)
-    END
-    ELSE spr_str=obj.bridge.spr.j
-    END
-                
-    /* check if we need to erase 1 char to left of sprite */
-    IF erasex==-1 THEN DO
-      drawxpos=drawxpos-1
-      spr_str="E"||spr_str
-      map_start=(obj.bridge.x-1)-1   /* (original value)-1, due to being inside loop */
-      map_len=(obj.bridge.w+1)+1  /* (original value)+1, due to being inside loop */
-    END
-    /* check if we need to erase 1 char to right of sprite */
-    ELSE IF erasex==1 THEN DO
-      spr_str=spr_str||"E"
-      map_len=(obj.bridge.w+1)+1  /* (original value)+1, due to being inside loop */
-    END 
+    /* do line above or below */
+    /* do first or last line of bridge */
+    /* do 2nd line or 2nd to last line of bridge */
+    /* do remaining internal lines */
     
-    /* get map data that is layered "undeneath" the sprite line */  
-    map_str= SUBSTR(k.mp.drawline, map_start, map_len) 
-    
-    call BUILD_INVERSE_OBJ_LINE
     se "["||drawline||";"||drawxpos||"H"||result_line /* ||k.rm.fc */         
   END
   se park
@@ -1494,21 +1476,21 @@ ERASE_BRIDGE:
     IF j==0 | j==obj.bridge.h THEN DO
       /* this is first or last line of bridge */
       erasebridgexpos=obj.bridge.x
-      map_str= SUBSTR(k.mp.drawline, erasebridgexpos-1, obj.bridge.w+1)  /* -1 for map shift, +1 for how width is indexed */
+      map_str= SUBSTR(k.mp.drawline, erasebridgexpos+MAP_SHIFT, obj.bridge.w+1)  /* +1 for how width is indexed */
       str1= LEFT(map_str, 3)
       str2= RIGHT(map_str, 3)
     END
     ELSE DO
       erasebridgexpos=obj.bridge.x+2
-      map_str= SUBSTR(k.mp.drawline, erasebridgexpos-1, obj.bridge.gap+2)  /* bridge gap plus one space on each side */
+      map_str= SUBSTR(k.mp.drawline, erasebridgexpos+MAP_SHIFT, obj.bridge.gap+2)  /* bridge gap plus one space on each side */
       str1= LEFT(map_str, 1)
       str2= RIGHT(map_str, 1)
     END
     
     /* TODO: optimize color stacking */
     /* loop through characters of str1 and str2 and insert color as needed */
-    map_start1=erasebridgexpos-1  /* -1 for map shift */
-    map_start2=obj.bridge.x+8 /* +9 for start of 2nd half of bridge, -1 for map shift */
+    map_start1=erasebridgexpos+MAP_SHIFT
+    map_start2=obj.bridge.x+obj.bridge.p2xoff+MAP_SHIFT
     str_len= LENGTH(str1) /* both str1 and str2 will be the same length */
     result_str1=""
     result_str2=""
@@ -1553,7 +1535,7 @@ ERASE_OBJECT:
   rm=obj.pl.room
   mp=k.rm.map
   DO j=obj.dro.y TO obj.dro.y+obj.dro.h
-    str = SUBSTR(k.mp.j, obj.dro.x-1, obj.dro.w+1)  /* -1 for map shift */
+    str = SUBSTR(k.mp.j, obj.dro.x+MAP_SHIFT, obj.dro.w+1)  /* +1 for how width is inedexed */
     /* handle the side barriers */
     m_index = INDEX(str,"M")
     IF m_index ~=0 THEN DO
@@ -1870,7 +1852,7 @@ WALL: /* detect collision with wall or barrier */
   IF obj.wo.x+(obj.wo.vx)-1<=0 THEN RETURN 0 /* hacky fix to left exit bug */
   DO l=obj.wo.y+(obj.wo.vy) TO obj.wo.y+obj.wo.h+(obj.wo.vy)
     /* for each line of the object, check map chars under object */
-    str= SUBSTR(k.mp.l, obj.wo.x+(obj.wo.vx)-1, obj.wo.w+1)  /* -1 for map shift, +1 due to how obj.o.w is indexed */
+    str= SUBSTR(k.mp.l, obj.wo.x+(obj.wo.vx)+MAP_SHIFT, obj.wo.w+1)  /* +1 due to how obj.o.w is indexed */
     IF INDEX(str, "Û") ~=0 THEN DO
       /* wall found */
       bufferflush
@@ -2904,6 +2886,7 @@ INIT_OBJECTS:
   obj.bridge.spr.4=_bridge.4
   obj.bridge.spr.5=_bridge.5
   obj.bridge.gap=6  /* the walkable part of the bridge */
+  obj.bridge.p2xoff=3+obj.bridge.gap /* part 2 x offset: bridge foot + brige gap */
   obj.bridge.lvl3.0=1   /* random room lower limit */
   obj.bridge.lvl3.1=29  /* random room upper limit */
   

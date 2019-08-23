@@ -55,13 +55,20 @@ PL_ALIVE=0
 PL_DEAD=1
 
 /* dragon state constants */
-D_ALIVE=0
-D_ATTACK=1
-D_DEAD=2
-D_FULL=3
+DR_ALIVE=0
+DR_ATTACK=1
+DR_DEAD=2
+DR_FULL=3
+
+/* direction constants */
+D_LEFT=-1
+D_RIGHT=1
+D_UP=-1
+D_DOWN=1
 
 /* other defined constants */
 MAP_SHIFT=-1
+N1=-1 /* used for representing -1 as a node name */
 
 /* used for boundary checks only! */
 /* changing these values will not */ 
@@ -80,7 +87,7 @@ CALL RANDOM(,,time('s'))  /* seed random number generator */
 CALL DRAW_PHENOM
 CALL INIT_KINGDOM
 CALL DRAW_BG
-CALL DELAY(15)
+/* CALL DELAY(15) */
 
 /* option items text */
 attack_items.0="delayed"
@@ -708,7 +715,7 @@ START:
     IF dragon_enable>0 THEN DO
       DO i=0 TO maxdragon
         d=dragon.i
-        IF obj.d.state>=D_DEAD THEN ITERATE i
+        IF obj.d.state>=DR_DEAD THEN ITERATE i
         CALL DRAGON_GUARD(d)
         CALL DRAGON_FLEE(d)
         CALL DRAGON_MOVE(d)
@@ -1070,7 +1077,7 @@ DRAW_OBJS:  /* draw objects (not in the main loop) */
   /* draw dead or stuffed dragons */
   DO i=0 TO maxdragon
     d=dragon.i
-    IF (obj.d.state==D_DEAD | obj.d.state=D_FULL) & obj.knubberrub.equip~=d THEN CALL DRAW_DRAGON(d)
+    IF (obj.d.state==DR_DEAD | obj.d.state=DR_FULL) & obj.knubberrub.equip~=d THEN CALL DRAW_DRAGON(d)
   END
 RETURN
 
@@ -1366,7 +1373,7 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
     /* get current line of sprite to work on */
     IF j==-1 | j==obj.dro.h+1 THEN DO
       /* this is either 1 line above or 1 line below dro sprite, so we are "erasing" on y */
-      spr_str=COPIES("E", obj.dro.w+1)
+      spr_str= COPIES("E", obj.dro.w+1)
     END
     ELSE DO
       IF obj.dro.type=="dragon" & obj.dro.dirx==1 THEN DO
@@ -1391,7 +1398,7 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
     /* get map data that is layered "undeneath" the sprite line */  
     map_str= SUBSTR(k.mp.drawline, map_start, map_len) 
     
-    call BUILD_INVERSE_OBJ_LINE
+    CALL BUILD_INVERSE_OBJ_LINE
     se "["||drawline||";"||drawxpos||"H"||result_line       
   END
   se park
@@ -1414,17 +1421,15 @@ DRAW_BRIDGE_LINE:
   se "["||drawline||";"||drawbridgexpos||"H"||obj.bridge.col||spr_str||"["||obj.bridge.gap||"C"||spr_str
 RETURN
 
-DRAW_BRIDGE_WITH_MOTION:  /* TODO: re do this! */
+DRAW_BRIDGE_WITH_MOTION:  /* TODO: re-do this because its U G L Y!! */
   IF OK2DRAWOBJ("BRIDGE")==0 | obj.bridge.room ~= obj.pl.room THEN RETURN
   rm=obj.pl.room
   mp=k.rm.map
   
   erasex=0
-  erasey=0
   outerloopstart=0
   outerloopend=obj.bridge.h
-  map_start=obj.bridge.x+MAP_SHIFT
-  map_len=obj.bridge.w+1  /* +1 for how obj width is indexed */ 
+
   
   /* check for movement in x direction */
   IF obj.bridge.dirx==-1 & obj.bridge.x+obj.bridge.w<maxcol THEN DO
@@ -1455,12 +1460,70 @@ DRAW_BRIDGE_WITH_MOTION:  /* TODO: re do this! */
     drawline=obj.bridge.y+(j)
     /* IF drawline<minline | drawline>maxline THEN ITERATE */ /* skip loop iteration if line is out of bounds */
     
-    /* do line above or below */
-    /* do first or last line of bridge */
-    /* do 2nd line or 2nd to last line of bridge */
-    /* do remaining internal lines */
+    /* get lines of sprite data to work on */
+    dirx=obj.bridge.dirx
+    diry=obj.bridge.diry
+    spr_str1=bwm.1.dirx.diry.j
+    spr_str2=bwm.2.dirx.diry.j
     
-    se "["||drawline||";"||drawxpos||"H"||result_line /* ||k.rm.fc */         
+    drawxoff1=0
+    drawxoff2=0
+    
+    /* check if we need to erase 1 char to left of sprite */
+    IF erasex==-1 THEN DO
+    	IF dirx==D_RIGHT & diry==0 & (j==0 | j==5) THEN DO
+    		spr_str1="E"||spr_str1
+    		drawxoff1=-1
+    	END
+    	ELSE IF dirx==D_RIGHT & diry==D_UP & (j==1 | j==6) THEN DO
+    		spr_str1="E"||spr_str1
+    		drawxoff1=-1
+    	END
+    	ELSE IF dirx==D_RIGHT & diry==D_DOWN & (j==-1 | j==4) THEN DO
+    		spr_str1="E"||spr_str1
+    		drawxoff1=-1
+    	END
+    END
+    /* check if we need to erase 1 char to right of sprite */
+    ELSE IF erasex==1 THEN DO
+    	IF dirx==D_LEFT & diry==0 & (j==0 | j==5) THEN spr_str2=spr_str2||"E"
+      ELSE IF dirx==D_LEFT & diry==D_UP & (j==1 | j==6) THEN spr_str2=spr_str2||"E"
+      ELSE IF dirx==D_LEFT & diry==D_DOWN & (j==-1 | j==4) THEN spr_str2=spr_str2||"E"	
+    END
+    
+    /* get drawxpos1 */
+    IF drawxoff1==0 THEN drawxoff1= VERIFY(spr_str1, "X") -1
+    drawxpos1=obj.bridge.x+drawxoff1
+    
+    /* get drawxpos2 */
+    IF diry==D_RIGHT & LEFT(spr_str2, 1)~="X" THEN drawxoff2=-1
+    ELSE IF diry==D_LEFT & LEFT(spr_str2, 1)=="X" THEN drawxoff2==1
+    drawxpos2=obj.bridge.x+obj.bridge.p2xoff+drawxoff2
+    
+    /* strip X from sprite data */
+    spr_str1= STRIP(spr_str1, "L", "X") 
+    spr_str2= STRIP(spr_str2, "L", "X") 
+    
+    /* get map data */
+    
+    /* loop through characters of str1 and insert erase color as needed */
+    dro="BRIDGE"
+    spr_str=spr_str1
+    map_start=drawxpos1+MAP_SHIFT
+    map_len= LENGTH(spr_str1)
+    map_str= SUBSTR(k.mp.drawline, map_start, map_len)
+    CALL BUILD_INVERSE_OBJECT_LINE
+    result_str1=result_str
+    
+    /* loop through characters of str2 and insert erase color as needed */
+    spr_str=spr_str2
+    map_start=drawxpos2+MAP_SHIFT
+    map_len= LENGTH(spr_str2)
+    map_str= SUBSTR(k.mp.drawline, map_start, map_len)
+    CALL BUILD_INVERSE_OBJECT_LINE
+    result_str2=result_str
+    
+    se "["||drawline||";"||drawxpos1||"H"||result_str1||"["||drawline||";"||drawxpos2||"H"||result_str2
   END
   se park
 RETURN
@@ -1477,8 +1540,8 @@ ERASE_BRIDGE:
       /* this is first or last line of bridge */
       erasebridgexpos=obj.bridge.x
       map_str= SUBSTR(k.mp.drawline, erasebridgexpos+MAP_SHIFT, obj.bridge.w+1)  /* +1 for how width is indexed */
-      str1= LEFT(map_str, 3)
-      str2= RIGHT(map_str, 3)
+      str1= LEFT(map_str, obj.bridge.foot)
+      str2= RIGHT(map_str, obj.bridge.foot)
     END
     ELSE DO
       erasebridgexpos=obj.bridge.x+2
@@ -1489,21 +1552,21 @@ ERASE_BRIDGE:
     
     /* TODO: optimize color stacking */
     /* loop through characters of str1 and str2 and insert color as needed */
-    map_start1=erasebridgexpos+MAP_SHIFT
-    map_start2=obj.bridge.x+obj.bridge.p2xoff+MAP_SHIFT
+    start1=erasebridgexpos+MAP_SHIFT
+    start2=obj.bridge.x+obj.bridge.p2xoff+MAP_SHIFT
     str_len= LENGTH(str1) /* both str1 and str2 will be the same length */
     result_str1=""
     result_str2=""
     DO char=1 TO str_len
       /* get char of str1 and determine erasecol */
       map_char1= SUBSTR(str1, char, 1)
-      IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", drawline, map_start1+char)==1 THEN erasecol=k.rm.fc||"[43m"
+      IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", drawline, start1+char)==1 THEN erasecol=k.rm.fc||"[43m"
       ELSE erasecol=k.rm.c
       result_str1=result_str1||erasecol||map_char1
       
       /* get char of str2 and determine erasecol */
       map_char2= SUBSTR(str2, char, 1)
-      IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", drawline, map_start2+char)==1 THEN erasecol=k.rm.fc||"[43m"
+      IF flashlight~=0 & k.rm.dark==1 & COLLIDE_BY_CHAR("LIGHT", drawline, start2+char)==1 THEN erasecol=k.rm.fc||"[43m"
       ELSE erasecol=k.rm.c
       result_str2=result_str2||erasecol||map_char2    
     END
@@ -1807,7 +1870,7 @@ DRAGON_COLLIDE:  /* check if object collides with dead or attacking dragons */
   ARG o
   DO j=0 to maxdragon
     d=dragon.j
-    IF (obj.d.state==D_DEAD | obj.d.state==D_ATTACK) & WILL_COLLIDE(o, d)==1 THEN RETURN 1
+    IF (obj.d.state==DR_DEAD | obj.d.state==DR_ATTACK) & WILL_COLLIDE(o, d)==1 THEN RETURN 1
   END
 RETURN 0
 
@@ -2081,20 +2144,20 @@ DRAGON_MOVE:
   END
   
   /* check for impalement */
-  IF obj.drago.state==D_ALIVE & COLLIDE_NOW(drago, "SWORD") THEN DO
-    obj.drago.state=D_DEAD
+  IF obj.drago.state==DR_ALIVE & COLLIDE_NOW(drago, "SWORD") THEN DO
+    obj.drago.state=DR_DEAD
     DO i=0 TO obj.drago.h
-      obj.drago.spr.i=_dragon.D_DEAD.i
+      obj.drago.spr.i=_dragon.DR_DEAD.i
     END
     CALL DRAW_INVERSE_OBJECT(drago)
     RETURN
   END
   
   /* should dragon attack? */
-  IF obj.drago.state==D_ALIVE & WILL_COLLIDE(drago, "PL") THEN DO
-    obj.drago.state=D_ATTACK
+  IF obj.drago.state==DR_ALIVE & WILL_COLLIDE(drago, "PL") THEN DO
+    obj.drago.state=DR_ATTACK
     DO i=0 TO obj.drago.h
-      obj.drago.spr.i=_dragon.D_ATTACK.i
+      obj.drago.spr.i=_dragon.DR_ATTACK.i
     END
     obj.drago.atkstart= time('s')
     CALL DRAW_INVERSE_OBJECT(drago)
@@ -2105,28 +2168,28 @@ DRAGON_MOVE:
   /* TODO: fix item interactions */
   now= time('s')
   atkwindow=now-obj.drago.atkstart
-  IF obj.drago.state==D_ATTACK & atkwindow>1 & atkwindow<3 & WILL_COLLIDE(drago, "PL") THEN DO
+  IF obj.drago.state==DR_ATTACK & atkwindow>1 & atkwindow<3 & WILL_COLLIDE(drago, "PL") THEN DO
     obj.pl.state=PL_DEAD
     CALL ERASE_PL
     obj.pl.x=obj.drago.x+1
     obj.pl.y=obj.drago.y+4
-    obj.drago.state=D_FULL
+    obj.drago.state=DR_FULL
     obj.drago.atkstart=0
     DO i=0 TO obj.drago.h
-      obj.drago.spr.i=_dragon.D_ALIVE.i
+      obj.drago.spr.i=_dragon.DR_ALIVE.i
     END
     CALL DRAW_INVERSE_OBJECT(drago)
     CALL DRAW_PL
     RETURN
   END
-  ELSE IF obj.drago.state==D_ATTACK & atkwindow>2 THEN DO
-    obj.drago.state=D_ALIVE
+  ELSE IF obj.drago.state==DR_ATTACK & atkwindow>2 THEN DO
+    obj.drago.state=DR_ALIVE
     obj.drago.atkstart=0
     DO i=0 TO obj.drago.h
-      obj.drago.spr.i=_dragon.D_ALIVE.i
+      obj.drago.spr.i=_dragon.DR_ALIVE.i
     END
   END
-  ELSE IF obj.drago.state==D_ATTACK THEN RETURN
+  ELSE IF obj.drago.state==DR_ATTACK THEN RETURN
     
   /* OK 2 move dragon */
 
@@ -2162,9 +2225,9 @@ RETURN
 RESET_DRAGONS:
   DO i=0 TO maxdragon
     d=dragon.i
-    obj.d.state=D_ALIVE  /* born again! */
+    obj.d.state=DR_ALIVE  /* born again! */
     DO j=0 TO obj.d.h
-      obj.d.spr.j=_dragon.D_ALIVE.j
+      obj.d.spr.j=_dragon.DR_ALIVE.j
     END
   END
 RETURN
@@ -2387,21 +2450,6 @@ INIT_OBJECTS:
   
   _magnet.0="лпл"
   _magnet.1=" л "
-
-  /* _bridge.0="   "
-     _bridge.1="лл "
-     _bridge.2="лл "
-     _bridge.3="лл "
-     _bridge.4="лл "
-     _bridge.5="   " */
-     
-  /* otimized bridge */
-  _bridge.0="   "
-  _bridge.1=  " "
-  _bridge.2=  " "
-  _bridge.3=  " "
-  _bridge.4=  " "
-  _bridge.5="   "
   
   /* original bat sprites */
   /* _bat.0.0="пллллллм"
@@ -2546,6 +2594,101 @@ INIT_OBJECTS:
   _msg3.1="that you found this "
   _msg3.2="message and what BBS"
   _msg3.3="you were on! =)     "
+
+  /* _bridge.0="   "
+     _bridge.1="лл "
+     _bridge.2="лл "
+     _bridge.3="лл "
+     _bridge.4="лл "
+     _bridge.5="   " */
+     
+  /* optimized bridge */
+  _bridge.0="   "
+  _bridge.1=" "
+  _bridge.2=" "
+  _bridge.3=" "
+  _bridge.4=" "
+  _bridge.5="   "
+  
+  /* bridge with motion pre-defined sprite data */
+  /* all data is indexed from left by obj.bridge.x */
+  /* naming format: bwm.section.xdir.ydir.line */
+  
+  /* up x=0, y=-1 */
+  bwm.1.0.D_UP.0="   "; bwm.2.0.D_UP.0="   "
+  bwm.1.0.D_UP.1="EE "; bwm.2.0.D_UP.1=" EE"
+  bwm.1.0.D_UP.2="XX "; bwm.2.0.D_UP.2=" "
+  bwm.1.0.D_UP.3="XX "; bwm.2.0.D_UP.3=" "
+  bwm.1.0.D_UP.4="XX "; bwm.2.0.D_UP.4=" "
+  bwm.1.0.D_UP.5="   "; bwm.2.0.D_UP.5="   "
+  bwm.1.0.D_UP.6="EEE"; bwm.2.0.D_UP.6="EEE"
+  
+  /* down x=0 y=1 */
+  bwm.1.0.D_DOWN.N1="EEE"; bwm.2.0.D_DOWN.N1="EEE"
+  bwm.1.0.D_DOWN.0= "   "; bwm.2.0.D_DOWN.0= "   "
+  bwm.1.0.D_DOWN.1= "XX "; bwm.2.0.D_DOWN.1= " "
+  bwm.1.0.D_DOWN.2= "XX "; bwm.2.0.D_DOWN.2= " "
+  bwm.1.0.D_DOWN.3= "XX "; bwm.2.0.D_DOWN.3= " "
+  bwm.1.0.D_DOWN.4= "XX "; bwm.2.0.D_DOWN.4= " "
+  bwm.1.0.D_DOWN.5= "   "; bwm.2.0.D_DOWN.5= "   "
+  
+  /* left x=-1 y=0 */
+  /* erasex=1 will be conditionally added in the draw routine */
+  bwm.1.D_LEFT.0.0="   E"; bwm.2.D_LEFT.0.0="   " /* +E if erasex==1 */
+  bwm.1.D_LEFT.0.1="XX E"; bwm.2.D_LEFT.0.1=" E"
+  bwm.1.D_LEFT.0.2="XX E"; bwm.2.D_LEFT.0.2=" E"
+  bwm.1.D_LEFT.0.3="XX E"; bwm.2.D_LEFT.0.3=" E"
+  bwm.1.D_LEFT.0.4="XX E"; bwm.2.D_LEFT.0.4=" E"
+  bwm.1.D_LEFT.0.5="   E"; bwm.2.D_LEFT.0.5="   " /* +E if erasex==1 */
+  
+  /* right x=1 y=0 */
+  /* erasex=-1 will be conditionally added in the draw routine */
+  /* +E if erasex==-1 */ bwm.1.D_RIGHT.0.0="   "; bwm.2.D_RIGHT.0.0="E   "
+                         bwm.1.D_RIGHT.0.1="XE "; bwm.2.D_RIGHT.0.1="E "
+                         bwm.1.D_RIGHT.0.2="XE "; bwm.2.D_RIGHT.0.2="E "
+                         bwm.1.D_RIGHT.0.3="XE "; bwm.2.D_RIGHT.0.3="E "
+                         bwm.1.D_RIGHT.0.4="XE "; bwm.2.D_RIGHT.0.4="E "
+  /* +E if erasex==-1 */ bwm.1.D_RIGHT.0.5="   "; bwm.2.D_RIGHT.0.5="E   "
+  
+  /* up and left x=-1 y=-1 */
+  /* erasex=1 will be conditionally added in the draw routine */
+  bwm.1.D_LEFT.D_UP.0="   ";  bwm.2.D_LEFT.D_UP.0="   "
+  bwm.1.D_LEFT.D_UP.1="XE E"; bwm.2.D_LEFT.D_UP.1=" EE" /* +E if erasex==1 */
+  bwm.1.D_LEFT.D_UP.2="XX E"; bwm.2.D_LEFT.D_UP.2=" E"
+  bwm.1.D_LEFT.D_UP.3="XX E"; bwm.2.D_LEFT.D_UP.3=" E"
+  bwm.1.D_LEFT.D_UP.4="XX E"; bwm.2.D_LEFT.D_UP.4=" E"
+  bwm.1.D_LEFT.D_UP.5="   E"; bwm.2.D_LEFT.D_UP.5="   "
+  bwm.1.D_LEFT.D_UP.6="XEEE"; bwm.2.D_LEFT.D_UP.6="XEE" /* +E if erasex==1
+  
+  /* down and left x=-1` y=1 */
+  /* erasex=1 will be conditionally added in the draw routine */
+  bwm.1.D_LEFT.D_DOWN.N1="XEEE"; bwm.2.D_LEFT.D_DOWN.N1="XEE" /* +E if erasex==1 */
+  bwm.1.D_LEFT.D_DOWN.0= "   E"; bwm.2.D_LEFT.D_DOWN.0="   "
+  bwm.1.D_LEFT.D_DOWN.1= "XX E"; bwm.2.D_LEFT.D_DOWN.1=" E"
+  bwm.1.D_LEFT.D_DOWN.2= "XX E"; bwm.2.D_LEFT.D_DOWN.2=" E"
+  bwm.1.D_LEFT.D_DOWN.3= "XX E"; bwm.2.D_LEFT.D_DOWN.3=" E"
+  bwm.1.D_LEFT.D_DOWN.4= "XE E"; bwm.2.D_LEFT.D_DOWN.4=" EE" /* +E if erasex==1 */
+  bwm.1.D_LEFT.D_DOWN.5= "   ";  bwm.2.D_LEFT.D_DOWN.5="   "
+  
+  /* up and right */
+  /* erasex=-1 will be conditionally added in the draw routine */
+                         bwm.1.D_RIGHT.D_UP.0="   "; bwm.2.D_RIGHT.D_UP.0="X   "
+  /* +E if erasex==-1 */ bwm.1.D_RIGHT.D_UP.1="EE "; bwm.2.D_RIGHT.D_UP.1="E E"
+                         bwm.1.D_RIGHT.D_UP.2="XE "; bwm.2.D_RIGHT.D_UP.2="E "
+                         bwm.1.D_RIGHT.D_UP.3="XE "; bwm.2.D_RIGHT.D_UP.3="E "
+                         bwm.1.D_RIGHT.D_UP.4="XE "; bwm.2.D_RIGHT.D_UP.4="E "
+                         bwm.1.D_RIGHT.D_UP.5="   "; bwm.2.D_RIGHT.D_UP.5="E   "
+  /* +E if erasex==-1 */ bwm.1.D_RIGHT.D_UP.6="EE" ; bwm.2.D_RIGHT.D_UP.6="EEE"
+  
+  /* down and right */
+  /* erasex=-1 will be conditionally added in the draw routine */
+  /* +E if erasex==-1 */ bwm.1.D_RIGHT.D_DOWN.N1="EE";  bwm.2.D_RIGHT.D_DOWN.N1="EEE"
+                         bwm.1.D_RIGHT.D_DOWN.0= "   "; bwm.2.D_RIGHT.D_DOWN.0= "E   "
+                         bwm.1.D_RIGHT.D_DOWN.1= "XE "; bwm.2.D_RIGHT.D_DOWN.1= "E "
+                         bwm.1.D_RIGHT.D_DOWN.2= "XE "; bwm.2.D_RIGHT.D_DOWN.2= "E "
+                         bwm.1.D_RIGHT.D_DOWN.3= "XE "; bwm.2.D_RIGHT.D_DOWN.3= "E "
+  /* +E if erasex==-1 */ bwm.1.D_RIGHT.D_DOWN.4= "EE "; bwm.2.D_RIGHT.D_DOWN.4= "E E"
+                         bwm.1.D_RIGHT.D_DOWN.5= "   "; bwm.2.D_RIGHT.D_DOWN.5= "X   "
   
   /* object lists */
   msg_toggle=1
@@ -2885,8 +3028,9 @@ INIT_OBJECTS:
   obj.bridge.spr.3=_bridge.3
   obj.bridge.spr.4=_bridge.4
   obj.bridge.spr.5=_bridge.5
+  obj.bridge.foot=3 /* width of the L shaped wall of the bridge */
   obj.bridge.gap=6  /* the walkable part of the bridge */
-  obj.bridge.p2xoff=3+obj.bridge.gap /* part 2 x offset: bridge foot + brige gap */
+  obj.bridge.p2xoff=obj.bridge.foot+obj.bridge.gap /* part 2 x offset: bridge foot + brige gap */
   obj.bridge.lvl3.0=1   /* random room lower limit */
   obj.bridge.lvl3.1=29  /* random room upper limit */
   
@@ -2964,7 +3108,7 @@ INIT_OBJECTS:
   obj.yorgle.atkwait=delayedattack
   obj.yorgle.lvl3.0=1   /* random room lower limit */
   obj.yorgle.lvl3.1=29  /* random room upper limit */
-  obj.yorgle.state=D_ALIVE
+  obj.yorgle.state=DR_ALIVE
   obj.yorgle.atkstart=0
   
   obj.grundle.type="dragon"
@@ -2995,7 +3139,7 @@ INIT_OBJECTS:
   obj.grundle.atkwait=delayedattack
   obj.grundle.lvl3.0=1   /* random room lower limit */
   obj.grundle.lvl3.1=29  /* random room upper limit */
-  obj.grundle.state=D_ALIVE
+  obj.grundle.state=DR_ALIVE
   obj.grundle.atkstart=0  
   
   obj.rhindle.type="dragon"
@@ -3026,7 +3170,7 @@ INIT_OBJECTS:
   obj.rhindle.atkwait=delayedattack 
   obj.rhindle.lvl3.0=1   /* random room lower limit */
   obj.rhindle.lvl3.1=29  /* random room upper limit */
-  obj.rhindle.state=D_ALIVE
+  obj.rhindle.state=DR_ALIVE
   obj.rhindle.atkstart=0
 RETURN
  

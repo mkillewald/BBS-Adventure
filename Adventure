@@ -1172,7 +1172,7 @@ RETURN
 
 DRAW_OBJECT_WITH_MOTION: /* draw object in motion (erase where its been) */
   ARG dro
-  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
+  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room | (obj.dro.dirx==0 & obj.dro.diry==0) THEN RETURN
   IF dro=="BRIDGE" THEN DO
     CALL DRAW_BRIDGE_WITH_MOTION
     RETURN
@@ -1329,7 +1329,7 @@ RETURN
 /* TODO: fix draw/erase issues with screen edges */
 DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T really spelled DOG? */
   ARG dro
-  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room THEN RETURN
+  IF OK2DRAWOBJ(dro)==0 | obj.dro.room ~= obj.pl.room | (obj.dro.dirx==0 & obj.dro.diry==0) THEN RETURN
   rm=obj.pl.room
   mp=k.rm.map
   
@@ -1421,107 +1421,106 @@ DRAW_BRIDGE_LINE:
   se "["||drawline||";"||drawbridgexpos||"H"||obj.bridge.col||spr_str||"["||obj.bridge.gap||"C"||spr_str
 RETURN
 
-DRAW_BRIDGE_WITH_MOTION:  /* TODO: re-do this because its U G L Y!! */
-  IF OK2DRAWOBJ("BRIDGE")==0 | obj.bridge.room ~= obj.pl.room THEN RETURN
+DRAW_BRIDGE_WITH_MOTION:
+  xdir=obj.bridge.dirx
+  ydir=obj.bridge.diry
+  IF OK2DRAWOBJ("BRIDGE")==0 | obj.bridge.room ~= obj.pl.room | (xdir==0 & ydir==0) THEN RETURN
+  	
   rm=obj.pl.room
-  mp=k.rm.map
-  
+  mp=k.rm.map	
+
   erasex=0
   outerloopstart=0
   outerloopend=obj.bridge.h
 
-  
   /* check for movement in x direction */
-  IF obj.bridge.dirx==-1 & obj.bridge.x+obj.bridge.w<maxcol THEN DO
+  IF xdir==D_LEFT & obj.bridge.x+obj.bridge.w<maxcol THEN DO
     /* bridge is moving left and not at right edge of screen bounds */
     /* we will need to erase one char position to the right of bridge */
     erasex=1 
   END
-  ELSE IF obj.bridge.dirx==1 & obj.bridge.x>mincol THEN DO
+  ELSE IF xdir==D_RIGHT & obj.bridge.x>mincol THEN DO
     /* bridge is moving right and not at left edge of screen bounds */
     /* we will need to erase one char position to the left of bridge */
     erasex=-1  
   END
   
   /* check for movement in y direction */
-  IF obj.bridge.diry==-1 & obj.bridge.y+obj.bridge.h<maxline THEN DO
+  IF ydir==D_UP & obj.bridge.y+obj.bridge.h<maxline THEN DO
     /* bridge is moving up and not at bottom edge of screen bounds */
     /* we will need to erase one line below bridge */
     outerloopend=obj.bridge.h+1
   END
-  ELSE IF obj.bridge.diry==1 & obj.bridge.y>minline THEN DO
+  ELSE IF ydir==D_DOWN & obj.bridge.y>minline THEN DO
     /* bridge is moving down and not at top edge of screen bounds */ 
     /* we will need to erase one line above bridge */
     outerloopstart=-1
   END
-            
+
   /* outer loop goes through each line of sprite */ 
   DO j=outerloopstart TO outerloopend BY 1
     drawline=obj.bridge.y+(j)
-    /* IF drawline<minline | drawline>maxline THEN ITERATE */ /* skip loop iteration if line is out of bounds */
+    /* IF drawline<minline | dratwline>maxline THEN ITERATE */ /* skip loop iteration if line is out of bounds */
     
-    /* get lines of sprite data to work on */
-    dirx=obj.bridge.dirx
-    diry=obj.bridge.diry
-    spr_str1=bwm.1.dirx.diry.j
-    spr_str2=bwm.2.dirx.diry.j
+    /* get lines of sprite data to work on */ 
+    spr_str1=bwm.1.xdir.ydir.j
+    spr_str2=bwm.2.xdir.ydir.j
     
+    /* init drawx offsets */
     drawxoff1=0
     drawxoff2=0
     
     /* check if we need to erase 1 char to left of sprite */
     IF erasex==-1 THEN DO
-    	IF dirx==D_RIGHT & diry==0 & (j==0 | j==5) THEN DO
+    	IF xdir==D_RIGHT & ydir==0 & (j==0 | j==5) THEN DO
     		spr_str1="E"||spr_str1
     		drawxoff1=-1
     	END
-    	ELSE IF dirx==D_RIGHT & diry==D_UP & (j==1 | j==6) THEN DO
+    	ELSE IF xdir==D_RIGHT & ydir==D_UP & (j==1 | j==6) THEN DO
     		spr_str1="E"||spr_str1
     		drawxoff1=-1
     	END
-    	ELSE IF dirx==D_RIGHT & diry==D_DOWN & (j==-1 | j==4) THEN DO
+    	ELSE IF xdir==D_RIGHT & ydir==D_DOWN & (j==-1 | j==4) THEN DO
     		spr_str1="E"||spr_str1
     		drawxoff1=-1
     	END
     END
     /* check if we need to erase 1 char to right of sprite */
     ELSE IF erasex==1 THEN DO
-    	IF dirx==D_LEFT & diry==0 & (j==0 | j==5) THEN spr_str2=spr_str2||"E"
-      ELSE IF dirx==D_LEFT & diry==D_UP & (j==1 | j==6) THEN spr_str2=spr_str2||"E"
-      ELSE IF dirx==D_LEFT & diry==D_DOWN & (j==-1 | j==4) THEN spr_str2=spr_str2||"E"	
+    	IF xdir==D_LEFT & ydir==0 & (j==0 | j==5) THEN spr_str2=spr_str2||"E"
+      ELSE IF xdir==D_LEFT & ydir==D_UP & (j==1 | j==6) THEN spr_str2=spr_str2||"E"
+      ELSE IF xdir==D_LEFT & ydir==D_DOWN & (j==-1 | j==4) THEN spr_str2=spr_str2||"E"	
     END
     
     /* get drawxpos1 */
-    IF drawxoff1==0 THEN drawxoff1= VERIFY(spr_str1, "X") -1
-    drawxpos1=obj.bridge.x+drawxoff1
+    IF INDEX(spr_str1, "X")~=0 THEN drawxoff1= drawxoff1+ VERIFY(spr_str1, "X") -1
+    drawxpos1=obj.bridge.x+(drawxoff1)
     
     /* get drawxpos2 */
-    IF diry==D_RIGHT & LEFT(spr_str2, 1)~="X" THEN drawxoff2=-1
-    ELSE IF diry==D_LEFT & LEFT(spr_str2, 1)=="X" THEN drawxoff2==1
-    drawxpos2=obj.bridge.x+obj.bridge.p2xoff+drawxoff2
+    IF xdir==D_RIGHT & LEFT(spr_str2, 1)~="X" THEN drawxoff2=-1
+    ELSE IF xdir==D_LEFT & LEFT(spr_str2, 1)=="X" THEN drawxoff2=1
+    drawxpos2=obj.bridge.x+obj.bridge.p2xoff+(drawxoff2)
     
     /* strip X from sprite data */
     spr_str1= STRIP(spr_str1, "L", "X") 
     spr_str2= STRIP(spr_str2, "L", "X") 
     
-    /* get map data */
-    
-    /* loop through characters of str1 and insert erase color as needed */
+    /* get map data underneath spr_str1 and loop through characters of spr_str1 and insert erase color as needed */
     dro="BRIDGE"
     spr_str=spr_str1
     map_start=drawxpos1+MAP_SHIFT
     map_len= LENGTH(spr_str1)
     map_str= SUBSTR(k.mp.drawline, map_start, map_len)
-    CALL BUILD_INVERSE_OBJECT_LINE
-    result_str1=result_str
+    CALL BUILD_INVERSE_OBJ_LINE
+    result_str1=result_line
     
-    /* loop through characters of str2 and insert erase color as needed */
+    /* get map data underneath spr_str2 and loop through characters of spr_str2 and insert erase color as needed */
     spr_str=spr_str2
     map_start=drawxpos2+MAP_SHIFT
     map_len= LENGTH(spr_str2)
     map_str= SUBSTR(k.mp.drawline, map_start, map_len)
-    CALL BUILD_INVERSE_OBJECT_LINE
-    result_str2=result_str
+    CALL BUILD_INVERSE_OBJ_LINE
+    result_str2=result_line
     
     se "["||drawline||";"||drawxpos1||"H"||result_str1||"["||drawline||";"||drawxpos2||"H"||result_str2
   END
@@ -1700,8 +1699,10 @@ RETURN
 MOVE:  /* moves the desired object */
   ARG mo, movex, movey
   IF TRUNC(obj.mo.dx)==0 & TRUNC(obj.mo.dy)==0 THEN RETURN
-  IF movex THEN obj.mo.x=obj.mo.x+(TRUNC(obj.mo.dx)*obj.mo.dirx)
-  IF movey THEN obj.mo.y=obj.mo.y+(TRUNC(obj.mo.dy)*obj.mo.diry)
+  IF movex==1 THEN obj.mo.x=obj.mo.x+(TRUNC(obj.mo.dx)*obj.mo.dirx)
+  ELSE obj.mo.dirx=0
+  IF movey==1 THEN obj.mo.y=obj.mo.y+(TRUNC(obj.mo.dy)*obj.mo.diry)
+  ELSE obj.mo.diry=0
 RETURN 
 
 GETDIR:           
@@ -1981,7 +1982,7 @@ MAGNETISM:  /* move wanted object toward magnet */
         CALL EXIT_WITH_MOTION(mwo)
         CALL MOVE(mwo,1,0)  /* move x only */
         CALL DRAW_OBJECT_WITH_MOTiON(mwo)
-        obj.o.dx=0
+        obj.mwo.dx=0
         obj.mwo.dirx=0
       END
       ELSE IF obj.mwo.dy>=1 THEN DO
@@ -2402,7 +2403,7 @@ EXPAND_KINGDOM:  /* set up full size kingdom for difficulty 2 and 3 */
 RETURN
 
 INIT_PLAYER:  
-  obj.pl.room=14  /* orig 17 */
+  obj.pl.room=17
   obj.pl.x=40
   obj.pl.y=20
   obj.pl.w=1
@@ -2629,7 +2630,7 @@ INIT_OBJECTS:
   bwm.1.0.D_DOWN.1= "XX "; bwm.2.0.D_DOWN.1= " "
   bwm.1.0.D_DOWN.2= "XX "; bwm.2.0.D_DOWN.2= " "
   bwm.1.0.D_DOWN.3= "XX "; bwm.2.0.D_DOWN.3= " "
-  bwm.1.0.D_DOWN.4= "XX "; bwm.2.0.D_DOWN.4= " "
+  bwm.1.0.D_DOWN.4= "EE "; bwm.2.0.D_DOWN.4= " EE"
   bwm.1.0.D_DOWN.5= "   "; bwm.2.0.D_DOWN.5= "   "
   
   /* left x=-1 y=0 */
@@ -2658,17 +2659,17 @@ INIT_OBJECTS:
   bwm.1.D_LEFT.D_UP.3="XX E"; bwm.2.D_LEFT.D_UP.3=" E"
   bwm.1.D_LEFT.D_UP.4="XX E"; bwm.2.D_LEFT.D_UP.4=" E"
   bwm.1.D_LEFT.D_UP.5="   E"; bwm.2.D_LEFT.D_UP.5="   "
-  bwm.1.D_LEFT.D_UP.6="XEEE"; bwm.2.D_LEFT.D_UP.6="XEE" /* +E if erasex==1
+  bwm.1.D_LEFT.D_UP.6="XEEE"; bwm.2.D_LEFT.D_UP.6="XEE" /* +E if erasex==1 */
   
   /* down and left x=-1` y=1 */
   /* erasex=1 will be conditionally added in the draw routine */
   bwm.1.D_LEFT.D_DOWN.N1="XEEE"; bwm.2.D_LEFT.D_DOWN.N1="XEE" /* +E if erasex==1 */
-  bwm.1.D_LEFT.D_DOWN.0= "   E"; bwm.2.D_LEFT.D_DOWN.0="   "
-  bwm.1.D_LEFT.D_DOWN.1= "XX E"; bwm.2.D_LEFT.D_DOWN.1=" E"
-  bwm.1.D_LEFT.D_DOWN.2= "XX E"; bwm.2.D_LEFT.D_DOWN.2=" E"
-  bwm.1.D_LEFT.D_DOWN.3= "XX E"; bwm.2.D_LEFT.D_DOWN.3=" E"
-  bwm.1.D_LEFT.D_DOWN.4= "XE E"; bwm.2.D_LEFT.D_DOWN.4=" EE" /* +E if erasex==1 */
-  bwm.1.D_LEFT.D_DOWN.5= "   ";  bwm.2.D_LEFT.D_DOWN.5="   "
+  bwm.1.D_LEFT.D_DOWN.0= "   E"; bwm.2.D_LEFT.D_DOWN.0= "   "
+  bwm.1.D_LEFT.D_DOWN.1= "XX E"; bwm.2.D_LEFT.D_DOWN.1= " E"
+  bwm.1.D_LEFT.D_DOWN.2= "XX E"; bwm.2.D_LEFT.D_DOWN.2= " E"
+  bwm.1.D_LEFT.D_DOWN.3= "XX E"; bwm.2.D_LEFT.D_DOWN.3= " E"
+  bwm.1.D_LEFT.D_DOWN.4= "XE E"; bwm.2.D_LEFT.D_DOWN.4= " EE" /* +E if erasex==1 */
+  bwm.1.D_LEFT.D_DOWN.5= "   ";  bwm.2.D_LEFT.D_DOWN.5= "   "
   
   /* up and right */
   /* erasex=-1 will be conditionally added in the draw routine */
@@ -2967,7 +2968,7 @@ INIT_OBJECTS:
   obj.sword.lvl3.1=29  /* random room upper limit */
 
   obj.magnet.type="inverse"
-  obj.magnet.room=27  /* 27 orig, 29 test */
+  obj.magnet.room=27
   obj.magnet.x=64
   obj.magnet.y=19
   obj.magnet.w=2
@@ -3034,9 +3035,9 @@ INIT_OBJECTS:
   obj.bridge.lvl3.0=1   /* random room lower limit */
   obj.bridge.lvl3.1=29  /* random room upper limit */
   
-  obj.dot.room=21  /* orig 21, easy 3  */
-  obj.dot.x=34     /* orig 34, easy 74 */
-  obj.dot.y=22     /* orig 22, easy 23 */
+  obj.dot.room=21  /* orig 21, test 3  */
+  obj.dot.x=34     /* orig 34, test 74 */
+  obj.dot.y=22     /* orig 22, test 23 */
   obj.dot.w=0
   obj.dot.h=0
   obj.dot.dx=0

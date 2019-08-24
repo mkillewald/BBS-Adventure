@@ -1312,7 +1312,7 @@ DRAW_INVERSE_OBJ_LINE:
   
   /* get object sprite line */
   spri=drawline-obj.dro.y
-  IF obj.dro.type=="dragon" & obj.dro.dirx==1 THEN DO
+  IF obj.dro.type=="dragon" & obj.dro.dirx==D_RIGHT THEN DO
     spr_str= REVERSE(obj.dro.spr.spri)
   END
   ELSE spr_str=obj.dro.spr.spri
@@ -1340,24 +1340,24 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
   map_len=obj.dro.w+1  /* +1 for how obj width is indexed */ 
   
   /* check for movement in x direction */
-  IF obj.dro.dirx==-1 & obj.dro.x+obj.dro.w<maxcol THEN DO
+  IF obj.dro.dirx==D_LEFT & obj.dro.x+obj.dro.w<maxcol THEN DO
     /* dro is moving left and not at right edge of screen bounds */
     /* we will need to erase one char position to the right of dro */
     erasex=1 
   END
-  ELSE IF obj.dro.dirx==1 & obj.dro.x>mincol THEN DO
+  ELSE IF obj.dro.dirx==D_RIGHT & obj.dro.x>mincol THEN DO
     /* dro is moving right and not at left edge of screen bounds */
     /* we will need to erase one char position to the left of dro */
     erasex=-1  
   END
   
   /* check for movement in y direction */
-  IF obj.dro.diry==-1 & obj.dro.y+obj.dro.h<maxline THEN DO
+  IF obj.dro.diry==D_UP & obj.dro.y+obj.dro.h<maxline THEN DO
     /* dro is moving up and not at bottom edge of screen bounds */
     /* we will need to erase one line below dro */
     outerloopend=obj.dro.h+1
   END
-  ELSE IF obj.dro.diry==1 & obj.dro.y>minline THEN DO
+  ELSE IF obj.dro.diry==D_DOWN & obj.dro.y>minline THEN DO
     /* dro is moving down and not at top edge of screen bounds */ 
     /* we will need to erase one line above dro */
     outerloopstart=-1
@@ -1376,7 +1376,7 @@ DRAW_INVERSE_OBJECT_WITH_MOTION: /* draw object whose bg is fg. what if C A T re
       spr_str= COPIES("E", obj.dro.w+1)
     END
     ELSE DO
-      IF obj.dro.type=="dragon" & obj.dro.dirx==1 THEN DO
+      IF obj.dro.type=="dragon" & obj.dro.dirx==D_RIGHT THEN DO
         spr_str=REVERSE(obj.dro.spr.j) 
       END
       ELSE spr_str=obj.dro.spr.j
@@ -1647,8 +1647,8 @@ PLAYER_MOVE:
   IF obj.pl.state==PL_DEAD | (obj.pl.dirx==0 & obj.pl.diry==0) THEN RETURN
   CALL EXIT_WITH_MOTION("PL") 
   
-  IF obj.pl.dirx==-1 & obj.pl.x==mincol+1 THEN obj.pl.dx=1 
-  ELSE IF obj.pl.dirx==1 & obj.pl.x==maxcol-2 THEN obj.pl.dx=1  
+  IF obj.pl.dirx==D_RIGHT & obj.pl.x==mincol+1 THEN obj.pl.dx=1 
+  ELSE IF obj.pl.dirx==D_LEFT & obj.pl.x==maxcol-2 THEN obj.pl.dx=1  
   ELSE obj.pl.dx=2 
   obj.pl.dy=1
   
@@ -2275,21 +2275,21 @@ RETURN
 EXIT_WITH_MOTION:  /* perform exit on a object with motion */
   ARG exo
   exorm=obj.exo.room
-  IF obj.exo.dirx>0 & obj.exo.x+obj.exo.w>=maxcol THEN DO
+  IF obj.exo.dirx==D_RIGHT & obj.exo.x+obj.exo.w>=maxcol THEN DO
     IF exo==knub THEN CALL ERASE_BAT
     ELSE IF obj.exo.type=="dragon" THEN CALL ERASE_DRAGON(exo)
     ELSE call ERASE_OBJECT(exo)
     CALL RIGHT_EXIT(exo)
     RETURN 1
   END
-  ELSE IF obj.exo.dirx<0 & obj.exo.x<=mincol THEN DO
+  ELSE IF obj.exo.dirx==D_LEFT & obj.exo.x<=mincol THEN DO
     IF exo==knub THEN CALL ERASE_BAT
     ELSE IF obj.exo.type=="dragon" THEN CALL ERASE_DRAGON(exo)
     ELSE call ERASE_OBJECT(exo)
     CALL LEFT_EXIT(exo)
     RETURN 1
   END
-  ELSE IF obj.exo.diry<0 THEN DO
+  ELSE IF obj.exo.diry==D_UP THEN DO
      IF obj.exo.y<=minline THEN DO
        IF exo==knub THEN CALL ERASE_BAT
        ELSE IF obj.exo.type=="dragon" THEN CALL ERASE_DRAGON(exo)
@@ -2304,7 +2304,7 @@ EXIT_WITH_MOTION:  /* perform exit on a object with motion */
        RETURN 1
      END
   END
-  ELSE IF obj.exo.diry>0 & obj.exo.y+obj.exo.h>=maxline THEN DO   
+  ELSE IF obj.exo.diry==D_DOWN & obj.exo.y+obj.exo.h>=maxline THEN DO   
     IF k.exorm.co==0 THEN DO
       IF exo==knub THEN CALL ERASE_BAT
       ELSE IF obj.exo.type=="dragon" THEN CALL ERASE_DRAGON(exo)
@@ -3063,7 +3063,7 @@ INIT_OBJECTS:
   obj.knubberrub.spdx=0.03125  /* 1/32 */
   obj.knubberrub.spdy=0.015625 /* 1/64 */
   obj.knubberrub.dirx=0
-  obj.knubberrub.diry=1
+  obj.knubberrub.diry=D_DOWN
   obj.knubberrub.offset.x=0
   obj.knubberrub.offset.y=0
   obj.knubberrub.col="[40m"
@@ -3091,7 +3091,7 @@ INIT_OBJECTS:
   obj.yorgle.dy=0
   obj.yorgle.spdx=0.5
   obj.yorgle.spdy=0.25
-  obj.yorgle.dirx=-1
+  obj.yorgle.dirx=D_UP
   obj.yorgle.diry=0
   obj.yorgle.offset.x=0
   obj.yorgle.offset.y=0
